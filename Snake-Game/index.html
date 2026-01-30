@@ -261,6 +261,63 @@
             animation: reprimandPop 1.5s ease-out forwards;
         }
 
+        #time-warp-announce {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #00ffff;
+            font-size: 42px;
+            font-weight: bold;
+            text-align: center;
+            pointer-events: none;
+            opacity: 0;
+            text-shadow: 0 0 30px rgba(0, 255, 255, 0.9), 0 0 60px rgba(0, 255, 255, 0.6), 0 0 90px rgba(255, 0, 255, 0.4);
+            z-index: 60;
+            letter-spacing: 4px;
+        }
+
+        #time-warp-announce.visible {
+            animation: timeWarpAnnounce 2s ease-out forwards;
+        }
+
+        @keyframes timeWarpAnnounce {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.3) rotate(-10deg);
+            }
+            20% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1.3) rotate(5deg);
+            }
+            40% {
+                transform: translate(-50%, -50%) scale(1) rotate(-3deg);
+            }
+            60% {
+                transform: translate(-50%, -50%) scale(1.1) rotate(2deg);
+            }
+            80% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1) rotate(0deg);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(1.5) rotate(0deg);
+            }
+        }
+
+        #game-canvas.time-warp-distort {
+            animation: timeWarpDistort 0.8s ease-in-out;
+        }
+
+        @keyframes timeWarpDistort {
+            0% { filter: hue-rotate(0deg) blur(0px); transform: translate(-50%, -50%) scale(1); }
+            25% { filter: hue-rotate(90deg) blur(3px); transform: translate(-50%, -50%) scale(1.05) skewX(5deg); }
+            50% { filter: hue-rotate(180deg) blur(5px); transform: translate(-50%, -50%) scale(0.95) skewY(-5deg); }
+            75% { filter: hue-rotate(270deg) blur(3px); transform: translate(-50%, -50%) scale(1.03) skewX(-3deg); }
+            100% { filter: hue-rotate(360deg) blur(0px); transform: translate(-50%, -50%) scale(1); }
+        }
+
         @keyframes reprimandPop {
             0% {
                 opacity: 0;
@@ -294,6 +351,7 @@
     <div id="lag-indicator">System Load: <span id="load-percent">0</span>%</div>
 
     <div id="reprimand"></div>
+    <div id="time-warp-announce">TIME WARP TIME!!!</div>
 
     <div id="game-over-modal">
         <div class="modal-content">
@@ -568,6 +626,12 @@
         let lastTremorTime = 0;
         let tremorCooldown = 0;
 
+        // Time Warp system
+        const timeWarpAnnounce = document.getElementById('time-warp-announce');
+        let lastTimeWarp = 0;
+        let timeWarpCooldown = 3000; // Minimum 3 seconds between warps
+        let timeWarpChance = 0.15; // 15% chance per tick to trigger (high probability)
+
         function triggerTremor() {
             const now = Date.now();
             if (now - lastTremorTime < tremorCooldown) return;
@@ -611,6 +675,65 @@
                     gameCanvas.classList.remove(tremorClass);
                 }, 300);
             }
+        }
+
+        function triggerTimeWarp() {
+            const now = Date.now();
+            if (now - lastTimeWarp < timeWarpCooldown) return;
+            if (Math.random() > timeWarpChance) return;
+
+            lastTimeWarp = now;
+
+            // Show announcement
+            timeWarpAnnounce.classList.remove('visible');
+            void timeWarpAnnounce.offsetWidth; // Force reflow
+            timeWarpAnnounce.classList.add('visible');
+
+            // Add visual distortion to canvas
+            gameCanvas.classList.remove('time-warp-distort');
+            void gameCanvas.offsetWidth;
+            gameCanvas.classList.add('time-warp-distort');
+
+            // Teleport snake to random position after a brief delay
+            setTimeout(() => {
+                // Find a valid random position (not on food, not causing immediate self-collision)
+                let newX, newY;
+                let attempts = 0;
+                do {
+                    newX = Math.floor(Math.random() * (tileCount - 4)) + 2;
+                    newY = Math.floor(Math.random() * (tileCount - 4)) + 2;
+                    attempts++;
+                } while ((newX === food.x && newY === food.y) && attempts < 20);
+
+                // Calculate offset to move entire snake
+                const offsetX = newX - snake[0].x;
+                const offsetY = newY - snake[0].y;
+
+                // Teleport entire snake maintaining shape
+                for (let i = 0; i < snake.length; i++) {
+                    snake[i].x += offsetX;
+                    snake[i].y += offsetY;
+
+                    // Wrap around if any segment goes out of bounds
+                    if (snake[i].x < 0) snake[i].x += tileCount;
+                    if (snake[i].x >= tileCount) snake[i].x -= tileCount;
+                    if (snake[i].y < 0) snake[i].y += tileCount;
+                    if (snake[i].y >= tileCount) snake[i].y -= tileCount;
+                }
+
+                // Add teleportation particles at new location
+                for (let i = 0; i < 40; i++) {
+                    particles.push(new Particle(
+                        snake[0].x * gridSize + gridSize / 2,
+                        snake[0].y * gridSize + gridSize / 2
+                    ));
+                }
+            }, 400);
+
+            // Remove distortion class after animation
+            setTimeout(() => {
+                gameCanvas.classList.remove('time-warp-distort');
+            }, 800);
         }
 
         class Particle {
@@ -936,6 +1059,9 @@
 
             // Trigger tremors based on lag level
             triggerTremor();
+
+            // Trigger time warps (high probability!)
+            triggerTimeWarp();
         }
 
         function startGame() {
