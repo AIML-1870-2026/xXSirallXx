@@ -35,6 +35,60 @@
             box-shadow: 0 0 30px rgba(233, 69, 96, 0.3);
         }
 
+        #game-canvas.tremor-light {
+            animation: tremorLight 0.1s ease-in-out;
+        }
+
+        #game-canvas.tremor-medium {
+            animation: tremorMedium 0.15s ease-in-out;
+        }
+
+        #game-canvas.tremor-heavy {
+            animation: tremorHeavy 0.2s ease-in-out;
+        }
+
+        #game-canvas.tremor-extreme {
+            animation: tremorExtreme 0.25s ease-in-out;
+        }
+
+        @keyframes tremorLight {
+            0%, 100% { transform: translate(-50%, -50%); }
+            25% { transform: translate(calc(-50% + 2px), calc(-50% - 1px)); }
+            50% { transform: translate(calc(-50% - 1px), calc(-50% + 2px)); }
+            75% { transform: translate(calc(-50% + 1px), calc(-50% - 1px)); }
+        }
+
+        @keyframes tremorMedium {
+            0%, 100% { transform: translate(-50%, -50%); }
+            20% { transform: translate(calc(-50% + 4px), calc(-50% - 3px)); }
+            40% { transform: translate(calc(-50% - 3px), calc(-50% + 4px)); }
+            60% { transform: translate(calc(-50% + 3px), calc(-50% - 2px)); }
+            80% { transform: translate(calc(-50% - 2px), calc(-50% + 3px)); }
+        }
+
+        @keyframes tremorHeavy {
+            0%, 100% { transform: translate(-50%, -50%); }
+            15% { transform: translate(calc(-50% + 6px), calc(-50% - 5px)); }
+            30% { transform: translate(calc(-50% - 5px), calc(-50% + 6px)); }
+            45% { transform: translate(calc(-50% + 4px), calc(-50% - 4px)); }
+            60% { transform: translate(calc(-50% - 6px), calc(-50% + 3px)); }
+            75% { transform: translate(calc(-50% + 5px), calc(-50% - 5px)); }
+            90% { transform: translate(calc(-50% - 3px), calc(-50% + 4px)); }
+        }
+
+        @keyframes tremorExtreme {
+            0%, 100% { transform: translate(-50%, -50%); }
+            10% { transform: translate(calc(-50% + 10px), calc(-50% - 8px)); }
+            20% { transform: translate(calc(-50% - 8px), calc(-50% + 10px)); }
+            30% { transform: translate(calc(-50% + 7px), calc(-50% - 6px)); }
+            40% { transform: translate(calc(-50% - 10px), calc(-50% + 5px)); }
+            50% { transform: translate(calc(-50% + 8px), calc(-50% - 9px)); }
+            60% { transform: translate(calc(-50% - 6px), calc(-50% + 8px)); }
+            70% { transform: translate(calc(-50% + 9px), calc(-50% - 7px)); }
+            80% { transform: translate(calc(-50% - 7px), calc(-50% + 6px)); }
+            90% { transform: translate(calc(-50% + 5px), calc(-50% - 8px)); }
+        }
+
         #menu {
             position: absolute;
             top: 65%;
@@ -510,6 +564,55 @@
             reprimandElement.classList.add('visible');
         }
 
+        // Tremor system
+        let lastTremorTime = 0;
+        let tremorCooldown = 0;
+
+        function triggerTremor() {
+            const now = Date.now();
+            if (now - lastTremorTime < tremorCooldown) return;
+
+            // Determine tremor intensity and frequency based on lag
+            let tremorClass = null;
+            let chance = 0;
+
+            if (lagLevel >= 80) {
+                tremorClass = 'tremor-extreme';
+                chance = 0.4; // 40% chance per tick
+                tremorCooldown = 200;
+            } else if (lagLevel >= 60) {
+                tremorClass = 'tremor-heavy';
+                chance = 0.25; // 25% chance per tick
+                tremorCooldown = 400;
+            } else if (lagLevel >= 40) {
+                tremorClass = 'tremor-medium';
+                chance = 0.15; // 15% chance per tick
+                tremorCooldown = 600;
+            } else if (lagLevel >= 20) {
+                tremorClass = 'tremor-light';
+                chance = 0.08; // 8% chance per tick
+                tremorCooldown = 800;
+            }
+
+            if (tremorClass && Math.random() < chance) {
+                lastTremorTime = now;
+
+                // Remove all tremor classes
+                gameCanvas.classList.remove('tremor-light', 'tremor-medium', 'tremor-heavy', 'tremor-extreme');
+
+                // Force reflow to restart animation
+                void gameCanvas.offsetWidth;
+
+                // Add the appropriate tremor class
+                gameCanvas.classList.add(tremorClass);
+
+                // Remove class after animation completes
+                setTimeout(() => {
+                    gameCanvas.classList.remove(tremorClass);
+                }, 300);
+            }
+        }
+
         class Particle {
             constructor(x, y) {
                 this.x = x;
@@ -830,6 +933,9 @@
 
             updateGame();
             drawGame();
+
+            // Trigger tremors based on lag level
+            triggerTremor();
         }
 
         function startGame() {
