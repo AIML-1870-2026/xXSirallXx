@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stellar Web</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            overflow: hidden;
+            background: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        #hint {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0);
+            font-size: 18px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            pointer-events: none;
+            transition: color 1.5s ease;
+            text-shadow: 0 0 10px rgba(100, 200, 255, 0.5);
+        }
+
+        #hint.visible {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        #settings {
+            position: fixed;
+            top: 50%;
+            right: -320px;
+            transform: translateY(-50%);
+            width: 300px;
+            background: rgba(10, 20, 40, 0.9);
+            border: 1px solid rgba(100, 200, 255, 0.3);
+            border-radius: 15px;
+            padding: 25px;
+            transition: right 0.5s ease;
+            box-shadow: 0 0 30px rgba(100, 200, 255, 0.2);
+        }
+
+        #settings.visible {
+            right: 20px;
+        }
+
+        #settings h2 {
+            color: #fff;
+            font-size: 20px;
+            margin-bottom: 25px;
+            text-align: center;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            text-shadow: 0 0 10px rgba(100, 200, 255, 0.5);
+        }
+
+        .slider-group {
+            margin-bottom: 20px;
+        }
+
+        .slider-group label {
+            display: flex;
+            justify-content: space-between;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+        }
+
+        .slider-group label span {
+            color: rgba(100, 200, 255, 0.9);
+            font-weight: bold;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: linear-gradient(135deg, #64c8ff, #3a7bd5);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(100, 200, 255, 0.5);
+            transition: transform 0.2s ease;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            background: linear-gradient(135deg, #64c8ff, #3a7bd5);
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 10px rgba(100, 200, 255, 0.5);
+        }
+
+        #close-settings {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin-top: 10px;
+            background: linear-gradient(135deg, rgba(100, 200, 255, 0.2), rgba(58, 123, 213, 0.2));
+            border: 1px solid rgba(100, 200, 255, 0.4);
+            color: #fff;
+            font-size: 14px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        #close-settings:hover {
+            background: linear-gradient(135deg, rgba(100, 200, 255, 0.4), rgba(58, 123, 213, 0.4));
+            box-shadow: 0 0 20px rgba(100, 200, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <div id="hint">Double click to see advanced settings</div>
+
+    <div id="settings">
+        <h2>Advanced Settings</h2>
+
+        <div class="slider-group">
+            <label>Node Speed <span id="speed-value">1.0</span></label>
+            <input type="range" id="speed" min="0.1" max="3" step="0.1" value="1">
+        </div>
+
+        <div class="slider-group">
+            <label>Connectivity Radius <span id="radius-value">150</span></label>
+            <input type="range" id="radius" min="50" max="300" step="10" value="150">
+        </div>
+
+        <div class="slider-group">
+            <label>Node Count <span id="count-value">100</span></label>
+            <input type="range" id="count" min="20" max="300" step="10" value="100">
+        </div>
+
+        <div class="slider-group">
+            <label>Node Size <span id="size-value">3</span></label>
+            <input type="range" id="size" min="1" max="8" step="0.5" value="3">
+        </div>
+
+        <div class="slider-group">
+            <label>Edge Thickness <span id="thickness-value">1.0</span></label>
+            <input type="range" id="thickness" min="0.5" max="4" step="0.5" value="1">
+        </div>
+
+        <button id="close-settings">Close</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const hint = document.getElementById('hint');
+        const settings = document.getElementById('settings');
+
+        // Settings
+        let config = {
+            speed: 1,
+            radius: 150,
+            count: 100,
+            size: 3,
+            thickness: 1
+        };
+
+        let nodes = [];
+        let settingsVisible = false;
+        let webOpacity = 0;
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        class Node {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.vx = (Math.random() - 0.5) * 2;
+                this.vy = (Math.random() - 0.5) * 2;
+                this.baseSpeed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+            }
+
+            update() {
+                const speedMultiplier = config.speed / this.baseSpeed;
+                this.x += this.vx * speedMultiplier;
+                this.y += this.vy * speedMultiplier;
+
+                // Bounce off edges
+                if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+                if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+
+                // Keep in bounds
+                this.x = Math.max(0, Math.min(canvas.width, this.x));
+                this.y = Math.max(0, Math.min(canvas.height, this.y));
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, config.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(100, 200, 255, ${0.8 * webOpacity})`;
+                ctx.fill();
+
+                // Glow effect
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, config.size * 2, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(100, 200, 255, ${0.2 * webOpacity})`;
+                ctx.fill();
+            }
+        }
+
+        function initNodes() {
+            nodes = [];
+            for (let i = 0; i < config.count; i++) {
+                nodes.push(new Node());
+            }
+        }
+
+        function drawEdges() {
+            for (let i = 0; i < nodes.length; i++) {
+                for (let j = i + 1; j < nodes.length; j++) {
+                    const dx = nodes[i].x - nodes[j].x;
+                    const dy = nodes[i].y - nodes[j].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < config.radius) {
+                        const opacity = (1 - dist / config.radius) * webOpacity;
+                        ctx.beginPath();
+                        ctx.moveTo(nodes[i].x, nodes[i].y);
+                        ctx.lineTo(nodes[j].x, nodes[j].y);
+                        ctx.strokeStyle = `rgba(100, 200, 255, ${opacity * 0.6})`;
+                        ctx.lineWidth = config.thickness;
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        function animate() {
+            ctx.fillStyle = 'rgba(0, 0, 10, 0.2)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Fade in effect
+            if (webOpacity < 1) {
+                webOpacity += 0.005;
+                if (webOpacity >= 1) {
+                    webOpacity = 1;
+                    hint.classList.add('visible');
+                }
+            }
+
+            nodes.forEach(node => {
+                node.update();
+                node.draw();
+            });
+
+            drawEdges();
+
+            requestAnimationFrame(animate);
+        }
+
+        // Event Listeners
+        window.addEventListener('resize', resize);
+
+        window.addEventListener('dblclick', () => {
+            if (!settingsVisible) {
+                settings.classList.add('visible');
+                hint.classList.remove('visible');
+                settingsVisible = true;
+            }
+        });
+
+        document.getElementById('close-settings').addEventListener('click', () => {
+            settings.classList.remove('visible');
+            settingsVisible = false;
+            setTimeout(() => hint.classList.add('visible'), 500);
+        });
+
+        // Slider handlers
+        document.getElementById('speed').addEventListener('input', (e) => {
+            config.speed = parseFloat(e.target.value);
+            document.getElementById('speed-value').textContent = config.speed.toFixed(1);
+        });
+
+        document.getElementById('radius').addEventListener('input', (e) => {
+            config.radius = parseInt(e.target.value);
+            document.getElementById('radius-value').textContent = config.radius;
+        });
+
+        document.getElementById('count').addEventListener('input', (e) => {
+            const newCount = parseInt(e.target.value);
+            document.getElementById('count-value').textContent = newCount;
+
+            if (newCount > nodes.length) {
+                while (nodes.length < newCount) {
+                    nodes.push(new Node());
+                }
+            } else {
+                nodes.length = newCount;
+            }
+            config.count = newCount;
+        });
+
+        document.getElementById('size').addEventListener('input', (e) => {
+            config.size = parseFloat(e.target.value);
+            document.getElementById('size-value').textContent = config.size.toFixed(1);
+        });
+
+        document.getElementById('thickness').addEventListener('input', (e) => {
+            config.thickness = parseFloat(e.target.value);
+            document.getElementById('thickness-value').textContent = config.thickness.toFixed(1);
+        });
+
+        // Initialize
+        resize();
+        initNodes();
+        animate();
+    </script>
+</body>
+</html>
