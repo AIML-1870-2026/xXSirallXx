@@ -139,20 +139,42 @@
             margin-bottom: 30px;
         }
 
-        #restart-btn {
+        #restart-btn, #quit-btn {
             padding: 15px 40px;
             font-size: 18px;
             font-weight: bold;
-            background: linear-gradient(135deg, #e94560, #ff6b6b);
             border: none;
             color: #fff;
             border-radius: 8px;
             cursor: pointer;
             transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        #restart-btn {
+            background: linear-gradient(135deg, #e94560, #ff6b6b);
+        }
+
+        #quit-btn {
+            background: transparent;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: rgba(255, 255, 255, 0.7);
         }
 
         #restart-btn:hover {
             transform: scale(1.05);
+        }
+
+        #quit-btn:hover {
+            border-color: rgba(255, 255, 255, 0.6);
+            color: #fff;
+        }
+
+        .modal-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: center;
         }
 
         #lag-indicator {
@@ -224,7 +246,10 @@
             <h2>Unfortunately...</h2>
             <p>Your game is over</p>
             <p id="final-score"></p>
-            <button id="restart-btn">Try Again</button>
+            <div class="modal-buttons">
+                <button id="restart-btn">Try Again</button>
+                <button id="quit-btn">No, I am tired of losing</button>
+            </div>
         </div>
     </div>
 
@@ -650,42 +675,140 @@
             gameCtx.fill();
             gameCtx.shadowBlur = 0;
 
-            // Draw snake
-            for (let i = 0; i < snake.length; i++) {
+            // Draw snake as cobra
+            for (let i = snake.length - 1; i >= 0; i--) {
                 const seg = snake[i];
                 const isHead = i === 0;
+                const isHood = i === 1 || i === 2; // Hood segments behind head
 
                 // Gradient color from head to tail
                 const hue = 340 + (i / snake.length) * 30;
-                gameCtx.fillStyle = `hsl(${hue}, 80%, ${60 - i}%)`;
+                const lightness = Math.max(20, 60 - i);
+                gameCtx.fillStyle = `hsl(${hue}, 80%, ${lightness}%)`;
+
+                const centerX = seg.x * gridSize + gridSize / 2;
+                const centerY = seg.y * gridSize + gridSize / 2;
 
                 if (isHead) {
+                    // Draw cobra head - slightly pointed
                     gameCtx.shadowColor = '#e94560';
-                    gameCtx.shadowBlur = 10;
-                }
-
-                gameCtx.beginPath();
-                gameCtx.roundRect(
-                    seg.x * gridSize + 1,
-                    seg.y * gridSize + 1,
-                    gridSize - 2,
-                    gridSize - 2,
-                    isHead ? 6 : 4
-                );
-                gameCtx.fill();
-                gameCtx.shadowBlur = 0;
-
-                // Eyes on head
-                if (isHead) {
-                    gameCtx.fillStyle = '#fff';
-                    const eyeOffset = 5;
-                    const eyeX = seg.x * gridSize + gridSize / 2 + direction.x * eyeOffset;
-                    const eyeY = seg.y * gridSize + gridSize / 2 + direction.y * eyeOffset;
+                    gameCtx.shadowBlur = 15;
 
                     gameCtx.beginPath();
-                    gameCtx.arc(eyeX - 3, eyeY - 3 * (direction.x !== 0 ? 1 : 0), 2, 0, Math.PI * 2);
-                    gameCtx.arc(eyeX + 3 * (direction.y !== 0 ? 1 : 0), eyeY + 3 * (direction.x !== 0 ? 0 : 1), 2, 0, Math.PI * 2);
+                    // Head shape based on direction
+                    const headWidth = gridSize - 4;
+                    const headHeight = gridSize - 4;
+
+                    gameCtx.ellipse(centerX, centerY, headWidth / 2, headHeight / 2, 0, 0, Math.PI * 2);
                     gameCtx.fill();
+                    gameCtx.shadowBlur = 0;
+
+                    // Eyes - menacing slits
+                    gameCtx.fillStyle = '#fff';
+                    const eyeOffset = 4;
+                    let eye1X, eye1Y, eye2X, eye2Y;
+
+                    if (direction.x === 1) { // Right
+                        eye1X = centerX + 2; eye1Y = centerY - 4;
+                        eye2X = centerX + 2; eye2Y = centerY + 4;
+                    } else if (direction.x === -1) { // Left
+                        eye1X = centerX - 2; eye1Y = centerY - 4;
+                        eye2X = centerX - 2; eye2Y = centerY + 4;
+                    } else if (direction.y === -1) { // Up
+                        eye1X = centerX - 4; eye1Y = centerY - 2;
+                        eye2X = centerX + 4; eye2Y = centerY - 2;
+                    } else { // Down
+                        eye1X = centerX - 4; eye1Y = centerY + 2;
+                        eye2X = centerX + 4; eye2Y = centerY + 2;
+                    }
+
+                    // Draw eyes
+                    gameCtx.beginPath();
+                    gameCtx.arc(eye1X, eye1Y, 2.5, 0, Math.PI * 2);
+                    gameCtx.arc(eye2X, eye2Y, 2.5, 0, Math.PI * 2);
+                    gameCtx.fill();
+
+                    // Pupils (red slits)
+                    gameCtx.fillStyle = '#e94560';
+                    gameCtx.beginPath();
+                    gameCtx.ellipse(eye1X, eye1Y, 0.8, 1.5, 0, 0, Math.PI * 2);
+                    gameCtx.ellipse(eye2X, eye2Y, 0.8, 1.5, 0, 0, Math.PI * 2);
+                    gameCtx.fill();
+
+                    // Forked tongue occasionally
+                    if (Math.random() < 0.3) {
+                        gameCtx.strokeStyle = '#ff6b6b';
+                        gameCtx.lineWidth = 1;
+                        const tongueLen = 8;
+                        const tongueX = centerX + direction.x * (gridSize / 2 + 2);
+                        const tongueY = centerY + direction.y * (gridSize / 2 + 2);
+
+                        gameCtx.beginPath();
+                        gameCtx.moveTo(tongueX, tongueY);
+                        gameCtx.lineTo(tongueX + direction.x * tongueLen, tongueY + direction.y * tongueLen);
+                        // Fork
+                        gameCtx.moveTo(tongueX + direction.x * tongueLen, tongueY + direction.y * tongueLen);
+                        gameCtx.lineTo(tongueX + direction.x * (tongueLen + 3) + (direction.y !== 0 ? 3 : 0),
+                                      tongueY + direction.y * (tongueLen + 3) + (direction.x !== 0 ? 3 : 0));
+                        gameCtx.moveTo(tongueX + direction.x * tongueLen, tongueY + direction.y * tongueLen);
+                        gameCtx.lineTo(tongueX + direction.x * (tongueLen + 3) - (direction.y !== 0 ? 3 : 0),
+                                      tongueY + direction.y * (tongueLen + 3) - (direction.x !== 0 ? 3 : 0));
+                        gameCtx.stroke();
+                    }
+
+                } else if (isHood && snake.length > 3) {
+                    // Draw cobra hood - flared out segments
+                    const hoodExpand = i === 1 ? 8 : 5; // First hood segment is wider
+
+                    gameCtx.shadowColor = '#e94560';
+                    gameCtx.shadowBlur = 5;
+
+                    // Hood expands perpendicular to direction
+                    let hoodWidth, hoodHeight;
+                    if (direction.x !== 0) {
+                        hoodWidth = gridSize - 4;
+                        hoodHeight = gridSize + hoodExpand;
+                    } else {
+                        hoodWidth = gridSize + hoodExpand;
+                        hoodHeight = gridSize - 4;
+                    }
+
+                    gameCtx.beginPath();
+                    gameCtx.ellipse(centerX, centerY, hoodWidth / 2, hoodHeight / 2, 0, 0, Math.PI * 2);
+                    gameCtx.fill();
+
+                    // Hood markings (spectacle pattern)
+                    if (i === 1) {
+                        gameCtx.fillStyle = `hsl(${hue}, 60%, ${lightness - 15}%)`;
+                        if (direction.x !== 0) {
+                            gameCtx.beginPath();
+                            gameCtx.arc(centerX, centerY - 5, 2, 0, Math.PI * 2);
+                            gameCtx.arc(centerX, centerY + 5, 2, 0, Math.PI * 2);
+                            gameCtx.fill();
+                        } else {
+                            gameCtx.beginPath();
+                            gameCtx.arc(centerX - 5, centerY, 2, 0, Math.PI * 2);
+                            gameCtx.arc(centerX + 5, centerY, 2, 0, Math.PI * 2);
+                            gameCtx.fill();
+                        }
+                    }
+                    gameCtx.shadowBlur = 0;
+
+                } else {
+                    // Regular body segment - smooth scales
+                    const bodySize = Math.max(gridSize - 6, gridSize - 2 - (i * 0.3));
+
+                    gameCtx.beginPath();
+                    gameCtx.arc(centerX, centerY, bodySize / 2, 0, Math.PI * 2);
+                    gameCtx.fill();
+
+                    // Scale pattern
+                    if (i % 2 === 0) {
+                        gameCtx.fillStyle = `hsl(${hue}, 70%, ${lightness - 10}%)`;
+                        gameCtx.beginPath();
+                        gameCtx.arc(centerX, centerY, bodySize / 4, 0, Math.PI * 2);
+                        gameCtx.fill();
+                    }
                 }
             }
 
@@ -746,6 +869,11 @@
         });
 
         document.getElementById('restart-btn').addEventListener('click', restartGame);
+
+        document.getElementById('quit-btn').addEventListener('click', () => {
+            window.close();
+            document.body.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;background:#1a1a2e;color:#fff;font-size:24px;text-align:center;padding:20px;">Fair enough. Rest up and come back stronger!<br><br>You can close this tab now.</div>';
+        });
 
         document.addEventListener('keydown', (e) => {
             if (!gameRunning) return;
