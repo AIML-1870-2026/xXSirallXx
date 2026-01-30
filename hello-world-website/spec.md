@@ -144,7 +144,7 @@
             Greetings inhabitants of planet Earth, let's embark on this vibe-coding adventure together
         </div>
         <div class="author" id="author">
-            - Saral Sapkota
+            - xXSirallXx
         </div>
     </div>
 
