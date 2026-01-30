@@ -42,9 +42,11 @@
         #settings {
             position: fixed;
             top: 50%;
-            right: -320px;
+            right: -350px;
             transform: translateY(-50%);
-            width: 300px;
+            width: 320px;
+            max-height: 90vh;
+            overflow-y: auto;
             background: rgba(10, 20, 40, 0.9);
             border: 1px solid rgba(100, 200, 255, 0.3);
             border-radius: 15px;
@@ -68,14 +70,14 @@
         }
 
         .slider-group {
-            margin-bottom: 20px;
+            margin-bottom: 18px;
         }
 
         .slider-group label {
             display: flex;
             justify-content: space-between;
             color: rgba(255, 255, 255, 0.8);
-            font-size: 14px;
+            font-size: 13px;
             margin-bottom: 8px;
             letter-spacing: 1px;
         }
@@ -83,6 +85,16 @@
         .slider-group label span {
             color: rgba(100, 200, 255, 0.9);
             font-weight: bold;
+        }
+
+        .section-title {
+            color: rgba(100, 200, 255, 0.7);
+            font-size: 12px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin: 20px 0 15px 0;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(100, 200, 255, 0.2);
         }
 
         input[type="range"] {
@@ -125,7 +137,7 @@
             display: block;
             width: 100%;
             padding: 12px;
-            margin-top: 10px;
+            margin-top: 15px;
             background: linear-gradient(135deg, rgba(100, 200, 255, 0.2), rgba(58, 123, 213, 0.2));
             border: 1px solid rgba(100, 200, 255, 0.4);
             color: #fff;
@@ -151,29 +163,55 @@
     <div id="settings">
         <h2>Advanced Settings</h2>
 
+        <div class="section-title">Movement</div>
+
         <div class="slider-group">
             <label>Node Speed <span id="speed-value">1.0</span></label>
             <input type="range" id="speed" min="0.1" max="3" step="0.1" value="1">
         </div>
 
         <div class="slider-group">
-            <label>Connectivity Radius <span id="radius-value">150</span></label>
-            <input type="range" id="radius" min="50" max="300" step="10" value="150">
+            <label>Z-Axis Speed <span id="zspeed-value">1.0</span></label>
+            <input type="range" id="zspeed" min="0" max="3" step="0.1" value="1">
         </div>
 
         <div class="slider-group">
-            <label>Node Count <span id="count-value">100</span></label>
-            <input type="range" id="count" min="20" max="300" step="10" value="100">
+            <label>Camera Rotation <span id="rotation-value">0.5</span></label>
+            <input type="range" id="rotation" min="0" max="2" step="0.1" value="0.5">
+        </div>
+
+        <div class="section-title">Appearance</div>
+
+        <div class="slider-group">
+            <label>Node Count <span id="count-value">120</span></label>
+            <input type="range" id="count" min="20" max="300" step="10" value="120">
         </div>
 
         <div class="slider-group">
-            <label>Node Size <span id="size-value">3</span></label>
+            <label>Node Size <span id="size-value">3.0</span></label>
             <input type="range" id="size" min="1" max="8" step="0.5" value="3">
         </div>
 
         <div class="slider-group">
             <label>Edge Thickness <span id="thickness-value">1.0</span></label>
             <input type="range" id="thickness" min="0.5" max="4" step="0.5" value="1">
+        </div>
+
+        <div class="section-title">3D Space</div>
+
+        <div class="slider-group">
+            <label>Connectivity Radius <span id="radius-value">180</span></label>
+            <input type="range" id="radius" min="50" max="400" step="10" value="180">
+        </div>
+
+        <div class="slider-group">
+            <label>Depth Range <span id="depth-value">600</span></label>
+            <input type="range" id="depth" min="200" max="1200" step="50" value="600">
+        </div>
+
+        <div class="slider-group">
+            <label>Perspective <span id="perspective-value">500</span></label>
+            <input type="range" id="perspective" min="200" max="1000" step="50" value="500">
         </div>
 
         <button id="close-settings">Close</button>
@@ -188,15 +226,22 @@
         // Settings
         let config = {
             speed: 1,
-            radius: 150,
-            count: 100,
+            zSpeed: 1,
+            rotation: 0.5,
+            radius: 180,
+            count: 120,
             size: 3,
-            thickness: 1
+            thickness: 1,
+            depth: 600,
+            perspective: 500
         };
 
         let nodes = [];
         let settingsVisible = false;
         let webOpacity = 0;
+        let cameraAngleX = 0;
+        let cameraAngleY = 0;
+        let time = 0;
 
         function resize() {
             canvas.width = window.innerWidth;
@@ -205,37 +250,103 @@
 
         class Node {
             constructor() {
-                this.x = Math.random() * canvas.width;
-                this.y = Math.random() * canvas.height;
+                // 3D position centered around origin
+                this.x = (Math.random() - 0.5) * canvas.width;
+                this.y = (Math.random() - 0.5) * canvas.height;
+                this.z = (Math.random() - 0.5) * config.depth;
+
+                // 3D velocity
                 this.vx = (Math.random() - 0.5) * 2;
                 this.vy = (Math.random() - 0.5) * 2;
-                this.baseSpeed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+                this.vz = (Math.random() - 0.5) * 2;
+
+                // Normalize base speed
+                const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy + this.vz * this.vz);
+                this.vx /= speed;
+                this.vy /= speed;
+                this.vz /= speed;
+
+                // Unique oscillation parameters for organic movement
+                this.phaseX = Math.random() * Math.PI * 2;
+                this.phaseY = Math.random() * Math.PI * 2;
+                this.phaseZ = Math.random() * Math.PI * 2;
+                this.freqX = 0.5 + Math.random() * 1.5;
+                this.freqY = 0.5 + Math.random() * 1.5;
+                this.freqZ = 0.5 + Math.random() * 1.5;
             }
 
-            update() {
-                const speedMultiplier = config.speed / this.baseSpeed;
-                this.x += this.vx * speedMultiplier;
-                this.y += this.vy * speedMultiplier;
+            update(dt) {
+                // Linear movement
+                this.x += this.vx * config.speed * 1.5;
+                this.y += this.vy * config.speed * 1.5;
+                this.z += this.vz * config.zSpeed * 1.5;
 
-                // Bounce off edges
-                if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
-                if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+                // Add oscillating motion for more organic feel
+                const oscillation = 0.3 * config.speed;
+                this.x += Math.sin(time * this.freqX + this.phaseX) * oscillation;
+                this.y += Math.cos(time * this.freqY + this.phaseY) * oscillation;
+                this.z += Math.sin(time * this.freqZ + this.phaseZ) * oscillation * config.zSpeed;
 
-                // Keep in bounds
-                this.x = Math.max(0, Math.min(canvas.width, this.x));
-                this.y = Math.max(0, Math.min(canvas.height, this.y));
+                // Boundary wrapping for seamless 3D space
+                const halfWidth = canvas.width / 2;
+                const halfHeight = canvas.height / 2;
+                const halfDepth = config.depth / 2;
+
+                if (this.x < -halfWidth) this.x = halfWidth;
+                if (this.x > halfWidth) this.x = -halfWidth;
+                if (this.y < -halfHeight) this.y = halfHeight;
+                if (this.y > halfHeight) this.y = -halfHeight;
+                if (this.z < -halfDepth) this.z = halfDepth;
+                if (this.z > halfDepth) this.z = -halfDepth;
+            }
+
+            // Apply camera rotation and project to 2D
+            project() {
+                // Rotate around Y axis (horizontal rotation)
+                let x = this.x * Math.cos(cameraAngleY) - this.z * Math.sin(cameraAngleY);
+                let z = this.x * Math.sin(cameraAngleY) + this.z * Math.cos(cameraAngleY);
+
+                // Rotate around X axis (vertical tilt)
+                let y = this.y * Math.cos(cameraAngleX) - z * Math.sin(cameraAngleX);
+                z = this.y * Math.sin(cameraAngleX) + z * Math.cos(cameraAngleX);
+
+                // Perspective projection
+                const perspective = config.perspective;
+                const scale = perspective / (perspective + z + config.depth / 2);
+
+                return {
+                    x: x * scale + canvas.width / 2,
+                    y: y * scale + canvas.height / 2,
+                    z: z,
+                    scale: scale
+                };
             }
 
             draw() {
+                const projected = this.project();
+
+                // Only draw if in front of camera
+                if (projected.scale <= 0) return;
+
+                const size = config.size * projected.scale * 1.5;
+                const alpha = Math.min(1, projected.scale * 1.2) * webOpacity;
+
+                // Main node
                 ctx.beginPath();
-                ctx.arc(this.x, this.y, config.size, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(100, 200, 255, ${0.8 * webOpacity})`;
+                ctx.arc(projected.x, projected.y, size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(100, 200, 255, ${0.8 * alpha})`;
                 ctx.fill();
 
-                // Glow effect
+                // Glow effect - larger for closer nodes
                 ctx.beginPath();
-                ctx.arc(this.x, this.y, config.size * 2, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(100, 200, 255, ${0.2 * webOpacity})`;
+                ctx.arc(projected.x, projected.y, size * 2.5, 0, Math.PI * 2);
+                const gradient = ctx.createRadialGradient(
+                    projected.x, projected.y, size,
+                    projected.x, projected.y, size * 2.5
+                );
+                gradient.addColorStop(0, `rgba(100, 200, 255, ${0.3 * alpha})`);
+                gradient.addColorStop(1, 'rgba(100, 200, 255, 0)');
+                ctx.fillStyle = gradient;
                 ctx.fill();
             }
         }
@@ -247,20 +358,33 @@
             }
         }
 
+        function get3DDistance(n1, n2) {
+            const dx = n1.x - n2.x;
+            const dy = n1.y - n2.y;
+            const dz = n1.z - n2.z;
+            return Math.sqrt(dx * dx + dy * dy + dz * dz);
+        }
+
         function drawEdges() {
             for (let i = 0; i < nodes.length; i++) {
-                for (let j = i + 1; j < nodes.length; j++) {
-                    const dx = nodes[i].x - nodes[j].x;
-                    const dy = nodes[i].y - nodes[j].y;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
+                const p1 = nodes[i].project();
+                if (p1.scale <= 0) continue;
 
-                    if (dist < config.radius) {
-                        const opacity = (1 - dist / config.radius) * webOpacity;
+                for (let j = i + 1; j < nodes.length; j++) {
+                    const dist3D = get3DDistance(nodes[i], nodes[j]);
+
+                    if (dist3D < config.radius) {
+                        const p2 = nodes[j].project();
+                        if (p2.scale <= 0) continue;
+
+                        const avgScale = (p1.scale + p2.scale) / 2;
+                        const opacity = (1 - dist3D / config.radius) * avgScale * webOpacity;
+
                         ctx.beginPath();
-                        ctx.moveTo(nodes[i].x, nodes[i].y);
-                        ctx.lineTo(nodes[j].x, nodes[j].y);
-                        ctx.strokeStyle = `rgba(100, 200, 255, ${opacity * 0.6})`;
-                        ctx.lineWidth = config.thickness;
+                        ctx.moveTo(p1.x, p1.y);
+                        ctx.lineTo(p2.x, p2.y);
+                        ctx.strokeStyle = `rgba(100, 200, 255, ${opacity * 0.5})`;
+                        ctx.lineWidth = config.thickness * avgScale;
                         ctx.stroke();
                     }
                 }
@@ -268,24 +392,40 @@
         }
 
         function animate() {
-            ctx.fillStyle = 'rgba(0, 0, 10, 0.2)';
+            // Clear with slight trail effect
+            ctx.fillStyle = 'rgba(0, 0, 10, 0.15)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            time += 0.016; // Approximate 60fps time step
+
+            // Rotate camera
+            cameraAngleY += 0.003 * config.rotation;
+            cameraAngleX = Math.sin(time * 0.2) * 0.2 * config.rotation;
 
             // Fade in effect
             if (webOpacity < 1) {
-                webOpacity += 0.005;
+                webOpacity += 0.008;
                 if (webOpacity >= 1) {
                     webOpacity = 1;
                     hint.classList.add('visible');
                 }
             }
 
-            nodes.forEach(node => {
-                node.update();
-                node.draw();
+            // Update all nodes
+            nodes.forEach(node => node.update(0.016));
+
+            // Sort nodes by Z for proper depth ordering (back to front)
+            const sortedNodes = [...nodes].sort((a, b) => {
+                const pA = a.project();
+                const pB = b.project();
+                return pA.z - pB.z;
             });
 
+            // Draw edges first (behind nodes)
             drawEdges();
+
+            // Draw nodes front to back
+            sortedNodes.forEach(node => node.draw());
 
             requestAnimationFrame(animate);
         }
@@ -311,6 +451,16 @@
         document.getElementById('speed').addEventListener('input', (e) => {
             config.speed = parseFloat(e.target.value);
             document.getElementById('speed-value').textContent = config.speed.toFixed(1);
+        });
+
+        document.getElementById('zspeed').addEventListener('input', (e) => {
+            config.zSpeed = parseFloat(e.target.value);
+            document.getElementById('zspeed-value').textContent = config.zSpeed.toFixed(1);
+        });
+
+        document.getElementById('rotation').addEventListener('input', (e) => {
+            config.rotation = parseFloat(e.target.value);
+            document.getElementById('rotation-value').textContent = config.rotation.toFixed(1);
         });
 
         document.getElementById('radius').addEventListener('input', (e) => {
@@ -340,6 +490,16 @@
         document.getElementById('thickness').addEventListener('input', (e) => {
             config.thickness = parseFloat(e.target.value);
             document.getElementById('thickness-value').textContent = config.thickness.toFixed(1);
+        });
+
+        document.getElementById('depth').addEventListener('input', (e) => {
+            config.depth = parseInt(e.target.value);
+            document.getElementById('depth-value').textContent = config.depth;
+        });
+
+        document.getElementById('perspective').addEventListener('input', (e) => {
+            config.perspective = parseInt(e.target.value);
+            document.getElementById('perspective-value').textContent = config.perspective;
         });
 
         // Initialize
