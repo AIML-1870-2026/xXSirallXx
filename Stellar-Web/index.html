@@ -153,12 +153,200 @@
             background: linear-gradient(135deg, rgba(100, 200, 255, 0.4), rgba(58, 123, 213, 0.4));
             box-shadow: 0 0 20px rgba(100, 200, 255, 0.3);
         }
+
+        #beast-mode {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin-top: 10px;
+            background: linear-gradient(135deg, rgba(255, 50, 100, 0.3), rgba(255, 150, 50, 0.3));
+            border: 2px solid rgba(255, 100, 100, 0.6);
+            color: #fff;
+            font-size: 14px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            animation: beastPulse 2s infinite;
+        }
+
+        #beast-mode:hover {
+            background: linear-gradient(135deg, rgba(255, 50, 100, 0.5), rgba(255, 150, 50, 0.5));
+            box-shadow: 0 0 30px rgba(255, 100, 100, 0.5);
+            transform: scale(1.02);
+        }
+
+        #beast-mode:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            animation: none;
+        }
+
+        @keyframes beastPulse {
+            0%, 100% { box-shadow: 0 0 10px rgba(255, 100, 100, 0.3); }
+            50% { box-shadow: 0 0 25px rgba(255, 100, 100, 0.6); }
+        }
+
+        #countdown {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 120px;
+            font-weight: bold;
+            color: transparent;
+            text-shadow: 0 0 40px rgba(255, 100, 100, 0.8);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 100;
+        }
+
+        #countdown.visible {
+            opacity: 1;
+            color: #fff;
+            animation: countdownPulse 1s infinite;
+        }
+
+        @keyframes countdownPulse {
+            0%, 100% {
+                transform: translate(-50%, -50%) scale(1);
+                text-shadow: 0 0 40px rgba(255, 100, 100, 0.8);
+            }
+            50% {
+                transform: translate(-50%, -50%) scale(1.1);
+                text-shadow: 0 0 80px rgba(255, 100, 100, 1), 0 0 120px rgba(255, 150, 50, 0.8);
+            }
+        }
+
+        #beast-label {
+            position: fixed;
+            top: 30%;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 28px;
+            font-weight: bold;
+            color: #fff;
+            letter-spacing: 8px;
+            text-transform: uppercase;
+            text-shadow: 0 0 20px rgba(255, 100, 100, 0.8), 0 0 40px rgba(255, 150, 50, 0.6);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 100;
+        }
+
+        #beast-label.visible {
+            opacity: 1;
+            animation: beastLabelGlow 0.5s infinite alternate;
+        }
+
+        @keyframes beastLabelGlow {
+            0% { text-shadow: 0 0 20px rgba(255, 100, 100, 0.8), 0 0 40px rgba(255, 150, 50, 0.6); }
+            100% { text-shadow: 0 0 40px rgba(255, 100, 100, 1), 0 0 80px rgba(255, 150, 50, 1), 0 0 120px rgba(255, 200, 50, 0.8); }
+        }
+
+        #modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+        }
+
+        #modal-overlay.visible {
+            display: flex;
+        }
+
+        #modal {
+            background: rgba(10, 20, 40, 0.95);
+            border: 2px solid rgba(255, 100, 100, 0.5);
+            border-radius: 20px;
+            padding: 40px 50px;
+            text-align: center;
+            box-shadow: 0 0 60px rgba(255, 100, 100, 0.3);
+            animation: modalAppear 0.5s ease;
+        }
+
+        @keyframes modalAppear {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        #modal h3 {
+            color: #fff;
+            font-size: 28px;
+            margin-bottom: 30px;
+            letter-spacing: 3px;
+            text-shadow: 0 0 20px rgba(255, 100, 100, 0.6);
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+        }
+
+        .modal-btn {
+            padding: 15px 40px;
+            font-size: 18px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        #yes-btn {
+            background: linear-gradient(135deg, rgba(50, 255, 100, 0.3), rgba(100, 255, 150, 0.3));
+            border: 2px solid rgba(100, 255, 100, 0.6);
+            color: #fff;
+        }
+
+        #yes-btn:hover {
+            background: linear-gradient(135deg, rgba(50, 255, 100, 0.5), rgba(100, 255, 150, 0.5));
+            box-shadow: 0 0 30px rgba(100, 255, 100, 0.5);
+            transform: scale(1.05);
+        }
+
+        #no-btn {
+            background: linear-gradient(135deg, rgba(255, 50, 50, 0.3), rgba(255, 100, 100, 0.3));
+            border: 2px solid rgba(255, 100, 100, 0.6);
+            color: #fff;
+        }
+
+        #no-btn:hover {
+            background: linear-gradient(135deg, rgba(255, 50, 50, 0.5), rgba(255, 100, 100, 0.5));
+            box-shadow: 0 0 30px rgba(255, 100, 100, 0.5);
+            transform: scale(1.05);
+        }
     </style>
 </head>
 <body>
     <canvas id="canvas"></canvas>
 
     <div id="hint">Double click to see advanced settings</div>
+
+    <div id="countdown"></div>
+    <div id="beast-label">BEAST MODE</div>
+
+    <div id="modal-overlay">
+        <div id="modal">
+            <h3>Wanna see me do it again?</h3>
+            <div class="modal-buttons">
+                <button class="modal-btn" id="yes-btn">Yes</button>
+                <button class="modal-btn" id="no-btn">No</button>
+            </div>
+        </div>
+    </div>
 
     <div id="settings">
         <h2>Advanced Settings</h2>
@@ -214,6 +402,7 @@
             <input type="range" id="perspective" min="200" max="1000" step="50" value="500">
         </div>
 
+        <button id="beast-mode">Click this to go Beast Mode</button>
         <button id="close-settings">Close</button>
     </div>
 
@@ -222,6 +411,10 @@
         const ctx = canvas.getContext('2d');
         const hint = document.getElementById('hint');
         const settings = document.getElementById('settings');
+        const countdown = document.getElementById('countdown');
+        const beastLabel = document.getElementById('beast-label');
+        const modalOverlay = document.getElementById('modal-overlay');
+        const beastModeBtn = document.getElementById('beast-mode');
 
         // Settings
         let config = {
@@ -242,6 +435,7 @@
         let cameraAngleX = 0;
         let cameraAngleY = 0;
         let time = 0;
+        let beastModeActive = false;
 
         function resize() {
             canvas.width = window.innerWidth;
@@ -430,11 +624,115 @@
             requestAnimationFrame(animate);
         }
 
+        // Slider update functions
+        function updateSlider(id, value, displayValue) {
+            const slider = document.getElementById(id);
+            const display = document.getElementById(id + '-value') || document.getElementById(id.replace('-', '') + '-value');
+            slider.value = value;
+            if (display) {
+                display.textContent = displayValue || value;
+            }
+        }
+
+        function randomizeSliders() {
+            // Randomize each slider within its range
+            const randomInRange = (min, max, step) => {
+                const steps = Math.floor((max - min) / step);
+                return min + Math.floor(Math.random() * steps) * step;
+            };
+
+            // Speed
+            config.speed = randomInRange(0.1, 3, 0.1);
+            updateSlider('speed', config.speed, config.speed.toFixed(1));
+
+            // Z-Axis Speed
+            config.zSpeed = randomInRange(0, 3, 0.1);
+            updateSlider('zspeed', config.zSpeed, config.zSpeed.toFixed(1));
+
+            // Camera Rotation
+            config.rotation = randomInRange(0, 2, 0.1);
+            updateSlider('rotation', config.rotation, config.rotation.toFixed(1));
+
+            // Node Count
+            const newCount = randomInRange(20, 300, 10);
+            if (newCount > nodes.length) {
+                while (nodes.length < newCount) {
+                    nodes.push(new Node());
+                }
+            } else {
+                nodes.length = newCount;
+            }
+            config.count = newCount;
+            updateSlider('count', config.count, config.count);
+
+            // Node Size
+            config.size = randomInRange(1, 8, 0.5);
+            updateSlider('size', config.size, config.size.toFixed(1));
+
+            // Edge Thickness
+            config.thickness = randomInRange(0.5, 4, 0.5);
+            updateSlider('thickness', config.thickness, config.thickness.toFixed(1));
+
+            // Connectivity Radius
+            config.radius = randomInRange(50, 400, 10);
+            updateSlider('radius', config.radius, config.radius);
+
+            // Depth Range
+            config.depth = randomInRange(200, 1200, 50);
+            updateSlider('depth', config.depth, config.depth);
+
+            // Perspective
+            config.perspective = randomInRange(200, 1000, 50);
+            updateSlider('perspective', config.perspective, config.perspective);
+        }
+
+        function startBeastMode() {
+            if (beastModeActive) return;
+            beastModeActive = true;
+            beastModeBtn.disabled = true;
+
+            // Hide settings panel during beast mode
+            settings.classList.remove('visible');
+            hint.classList.remove('visible');
+
+            // Show beast mode label and countdown
+            beastLabel.classList.add('visible');
+            countdown.classList.add('visible');
+
+            let timeLeft = 10;
+            countdown.textContent = timeLeft;
+
+            // Randomize sliders rapidly (every 100ms)
+            const randomizeInterval = setInterval(randomizeSliders, 100);
+
+            // Countdown timer (every 1 second)
+            const countdownInterval = setInterval(() => {
+                timeLeft--;
+                countdown.textContent = timeLeft;
+
+                if (timeLeft <= 0) {
+                    clearInterval(countdownInterval);
+                    clearInterval(randomizeInterval);
+
+                    // Hide countdown and label
+                    countdown.classList.remove('visible');
+                    beastLabel.classList.remove('visible');
+
+                    // Show modal
+                    modalOverlay.classList.add('visible');
+                    beastModeActive = false;
+                }
+            }, 1000);
+        }
+
         // Event Listeners
         window.addEventListener('resize', resize);
 
-        window.addEventListener('dblclick', () => {
-            if (!settingsVisible) {
+        window.addEventListener('dblclick', (e) => {
+            // Don't open settings if clicking on modal
+            if (e.target.closest('#modal-overlay')) return;
+
+            if (!settingsVisible && !beastModeActive) {
                 settings.classList.add('visible');
                 hint.classList.remove('visible');
                 settingsVisible = true;
@@ -445,6 +743,21 @@
             settings.classList.remove('visible');
             settingsVisible = false;
             setTimeout(() => hint.classList.add('visible'), 500);
+        });
+
+        beastModeBtn.addEventListener('click', startBeastMode);
+
+        document.getElementById('yes-btn').addEventListener('click', () => {
+            modalOverlay.classList.remove('visible');
+            beastModeBtn.disabled = false;
+            // Start beast mode again
+            setTimeout(startBeastMode, 300);
+        });
+
+        document.getElementById('no-btn').addEventListener('click', () => {
+            window.close();
+            // If window.close() doesn't work (most browsers block it), show a message
+            document.body.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;background:#000;color:#fff;font-size:24px;text-align:center;padding:20px;">Thanks for experiencing Beast Mode!<br><br>You can close this tab now.</div>';
         });
 
         // Slider handlers
