@@ -164,6 +164,44 @@
             font-size: 14px;
             display: none;
         }
+
+        #reprimand {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #e94560;
+            font-size: 28px;
+            font-weight: bold;
+            text-align: center;
+            pointer-events: none;
+            opacity: 0;
+            text-shadow: 0 0 20px rgba(233, 69, 96, 0.8), 0 0 40px rgba(233, 69, 96, 0.4);
+            z-index: 50;
+            transition: opacity 0.1s ease;
+        }
+
+        #reprimand.visible {
+            animation: reprimandPop 1.5s ease-out forwards;
+        }
+
+        @keyframes reprimandPop {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.5);
+            }
+            15% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1.2);
+            }
+            30% {
+                transform: translate(-50%, -50%) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -60%) scale(1);
+            }
+        }
     </style>
 </head>
 <body>
@@ -178,6 +216,8 @@
     <div id="score-display">SCORE: <span id="score">0</span></div>
 
     <div id="lag-indicator">System Load: <span id="load-percent">0</span>%</div>
+
+    <div id="reprimand"></div>
 
     <div id="game-over-modal">
         <div class="modal-content">
@@ -408,6 +448,43 @@
         let maxLag = 100;
         let frameSkip = 0;
 
+        // Reprimand system
+        const reprimandElement = document.getElementById('reprimand');
+        const wallReprimands = [
+            "Watch where you're going!",
+            "The wall isn't your friend!",
+            "Ouch! That's a wall!",
+            "Are you even trying?",
+            "Walls hurt, you know!",
+            "That's not the exit!",
+            "Wrong way, genius!",
+            "My grandmother plays better!",
+            "Did you forget how to turn?",
+            "The wall says hello!"
+        ];
+        const selfReprimands = [
+            "You ate yourself?!",
+            "That's YOUR tail!",
+            "Self-sabotage much?",
+            "Congratulations, you played yourself!",
+            "That's not food, that's YOU!",
+            "Do you even know what you look like?",
+            "Stop biting yourself!",
+            "That's cannibalism!",
+            "You're your own worst enemy!",
+            "Seriously?!"
+        ];
+
+        function showReprimand(isWall) {
+            const messages = isWall ? wallReprimands : selfReprimands;
+            const message = messages[Math.floor(Math.random() * messages.length)];
+            reprimandElement.textContent = message;
+            reprimandElement.classList.remove('visible');
+            // Force reflow to restart animation
+            void reprimandElement.offsetWidth;
+            reprimandElement.classList.add('visible');
+        }
+
         class Particle {
             constructor(x, y) {
                 this.x = x;
@@ -465,6 +542,7 @@
             // Wall collision - increases lag and wraps around
             if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
                 lagLevel = Math.min(maxLag, lagLevel + 15);
+                showReprimand(true);
                 // Wrap around
                 if (head.x < 0) head.x = tileCount - 1;
                 if (head.x >= tileCount) head.x = 0;
@@ -483,6 +561,7 @@
             // Self collision - increases lag significantly
             if (snake.some(seg => seg.x === head.x && seg.y === head.y)) {
                 lagLevel = Math.min(maxLag, lagLevel + 25);
+                showReprimand(false);
 
                 // Add glitch particles
                 for (let i = 0; i < 50; i++) {
