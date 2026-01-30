@@ -462,16 +462,35 @@
 
             const head = { x: snake[0].x + direction.x, y: snake[0].y + direction.y };
 
-            // Wall collision
+            // Wall collision - increases lag and wraps around
             if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
-                endGame();
-                return;
+                lagLevel = Math.min(maxLag, lagLevel + 15);
+                // Wrap around
+                if (head.x < 0) head.x = tileCount - 1;
+                if (head.x >= tileCount) head.x = 0;
+                if (head.y < 0) head.y = tileCount - 1;
+                if (head.y >= tileCount) head.y = 0;
+
+                // Add glitch particles
+                for (let i = 0; i < 30; i++) {
+                    particles.push(new Particle(
+                        head.x * gridSize + gridSize / 2,
+                        head.y * gridSize + gridSize / 2
+                    ));
+                }
             }
 
-            // Self collision - triggers system overload
+            // Self collision - increases lag significantly
             if (snake.some(seg => seg.x === head.x && seg.y === head.y)) {
-                lagLevel = maxLag;
-                return;
+                lagLevel = Math.min(maxLag, lagLevel + 25);
+
+                // Add glitch particles
+                for (let i = 0; i < 50; i++) {
+                    particles.push(new Particle(
+                        head.x * gridSize + gridSize / 2,
+                        head.y * gridSize + gridSize / 2
+                    ));
+                }
             }
 
             snake.unshift(head);
