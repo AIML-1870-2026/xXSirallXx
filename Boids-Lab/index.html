@@ -631,12 +631,12 @@
         let lastFlickerTime = performance.now();
 
         // Generate text points for particle formation
-        function generateTextPoints(text) {
+        function generateTextPoints() {
             const offscreenCanvas = document.createElement('canvas');
             const offCtx = offscreenCanvas.getContext('2d');
 
-            // Calculate text size based on canvas
-            const fontSize = Math.min(canvas.width / 25, 40);
+            // Calculate text size based on canvas - make it bigger for visibility
+            const fontSize = Math.min(canvas.width / 18, 55);
             offscreenCanvas.width = canvas.width;
             offscreenCanvas.height = canvas.height;
 
@@ -647,28 +647,36 @@
 
             // Split text into lines for better display
             const lines = ['These colors are', 'representative of', 'Vibe Coding'];
-            const lineHeight = fontSize * 1.3;
+            const lineHeight = fontSize * 1.4;
             const startY = canvas.height / 2 - lineHeight;
 
             lines.forEach((line, i) => {
                 offCtx.fillText(line, canvas.width / 2, startY + i * lineHeight);
             });
 
-            // Sample points from the text
+            // Sample points from the text - adjust step based on boid count
             const imageData = offCtx.getImageData(0, 0, offscreenCanvas.width, offscreenCanvas.height);
-            const points = [];
-            const step = 6; // Sample every 6 pixels
+            const allPoints = [];
+            const step = 4; // Sample more densely
 
             for (let y = 0; y < offscreenCanvas.height; y += step) {
                 for (let x = 0; x < offscreenCanvas.width; x += step) {
                     const i = (y * offscreenCanvas.width + x) * 4;
                     if (imageData.data[i + 3] > 128) { // Check alpha
-                        points.push({ x, y });
+                        allPoints.push({ x, y });
                     }
                 }
             }
 
-            return points;
+            // Shuffle points and return only as many as we have boids
+            // This ensures even distribution across the text
+            for (let i = allPoints.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [allPoints[i], allPoints[j]] = [allPoints[j], allPoints[i]];
+            }
+
+            // Return points equal to boid count for 1:1 mapping
+            return allPoints.slice(0, boids.length);
         }
 
         // Vector helper
@@ -1078,7 +1086,7 @@
             const now = performance.now();
             if (now - lastFlickerTime >= FLICKER_INTERVAL) {
                 rainbowMode = true;
-                textTargets = generateTextPoints('Vibe Coding');
+                textTargets = generateTextPoints();
                 flickerTimer = now;
                 lastFlickerTime = now;
             }
@@ -1100,27 +1108,25 @@
 
                     // During rainbow mode, boids prioritize forming text
                     if (rainbowMode && textTargets.length > 0 && boid.type === 'normal') {
-                        // Assign each boid to a specific text point
-                        const targetIndex = i % textTargets.length;
-                        const target = textTargets[targetIndex];
+                        // Each boid gets a unique target point (1:1 mapping)
+                        const target = textTargets[i] || textTargets[i % textTargets.length];
 
                         // Strong seek force to form the text
                         const desired = new Vector(target.x, target.y).sub(boid.position);
                         const dist = desired.mag();
 
-                        // Slow down as approaching target for cleaner formation
-                        let speed = config.maxSpeed * 2;
-                        if (dist < 50) {
-                            speed = (dist / 50) * config.maxSpeed * 0.5;
+                        // Arrive behavior - slow down as approaching target
+                        let speed = config.maxSpeed * 3;
+                        if (dist < 100) {
+                            speed = (dist / 100) * config.maxSpeed * 2;
+                        }
+                        if (dist < 20) {
+                            // Almost stop when very close
+                            speed = (dist / 20) * config.maxSpeed * 0.3;
                         }
 
                         const steer = desired.normalize().mult(speed).sub(boid.velocity);
-                        boid.applyForce(steer.limit(config.maxForce * 8));
-
-                        // Light separation to prevent overlap
-                        const neighbors = boid.getNeighbors(boids);
-                        const sep = boid.separation(neighbors).mult(0.3);
-                        boid.applyForce(sep);
+                        boid.applyForce(steer.limit(config.maxForce * 12));
                     } else {
                         // Normal flocking behavior
                         boid.flock(boids);
