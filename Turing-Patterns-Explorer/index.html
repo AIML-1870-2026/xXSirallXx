@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Metabolic Turing Patterns Explorer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --fatty-acyl: #FF6B6B;
+            --enoyl: #FFA94D;
+            --hydroxy: #FFE066;
+            --keto: #69DB7C;
+            --acetyl: #4DABF7;
+            --energy: #DA77F2;
+            --background: #1A1B26;
+            --panel: #24283B;
+            --panel-light: #2F3549;
+            --accent: #7AA2F7;
+            --text: #C0CAF5;
+            --text-dim: #565F89;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--background);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        header {
+            background: var(--panel);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--panel-light);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .logo-icon {
+            font-size: 1.5rem;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .icon-btn {
+            background: var(--panel-light);
+            border: none;
+            color: var(--text);
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+
+        .icon-btn:hover {
+            background: var(--accent);
+            color: var(--background);
+        }
+
+        main {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 1rem;
+            padding: 1rem;
+            height: calc(100vh - 70px);
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            overflow-y: auto;
+        }
+
+        .panel {
+            background: var(--panel);
+            border-radius: 12px;
+            padding: 1rem;
+        }
+
+        .panel-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-dim);
+            margin-bottom: 0.75rem;
+        }
+
+        .pathway-diagram {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .metabolite {
+            background: var(--panel-light);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            width: 100%;
+            text-align: center;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .metabolite:hover {
+            transform: scale(1.02);
+        }
+
+        .metabolite::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .metabolite.fatty-acyl::before { background: var(--fatty-acyl); }
+        .metabolite.enoyl::before { background: var(--enoyl); }
+        .metabolite.hydroxy::before { background: var(--hydroxy); }
+        .metabolite.keto::before { background: var(--keto); }
+        .metabolite.acetyl::before { background: var(--acetyl); }
+
+        .enzyme {
+            background: linear-gradient(90deg, var(--accent) 0%, transparent 20%, transparent 80%, var(--accent) 100%);
+            color: var(--accent);
+            padding: 0.25rem 0.75rem;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .arrow {
+            color: var(--text-dim);
+            font-size: 1rem;
+        }
+
+        .canvas-container {
+            position: relative;
+            background: var(--panel);
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #simulation-canvas {
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+
+        .canvas-overlay {
+            position: absolute;
+            bottom: 1rem;
+            left: 1rem;
+            right: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: none;
+        }
+
+        .stats {
+            background: rgba(26, 27, 38, 0.9);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-family: monospace;
+        }
+
+        .controls-bar {
+            position: absolute;
+            top: 1rem;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 0.5rem;
+            background: rgba(26, 27, 38, 0.9);
+            padding: 0.5rem;
+            border-radius: 12px;
+            pointer-events: auto;
+        }
+
+        .control-btn {
+            background: var(--panel-light);
+            border: none;
+            color: var(--text);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .control-btn:hover {
+            background: var(--accent);
+            color: var(--background);
+        }
+
+        .control-btn.active {
+            background: var(--accent);
+            color: var(--background);
+        }
+
+        .presets {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+        }
+
+        .preset-btn {
+            background: var(--panel-light);
+            border: 1px solid transparent;
+            color: var(--text);
+            padding: 0.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: all 0.2s;
+        }
+
+        .preset-btn:hover {
+            border-color: var(--accent);
+        }
+
+        .preset-btn.active {
+            background: var(--accent);
+            color: var(--background);
+        }
+
+        .slider-group {
+            margin-bottom: 1rem;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .slider-value {
+            color: var(--accent);
+            font-family: monospace;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: var(--panel-light);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        .color-legend {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.7rem;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+
+        .tooltip {
+            position: fixed;
+            background: var(--panel);
+            border: 1px solid var(--accent);
+            padding: 0.75rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            max-width: 250px;
+            pointer-events: none;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .tooltip.visible {
+            opacity: 1;
+        }
+
+        .instructions {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            line-height: 1.6;
+        }
+
+        .instructions kbd {
+            background: var(--panel-light);
+            padding: 0.1rem 0.4rem;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+
+        @media (max-width: 900px) {
+            main {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr;
+            }
+
+            .sidebar {
+                flex-direction: row;
+                overflow-x: auto;
+            }
+
+            .panel {
+                min-width: 250px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <span class="logo-icon">&#129516;</span>
+            <span>Metabolic Turing Patterns</span>
+        </div>
+        <div class="header-actions">
+            <button class="icon-btn" id="help-btn" title="Help">?</button>
+            <button class="icon-btn" id="settings-btn" title="Settings">&#9881;</button>
+            <button class="icon-btn" id="share-btn" title="Share">&#8599;</button>
+        </div>
+    </header>
+
+    <main>
+        <aside class="sidebar">
+            <div class="panel">
+                <div class="panel-title">Beta-Oxidation Pathway</div>
+                <div class="pathway-diagram">
+                    <div class="metabolite fatty-acyl" data-info="Fatty Acyl-CoA: Long-chain fatty acid activated with Coenzyme A. The substrate entering beta-oxidation.">Fatty Acyl-CoA</div>
+                    <div class="arrow">&#8595;</div>
+                    <div class="enzyme">ACAD</div>
+                    <div class="metabolite enoyl" data-info="Enoyl-CoA: First intermediate with a trans double bond. Created by FAD-dependent dehydrogenation.">Enoyl-CoA</div>
+                    <div class="arrow">&#8595;</div>
+                    <div class="enzyme">ECH</div>
+                    <div class="metabolite hydroxy" data-info="3-Hydroxyacyl-CoA: Hydrated intermediate. Water added across the double bond.">Hydroxyacyl-CoA</div>
+                    <div class="arrow">&#8595;</div>
+                    <div class="enzyme">HADH</div>
+                    <div class="metabolite keto" data-info="3-Ketoacyl-CoA: Oxidized intermediate ready for cleavage. NAD+ reduced to NADH.">Ketoacyl-CoA</div>
+                    <div class="arrow">&#8595;</div>
+                    <div class="enzyme">KAT</div>
+                    <div class="metabolite acetyl" data-info="Acetyl-CoA: 2-carbon product that enters the citric acid cycle. Each cycle releases one Acetyl-CoA.">Acetyl-CoA</div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">Presets</div>
+                <div class="presets">
+                    <button class="preset-btn active" data-preset="fed">Fed State</button>
+                    <button class="preset-btn" data-preset="fasting">Fasting</button>
+                    <button class="preset-btn" data-preset="mcad">MCAD Def.</button>
+                    <button class="preset-btn" data-preset="exercise">Exercise</button>
+                    <button class="preset-btn" data-preset="ketosis">Ketogenesis</button>
+                    <button class="preset-btn" data-preset="coral">Coral</button>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">Diffusion Rates</div>
+                <div class="slider-group">
+                    <div class="slider-label">
+                        <span>Chemical A (Substrate)</span>
+                        <span class="slider-value" id="da-value">1.00</span>
+                    </div>
+                    <input type="range" id="da-slider" min="0.1" max="2" step="0.01" value="1.0">
+                </div>
+                <div class="slider-group">
+                    <div class="slider-label">
+                        <span>Chemical B (Product)</span>
+                        <span class="slider-value" id="db-value">0.50</span>
+                    </div>
+                    <input type="range" id="db-slider" min="0.1" max="1" step="0.01" value="0.5">
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">Reaction Parameters</div>
+                <div class="slider-group">
+                    <div class="slider-label">
+                        <span>Feed Rate (f)</span>
+                        <span class="slider-value" id="feed-value">0.055</span>
+                    </div>
+                    <input type="range" id="feed-slider" min="0.01" max="0.1" step="0.001" value="0.055">
+                </div>
+                <div class="slider-group">
+                    <div class="slider-label">
+                        <span>Kill Rate (k)</span>
+                        <span class="slider-value" id="kill-value">0.062</span>
+                    </div>
+                    <input type="range" id="kill-slider" min="0.03" max="0.07" step="0.001" value="0.062">
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">Color Legend</div>
+                <div class="color-legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: var(--fatty-acyl)"></div>
+                        <span>High A</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: var(--acetyl)"></div>
+                        <span>High B</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: var(--energy)"></div>
+                        <span>Reaction</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">Instructions</div>
+                <div class="instructions">
+                    <p><kbd>Click</kbd> Inject chemicals</p>
+                    <p><kbd>Shift+Click</kbd> Clear area</p>
+                    <p><kbd>Space</kbd> Pause/Play</p>
+                    <p><kbd>R</kbd> Reset simulation</p>
+                    <p><kbd>1-6</kbd> Load presets</p>
+                </div>
+            </div>
+        </aside>
+
+        <div class="canvas-container">
+            <canvas id="simulation-canvas"></canvas>
+            <div class="controls-bar">
+                <button class="control-btn" id="play-btn">
+                    <span id="play-icon">&#9616;&#9616;</span>
+                    <span id="play-text">Pause</span>
+                </button>
+                <button class="control-btn" id="reset-btn">
+                    &#8634; Reset
+                </button>
+                <button class="control-btn" id="clear-btn">
+                    &#9723; Clear
+                </button>
+            </div>
+            <div class="canvas-overlay">
+                <div class="stats">
+                    <span id="fps-counter">60 FPS</span> |
+                    <span id="iteration-counter">0 iterations</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        // ============================================
+        // METABOLIC TURING PATTERNS - WebGL2 Engine
+        // ============================================
+
+        const canvas = document.getElementById('simulation-canvas');
+        const gl = canvas.getContext('webgl2');
+
+        if (!gl) {
+            alert('WebGL2 not supported. Please use a modern browser.');
+            throw new Error('WebGL2 not supported');
+        }
+
+        // Simulation parameters
+        let params = {
+            Da: 1.0,      // Diffusion rate of A
+            Db: 0.5,      // Diffusion rate of B
+            feed: 0.055,  // Feed rate
+            kill: 0.062,  // Kill rate
+            dt: 1.0,      // Time step
+            brushSize: 20
+        };
+
+        // Presets matching different metabolic states
+        const presets = {
+            fed: { Da: 1.0, Db: 0.5, feed: 0.055, kill: 0.062 },       // Stable spots
+            fasting: { Da: 1.0, Db: 0.5, feed: 0.042, kill: 0.063 },   // Stripes
+            mcad: { Da: 1.0, Db: 0.5, feed: 0.026, kill: 0.052 },      // Chaotic
+            exercise: { Da: 1.0, Db: 0.5, feed: 0.014, kill: 0.045 },  // Waves
+            ketosis: { Da: 1.0, Db: 0.5, feed: 0.078, kill: 0.061 },   // Labyrinth
+            coral: { Da: 1.0, Db: 0.5, feed: 0.0545, kill: 0.062 }     // Coral-like
+        };
+
+        let width, height;
+        let isRunning = true;
+        let iterations = 0;
+        let lastTime = performance.now();
+        let frameCount = 0;
+
+        // Framebuffers for ping-pong rendering
+        let framebuffers = [];
+        let textures = [];
+        let currentBuffer = 0;
+
+        // Shader programs
+        let simulationProgram, renderProgram;
+
+        // ============================================
+        // SHADER SOURCE CODE
+        // ============================================
+
+        const vertexShaderSource = `#version 300 es
+            in vec2 a_position;
+            out vec2 v_texCoord;
+
+            void main() {
+                v_texCoord = a_position * 0.5 + 0.5;
+                gl_Position = vec4(a_position, 0.0, 1.0);
+            }
+        `;
+
+        // Gray-Scott reaction-diffusion simulation shader
+        const simulationShaderSource = `#version 300 es
+            precision highp float;
+
+            uniform sampler2D u_texture;
+            uniform vec2 u_resolution;
+            uniform float u_Da;
+            uniform float u_Db;
+            uniform float u_feed;
+            uniform float u_kill;
+            uniform float u_dt;
+
+            in vec2 v_texCoord;
+            out vec4 fragColor;
+
+            void main() {
+                vec2 texel = 1.0 / u_resolution;
+
+                // Sample center and neighbors for Laplacian
+                vec2 center = texture(u_texture, v_texCoord).rg;
+                vec2 left = texture(u_texture, v_texCoord + vec2(-texel.x, 0.0)).rg;
+                vec2 right = texture(u_texture, v_texCoord + vec2(texel.x, 0.0)).rg;
+                vec2 up = texture(u_texture, v_texCoord + vec2(0.0, texel.y)).rg;
+                vec2 down = texture(u_texture, v_texCoord + vec2(0.0, -texel.y)).rg;
+
+                // Diagonal neighbors for better diffusion
+                vec2 ul = texture(u_texture, v_texCoord + vec2(-texel.x, texel.y)).rg;
+                vec2 ur = texture(u_texture, v_texCoord + vec2(texel.x, texel.y)).rg;
+                vec2 dl = texture(u_texture, v_texCoord + vec2(-texel.x, -texel.y)).rg;
+                vec2 dr = texture(u_texture, v_texCoord + vec2(texel.x, -texel.y)).rg;
+
+                // 9-point Laplacian stencil for smoother diffusion
+                vec2 laplacian = 0.2 * (left + right + up + down) +
+                                 0.05 * (ul + ur + dl + dr) - center;
+
+                float A = center.r;
+                float B = center.g;
+
+                // Gray-Scott equations
+                float reaction = A * B * B;
+                float dA = u_Da * laplacian.r - reaction + u_feed * (1.0 - A);
+                float dB = u_Db * laplacian.g + reaction - (u_kill + u_feed) * B;
+
+                // Update concentrations
+                float newA = A + dA * u_dt;
+                float newB = B + dB * u_dt;
+
+                // Clamp to valid range
+                fragColor = vec4(clamp(newA, 0.0, 1.0), clamp(newB, 0.0, 1.0), 0.0, 1.0);
+            }
+        `;
+
+        // Color mapping shader for visualization
+        const renderShaderSource = `#version 300 es
+            precision highp float;
+
+            uniform sampler2D u_texture;
+
+            in vec2 v_texCoord;
+            out vec4 fragColor;
+
+            // Metabolic color palette
+            vec3 colorMap(float a, float b) {
+                // Background (low activity)
+                vec3 bg = vec3(0.102, 0.106, 0.149);
+
+                // Chemical A color (Fatty Acyl - coral red)
+                vec3 colorA = vec3(1.0, 0.42, 0.42);
+
+                // Chemical B color (Acetyl - sky blue)
+                vec3 colorB = vec3(0.302, 0.671, 0.969);
+
+                // Reaction zone (energy - purple)
+                vec3 colorReaction = vec3(0.855, 0.467, 0.949);
+
+                // Calculate reaction intensity
+                float reaction = a * b * b * 4.0;
+
+                // Blend colors based on concentrations
+                vec3 color = bg;
+                color = mix(color, colorA, a * 0.5);
+                color = mix(color, colorB, b * 1.5);
+                color = mix(color, colorReaction, reaction * 2.0);
+
+                // Add subtle glow for high concentrations
+                float glow = max(a, b * 1.5) * 0.3;
+                color += glow * vec3(0.478, 0.635, 0.969);
+
+                return color;
+            }
+
+            void main() {
+                vec2 data = texture(u_texture, v_texCoord).rg;
+                vec3 color = colorMap(data.r, data.g);
+                fragColor = vec4(color, 1.0);
+            }
+        `;
+
+        // ============================================
+        // WEBGL UTILITY FUNCTIONS
+        // ============================================
+
+        function createShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error('Shader compile error:', gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
+
+        function createProgram(gl, vertexShader, fragmentShader) {
+            const program = gl.createProgram();
+            gl.attachShader(program, vertexShader);
+            gl.attachShader(program, fragmentShader);
+            gl.linkProgram(program);
+
+            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                console.error('Program link error:', gl.getProgramInfoLog(program));
+                gl.deleteProgram(program);
+                return null;
+            }
+            return program;
+        }
+
+        function createTexture(gl, width, height) {
+            const texture = gl.createTexture();
+            gl.bindTexture(gl.TEXTURE_2D, texture);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, width, height, 0, gl.RGBA, gl.FLOAT, null);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+            return texture;
+        }
+
+        function createFramebuffer(gl, texture) {
+            const fb = gl.createFramebuffer();
+            gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+            return fb;
+        }
+
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+
+        function initWebGL() {
+            // Enable floating point textures
+            const ext = gl.getExtension('EXT_color_buffer_float');
+            if (!ext) {
+                console.warn('EXT_color_buffer_float not supported, using fallback');
+            }
+
+            // Create shader programs
+            const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+            const simFragShader = createShader(gl, gl.FRAGMENT_SHADER, simulationShaderSource);
+            const renderFragShader = createShader(gl, gl.FRAGMENT_SHADER, renderShaderSource);
+
+            simulationProgram = createProgram(gl, vertexShader, simFragShader);
+            renderProgram = createProgram(gl, vertexShader, renderFragShader);
+
+            // Create vertex buffer (full-screen quad)
+            const positions = new Float32Array([
+                -1, -1, 1, -1, -1, 1,
+                -1, 1, 1, -1, 1, 1
+            ]);
+
+            const positionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+
+            // Set up vertex attributes for both programs
+            [simulationProgram, renderProgram].forEach(program => {
+                const posLoc = gl.getAttribLocation(program, 'a_position');
+                gl.enableVertexAttribArray(posLoc);
+                gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+            });
+        }
+
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            const dpr = window.devicePixelRatio || 1;
+
+            // Use power of 2 dimensions for better performance
+            width = Math.min(1024, Math.floor(container.clientWidth * dpr / 2) * 2);
+            height = Math.min(1024, Math.floor(container.clientHeight * dpr / 2) * 2);
+
+            canvas.width = width;
+            canvas.height = height;
+
+            gl.viewport(0, 0, width, height);
+
+            // Recreate textures and framebuffers
+            textures.forEach(t => gl.deleteTexture(t));
+            framebuffers.forEach(fb => gl.deleteFramebuffer(fb));
+
+            textures = [createTexture(gl, width, height), createTexture(gl, width, height)];
+            framebuffers = [createFramebuffer(gl, textures[0]), createFramebuffer(gl, textures[1])];
+
+            initializeState();
+        }
+
+        function initializeState() {
+            // Initialize with A=1 everywhere, B=0 (substrate saturated, no product)
+            const data = new Float32Array(width * height * 4);
+
+            for (let i = 0; i < width * height; i++) {
+                data[i * 4] = 1.0;     // A (substrate)
+                data[i * 4 + 1] = 0.0; // B (product)
+                data[i * 4 + 2] = 0.0;
+                data[i * 4 + 3] = 1.0;
+            }
+
+            // Add some initial seed patterns (enzyme hotspots)
+            const numSeeds = 20;
+            for (let s = 0; s < numSeeds; s++) {
+                const cx = Math.floor(Math.random() * width);
+                const cy = Math.floor(Math.random() * height);
+                const radius = 5 + Math.random() * 15;
+
+                for (let y = -radius; y <= radius; y++) {
+                    for (let x = -radius; x <= radius; x++) {
+                        if (x * x + y * y < radius * radius) {
+                            const px = (cx + x + width) % width;
+                            const py = (cy + y + height) % height;
+                            const idx = (py * width + px) * 4;
+                            data[idx] = 0.5;     // Lower A
+                            data[idx + 1] = 0.25; // Some B
+                        }
+                    }
+                }
+            }
+
+            // Upload to both textures
+            textures.forEach(texture => {
+                gl.bindTexture(gl.TEXTURE_2D, texture);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, width, height, 0, gl.RGBA, gl.FLOAT, data);
+            });
+
+            currentBuffer = 0;
+            iterations = 0;
+        }
+
+        // ============================================
+        // SIMULATION & RENDERING
+        // ============================================
+
+        function simulate() {
+            gl.useProgram(simulationProgram);
+
+            // Set uniforms
+            gl.uniform1i(gl.getUniformLocation(simulationProgram, 'u_texture'), 0);
+            gl.uniform2f(gl.getUniformLocation(simulationProgram, 'u_resolution'), width, height);
+            gl.uniform1f(gl.getUniformLocation(simulationProgram, 'u_Da'), params.Da);
+            gl.uniform1f(gl.getUniformLocation(simulationProgram, 'u_Db'), params.Db);
+            gl.uniform1f(gl.getUniformLocation(simulationProgram, 'u_feed'), params.feed);
+            gl.uniform1f(gl.getUniformLocation(simulationProgram, 'u_kill'), params.kill);
+            gl.uniform1f(gl.getUniformLocation(simulationProgram, 'u_dt'), params.dt);
+
+            // Ping-pong: read from current, write to next
+            const readTex = textures[currentBuffer];
+            const writeFB = framebuffers[1 - currentBuffer];
+
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, readTex);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, writeFB);
+
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+            currentBuffer = 1 - currentBuffer;
+            iterations++;
+        }
+
+        function render() {
+            gl.useProgram(renderProgram);
+
+            gl.uniform1i(gl.getUniformLocation(renderProgram, 'u_texture'), 0);
+
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, textures[currentBuffer]);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+        }
+
+        function animate(currentTime) {
+            if (isRunning) {
+                // Run multiple simulation steps per frame for speed
+                for (let i = 0; i < 8; i++) {
+                    simulate();
+                }
+            }
+
+            render();
+
+            // Update FPS counter
+            frameCount++;
+            if (currentTime - lastTime >= 1000) {
+                document.getElementById('fps-counter').textContent = `${frameCount} FPS`;
+                frameCount = 0;
+                lastTime = currentTime;
+            }
+
+            document.getElementById('iteration-counter').textContent = `${iterations} iterations`;
+
+            requestAnimationFrame(animate);
+        }
+
+        // ============================================
+        // USER INTERACTION
+        // ============================================
+
+        function injectChemical(x, y, clearMode = false) {
+            const rect = canvas.getBoundingClientRect();
+            const canvasX = Math.floor((x - rect.left) / rect.width * width);
+            const canvasY = Math.floor((1 - (y - rect.top) / rect.height) * height);
+
+            // Read current texture data
+            gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[currentBuffer]);
+            const data = new Float32Array(width * height * 4);
+            gl.readPixels(0, 0, width, height, gl.RGBA, gl.FLOAT, data);
+
+            // Modify area around click
+            const radius = params.brushSize;
+            for (let dy = -radius; dy <= radius; dy++) {
+                for (let dx = -radius; dx <= radius; dx++) {
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < radius) {
+                        const px = (canvasX + dx + width) % width;
+                        const py = (canvasY + dy + height) % height;
+                        const idx = (py * width + px) * 4;
+
+                        const falloff = 1 - dist / radius;
+
+                        if (clearMode) {
+                            // Clear: set to initial state
+                            data[idx] = 1.0;
+                            data[idx + 1] = 0.0;
+                        } else {
+                            // Inject: add product chemical
+                            data[idx] = Math.max(0, data[idx] - 0.3 * falloff);
+                            data[idx + 1] = Math.min(1, data[idx + 1] + 0.5 * falloff);
+                        }
+                    }
+                }
+            }
+
+            // Upload modified data
+            gl.bindTexture(gl.TEXTURE_2D, textures[currentBuffer]);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, width, height, 0, gl.RGBA, gl.FLOAT, data);
+        }
+
+        // ============================================
+        // EVENT HANDLERS
+        // ============================================
+
+        function setupEventListeners() {
+            // Canvas click
+            let isDragging = false;
+
+            canvas.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                injectChemical(e.clientX, e.clientY, e.shiftKey);
+            });
+
+            canvas.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    injectChemical(e.clientX, e.clientY, e.shiftKey);
+                }
+            });
+
+            canvas.addEventListener('mouseup', () => isDragging = false);
+            canvas.addEventListener('mouseleave', () => isDragging = false);
+
+            // Touch support
+            canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                const touch = e.touches[0];
+                injectChemical(touch.clientX, touch.clientY);
+            });
+
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                const touch = e.touches[0];
+                injectChemical(touch.clientX, touch.clientY);
+            });
+
+            // Control buttons
+            document.getElementById('play-btn').addEventListener('click', () => {
+                isRunning = !isRunning;
+                document.getElementById('play-icon').textContent = isRunning ? '\u2016\u2016' : '\u25B6';
+                document.getElementById('play-text').textContent = isRunning ? 'Pause' : 'Play';
+            });
+
+            document.getElementById('reset-btn').addEventListener('click', () => {
+                initializeState();
+            });
+
+            document.getElementById('clear-btn').addEventListener('click', () => {
+                // Clear to initial uniform state
+                const data = new Float32Array(width * height * 4);
+                for (let i = 0; i < width * height; i++) {
+                    data[i * 4] = 1.0;
+                    data[i * 4 + 1] = 0.0;
+                    data[i * 4 + 2] = 0.0;
+                    data[i * 4 + 3] = 1.0;
+                }
+                textures.forEach(texture => {
+                    gl.bindTexture(gl.TEXTURE_2D, texture);
+                    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, width, height, 0, gl.RGBA, gl.FLOAT, data);
+                });
+                iterations = 0;
+            });
+
+            // Preset buttons
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+
+                    const preset = presets[btn.dataset.preset];
+                    params = { ...params, ...preset };
+
+                    // Update sliders
+                    updateSliders();
+                });
+            });
+
+            // Sliders
+            const sliders = [
+                { id: 'da', param: 'Da', display: 'da-value' },
+                { id: 'db', param: 'Db', display: 'db-value' },
+                { id: 'feed', param: 'feed', display: 'feed-value' },
+                { id: 'kill', param: 'kill', display: 'kill-value' }
+            ];
+
+            sliders.forEach(({ id, param, display }) => {
+                const slider = document.getElementById(`${id}-slider`);
+                slider.addEventListener('input', () => {
+                    params[param] = parseFloat(slider.value);
+                    document.getElementById(display).textContent = slider.value;
+                });
+            });
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (e.target.tagName === 'INPUT') return;
+
+                switch (e.key.toLowerCase()) {
+                    case ' ':
+                        e.preventDefault();
+                        document.getElementById('play-btn').click();
+                        break;
+                    case 'r':
+                        document.getElementById('reset-btn').click();
+                        break;
+                    case '1': case '2': case '3': case '4': case '5': case '6':
+                        const presetBtns = document.querySelectorAll('.preset-btn');
+                        presetBtns[parseInt(e.key) - 1]?.click();
+                        break;
+                }
+            });
+
+            // Tooltips for metabolites
+            const tooltip = document.getElementById('tooltip');
+            document.querySelectorAll('.metabolite').forEach(el => {
+                el.addEventListener('mouseenter', (e) => {
+                    tooltip.textContent = el.dataset.info;
+                    tooltip.style.left = e.pageX + 10 + 'px';
+                    tooltip.style.top = e.pageY + 10 + 'px';
+                    tooltip.classList.add('visible');
+                });
+
+                el.addEventListener('mouseleave', () => {
+                    tooltip.classList.remove('visible');
+                });
+            });
+
+            // Share button
+            document.getElementById('share-btn').addEventListener('click', () => {
+                const url = new URL(window.location);
+                url.searchParams.set('f', params.feed);
+                url.searchParams.set('k', params.kill);
+                url.searchParams.set('da', params.Da);
+                url.searchParams.set('db', params.Db);
+
+                navigator.clipboard.writeText(url.toString()).then(() => {
+                    alert('Link copied to clipboard!');
+                });
+            });
+
+            // Window resize
+            window.addEventListener('resize', () => {
+                resizeCanvas();
+            });
+        }
+
+        function updateSliders() {
+            document.getElementById('da-slider').value = params.Da;
+            document.getElementById('da-value').textContent = params.Da.toFixed(2);
+            document.getElementById('db-slider').value = params.Db;
+            document.getElementById('db-value').textContent = params.Db.toFixed(2);
+            document.getElementById('feed-slider').value = params.feed;
+            document.getElementById('feed-value').textContent = params.feed.toFixed(3);
+            document.getElementById('kill-slider').value = params.kill;
+            document.getElementById('kill-value').textContent = params.kill.toFixed(3);
+        }
+
+        function loadFromURL() {
+            const url = new URL(window.location);
+            if (url.searchParams.has('f')) params.feed = parseFloat(url.searchParams.get('f'));
+            if (url.searchParams.has('k')) params.kill = parseFloat(url.searchParams.get('k'));
+            if (url.searchParams.has('da')) params.Da = parseFloat(url.searchParams.get('da'));
+            if (url.searchParams.has('db')) params.Db = parseFloat(url.searchParams.get('db'));
+            updateSliders();
+        }
+
+        // ============================================
+        // STARTUP
+        // ============================================
+
+        initWebGL();
+        resizeCanvas();
+        loadFromURL();
+        setupEventListeners();
+        requestAnimationFrame(animate);
+
+        console.log('Metabolic Turing Patterns Explorer initialized');
+        console.log('Click to inject chemicals, Shift+Click to clear');
+    </script>
+</body>
+</html>
