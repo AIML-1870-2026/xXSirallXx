@@ -552,7 +552,7 @@
         // ============================================
 
         const vertexShaderSource = `#version 300 es
-            in vec2 a_position;
+            layout(location = 0) in vec2 a_position;
             out vec2 v_texCoord;
 
             void main() {
@@ -622,32 +622,38 @@
             in vec2 v_texCoord;
             out vec4 fragColor;
 
-            // Metabolic color palette
+            // Metabolic color palette - optimized for visibility
             vec3 colorMap(float a, float b) {
-                // Background (low activity)
+                // Background (low activity) - dark navy
                 vec3 bg = vec3(0.102, 0.106, 0.149);
 
                 // Chemical A color (Fatty Acyl - coral red)
                 vec3 colorA = vec3(1.0, 0.42, 0.42);
 
-                // Chemical B color (Acetyl - sky blue)
-                vec3 colorB = vec3(0.302, 0.671, 0.969);
+                // Chemical B color (Acetyl - vibrant cyan/blue)
+                vec3 colorB = vec3(0.2, 0.8, 1.0);
 
-                // Reaction zone (energy - purple)
-                vec3 colorReaction = vec3(0.855, 0.467, 0.949);
+                // Reaction zone (energy - magenta/purple)
+                vec3 colorReaction = vec3(1.0, 0.3, 0.8);
+
+                // B is the "interesting" chemical - it forms the patterns
+                // Enhance B visibility significantly
+                float bIntensity = smoothstep(0.0, 0.5, b) * 2.0;
 
                 // Calculate reaction intensity
-                float reaction = a * b * b * 4.0;
+                float reaction = a * b * b * 8.0;
 
-                // Blend colors based on concentrations
+                // Start with background
                 vec3 color = bg;
-                color = mix(color, colorA, a * 0.5);
-                color = mix(color, colorB, b * 1.5);
-                color = mix(color, colorReaction, reaction * 2.0);
 
-                // Add subtle glow for high concentrations
-                float glow = max(a, b * 1.5) * 0.3;
-                color += glow * vec3(0.478, 0.635, 0.969);
+                // Add B chemical (this is what creates visible patterns)
+                color = mix(color, colorB, bIntensity);
+
+                // Add reaction glow
+                color = mix(color, colorReaction, clamp(reaction, 0.0, 1.0));
+
+                // Slight A tint in empty areas
+                color = mix(color, colorA * 0.3, (1.0 - b) * 0.1);
 
                 return color;
             }
@@ -712,11 +718,15 @@
         // INITIALIZATION
         // ============================================
 
+        let vao; // Vertex Array Object
+
         function initWebGL() {
             // Enable floating point textures
             const ext = gl.getExtension('EXT_color_buffer_float');
             if (!ext) {
-                console.warn('EXT_color_buffer_float not supported, using fallback');
+                console.error('EXT_color_buffer_float not supported!');
+                alert('Your browser does not support float textures. Try Chrome or Firefox.');
+                return false;
             }
 
             // Create shader programs
@@ -724,8 +734,22 @@
             const simFragShader = createShader(gl, gl.FRAGMENT_SHADER, simulationShaderSource);
             const renderFragShader = createShader(gl, gl.FRAGMENT_SHADER, renderShaderSource);
 
+            if (!vertexShader || !simFragShader || !renderFragShader) {
+                console.error('Shader compilation failed');
+                return false;
+            }
+
             simulationProgram = createProgram(gl, vertexShader, simFragShader);
             renderProgram = createProgram(gl, vertexShader, renderFragShader);
+
+            if (!simulationProgram || !renderProgram) {
+                console.error('Program linking failed');
+                return false;
+            }
+
+            // Create VAO (required in WebGL2)
+            vao = gl.createVertexArray();
+            gl.bindVertexArray(vao);
 
             // Create vertex buffer (full-screen quad)
             const positions = new Float32Array([
@@ -737,12 +761,12 @@
             gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
             gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
 
-            // Set up vertex attributes for both programs
-            [simulationProgram, renderProgram].forEach(program => {
-                const posLoc = gl.getAttribLocation(program, 'a_position');
-                gl.enableVertexAttribArray(posLoc);
-                gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
-            });
+            // Set up vertex attribute (position is at location 0 in both shaders)
+            gl.enableVertexAttribArray(0);
+            gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+            console.log('WebGL initialized successfully');
+            return true;
         }
 
         function resizeCanvas() {
@@ -779,21 +803,44 @@
                 data[i * 4 + 3] = 1.0;
             }
 
-            // Add some initial seed patterns (enzyme hotspots)
-            const numSeeds = 20;
+            // Add initial seed patterns (enzyme hotspots) - larger and more visible
+            const numSeeds = 15;
             for (let s = 0; s < numSeeds; s++) {
-                const cx = Math.floor(Math.random() * width);
-                const cy = Math.floor(Math.random() * height);
-                const radius = 5 + Math.random() * 15;
+                const cx = Math.floor(width * 0.1 + Math.random() * width * 0.8);
+                const cy = Math.floor(height * 0.1 + Math.random() * height * 0.8);
+                const radius = 10 + Math.random() * 20;
 
                 for (let y = -radius; y <= radius; y++) {
                     for (let x = -radius; x <= radius; x++) {
-                        if (x * x + y * y < radius * radius) {
-                            const px = (cx + x + width) % width;
-                            const py = (cy + y + height) % height;
+                        const dist = Math.sqrt(x * x + y * y);
+                        if (dist < radius) {
+                            const px = (cx + Math.floor(x) + width) % width;
+                            const py = (cy + Math.floor(y) + height) % height;
                             const idx = (py * width + px) * 4;
-                            data[idx] = 0.5;     // Lower A
-                            data[idx + 1] = 0.25; // Some B
+                            // Smooth falloff from center
+                            const falloff = 1.0 - dist / radius;
+                            data[idx] = 0.5;                    // Lower A
+                            data[idx + 1] = 0.25 * falloff;     // B with falloff
+                        }
+                    }
+                }
+            }
+
+            // Add a central cluster for immediate visual feedback
+            const centerX = Math.floor(width / 2);
+            const centerY = Math.floor(height / 2);
+            const centerRadius = 30;
+            for (let y = -centerRadius; y <= centerRadius; y++) {
+                for (let x = -centerRadius; x <= centerRadius; x++) {
+                    const dist = Math.sqrt(x * x + y * y);
+                    if (dist < centerRadius) {
+                        const px = centerX + x;
+                        const py = centerY + y;
+                        if (px >= 0 && px < width && py >= 0 && py < height) {
+                            const idx = (py * width + px) * 4;
+                            const falloff = 1.0 - dist / centerRadius;
+                            data[idx] = 0.5;
+                            data[idx + 1] = Math.max(data[idx + 1], 0.3 * falloff);
                         }
                     }
                 }
@@ -815,6 +862,7 @@
 
         function simulate() {
             gl.useProgram(simulationProgram);
+            gl.bindVertexArray(vao);
 
             // Set uniforms
             gl.uniform1i(gl.getUniformLocation(simulationProgram, 'u_texture'), 0);
@@ -841,6 +889,7 @@
 
         function render() {
             gl.useProgram(renderProgram);
+            gl.bindVertexArray(vao);
 
             gl.uniform1i(gl.getUniformLocation(renderProgram, 'u_texture'), 0);
 
@@ -1087,14 +1136,16 @@
         // STARTUP
         // ============================================
 
-        initWebGL();
-        resizeCanvas();
-        loadFromURL();
-        setupEventListeners();
-        requestAnimationFrame(animate);
-
-        console.log('Metabolic Turing Patterns Explorer initialized');
-        console.log('Click to inject chemicals, Shift+Click to clear');
+        if (initWebGL()) {
+            resizeCanvas();
+            loadFromURL();
+            setupEventListeners();
+            requestAnimationFrame(animate);
+            console.log('Metabolic Turing Patterns Explorer initialized');
+            console.log('Click to inject chemicals, Shift+Click to clear');
+        } else {
+            document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#1A1B26;color:#FF6B6B;font-family:sans-serif;text-align:center;padding:2rem;"><div><h1>WebGL2 Error</h1><p>Could not initialize WebGL2. Please use a modern browser like Chrome, Firefox, or Edge.</p></div></div>';
+        }
     </script>
 </body>
 </html>
