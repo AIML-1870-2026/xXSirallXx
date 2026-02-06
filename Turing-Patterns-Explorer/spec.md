@@ -104,16 +104,16 @@ Where A, B represent metabolite concentrations, E represents enzyme activity, an
 - **Shift+Click**: Block enzyme at location (simulate inhibitor)
 - **Ctrl+Click**: Add ATP (energy boost, speeds all reactions)
 
-### 5. Preset Scenarios
+### 5. Preset Scenarios (Metabolically Relevant States)
 
-| Preset | Description | Expected Pattern |
-|--------|-------------|------------------|
-| **Fed State** | High substrate, normal enzymes | Stable spots (efficient processing) |
-| **Fasting** | Low substrate, upregulated enzymes | Stripes (searching behavior) |
-| **MCAD Deficiency** | Reduced ACAD activity | Chaotic accumulation patterns |
-| **Carnitine Shuttle Block** | No new fatty acids entering | Dissolving patterns (depletion) |
-| **Ketogenesis Mode** | High Acetyl-CoA accumulation | Blue-dominant labyrinth |
-| **Exercise** | High throughput, fast removal | Rapid oscillating waves |
+| Preset | Clinical Context | Biochemistry | Expected Pattern |
+|--------|------------------|--------------|------------------|
+| **Fed State** | Post-meal, normal insulin | Balanced flux, TCA cycle active | Stable spots (efficient processing) |
+| **Fasting** | 12-24h without food, glucagon dominant | PPAR-α upregulates enzymes, high lipolysis | Expanding stripes (increased flux) |
+| **MCAD Deficiency** | Inherited metabolic disorder (1:15,000) | Cannot oxidize C6-C12 chains, toxic accumulation | Chaotic red accumulation (substrate backup) |
+| **Carnitine Block** | CPT-II deficiency or carnitine transporter defect | Fatty acids cannot enter mitochondria | Dissolving patterns (substrate starvation) |
+| **Ketogenesis** | Diabetic ketoacidosis or prolonged starvation | Acetyl-CoA exceeds TCA capacity → ketone bodies | Blue-dominant labyrinth (acetyl buildup) |
+| **Exercise** | High-intensity physical activity | Maximum β-oxidation flux, rapid ETC turnover | Rapid oscillating waves (high throughput) |
 
 ### 6. Educational Overlays
 

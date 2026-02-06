@@ -314,27 +314,48 @@
         .presets {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 0.5rem;
+            gap: 0.4rem;
         }
 
         .preset-btn {
             background: var(--panel-light);
             border: 1px solid transparent;
             color: var(--text);
-            padding: 0.4rem;
+            padding: 0.35rem 0.3rem;
             border-radius: 8px;
             cursor: pointer;
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             transition: all 0.2s;
+            text-align: center;
+            line-height: 1.2;
         }
 
         .preset-btn:hover {
             border-color: var(--accent);
+            background: var(--panel-light);
         }
 
         .preset-btn.active {
             background: var(--accent);
             color: var(--background);
+            border-color: var(--accent);
+        }
+
+        .preset-btn[title]:hover::after {
+            content: attr(title);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--panel);
+            border: 1px solid var(--accent);
+            padding: 0.5rem;
+            border-radius: 6px;
+            font-size: 0.65rem;
+            white-space: nowrap;
+            z-index: 100;
+            max-width: 200px;
+            white-space: normal;
         }
 
         .slider-group {
@@ -561,12 +582,14 @@
             </div>
 
             <div class="panel">
-                <div class="panel-title">Scenarios</div>
+                <div class="panel-title">Metabolic States</div>
                 <div class="presets">
-                    <button class="preset-btn active" data-preset="normal">Normal Fed</button>
-                    <button class="preset-btn" data-preset="fasting">Fasting</button>
-                    <button class="preset-btn" data-preset="mcad">MCAD Deficiency</button>
-                    <button class="preset-btn" data-preset="exercise">Exercise</button>
+                    <button class="preset-btn active" data-preset="fedState" title="Post-meal: normal substrate availability, balanced enzyme activity">Fed State</button>
+                    <button class="preset-btn" data-preset="fasting" title="Prolonged fasting: upregulated enzymes, high fatty acid mobilization">Fasting</button>
+                    <button class="preset-btn" data-preset="mcadDeficiency" title="MCAD deficiency: impaired medium-chain oxidation, substrate accumulation">MCAD Deficiency</button>
+                    <button class="preset-btn" data-preset="carnitineBlock" title="CPT-II/Carnitine deficiency: blocked fatty acid entry into mitochondria">Carnitine Block</button>
+                    <button class="preset-btn" data-preset="ketogenesis" title="Diabetic ketoacidosis: excess acetyl-CoA, impaired TCA entry">Ketogenesis</button>
+                    <button class="preset-btn" data-preset="exercise" title="Intense exercise: maximal flux, high ATP demand">Exercise</button>
                 </div>
             </div>
 
@@ -709,22 +732,54 @@
         };
 
         // Presets for different metabolic states
+        // Each preset represents a clinically/physiologically relevant condition
         const presets = {
-            normal: {
+            // Fed State: Post-meal, normal insulin signaling
+            // Balanced flux, fatty acids available but not prioritized
+            fedState: {
                 ACAD: 1.0, ECH: 1.0, HADH: 1.0, KAT: 1.0,
-                feedRate: 0.02, removalRate: 0.02
+                feedRate: 0.02, removalRate: 0.025,
+                description: "Post-meal state with balanced substrate flow"
             },
+            // Fasting: 12-24h without food
+            // PPAR-alpha activation upregulates all beta-oxidation enzymes
+            // High lipolysis provides abundant fatty acids
             fasting: {
-                ACAD: 1.5, ECH: 1.2, HADH: 1.2, KAT: 1.3,
-                feedRate: 0.05, removalRate: 0.01
+                ACAD: 1.6, ECH: 1.3, HADH: 1.4, KAT: 1.5,
+                feedRate: 0.06, removalRate: 0.015,
+                description: "Prolonged fasting with upregulated enzymes"
             },
-            mcad: {
-                ACAD: 0.2, ECH: 1.0, HADH: 1.0, KAT: 1.0,
-                feedRate: 0.03, removalRate: 0.02
+            // MCAD Deficiency: Medium-Chain Acyl-CoA Dehydrogenase deficiency
+            // Most common inherited fatty acid oxidation disorder
+            // Cannot process C6-C12 fatty acids efficiently
+            mcadDeficiency: {
+                ACAD: 0.15, ECH: 1.0, HADH: 1.0, KAT: 0.8,
+                feedRate: 0.035, removalRate: 0.02,
+                description: "MCAD deficiency: toxic accumulation of medium-chain acyl-CoAs"
             },
+            // Carnitine Shuttle Block: CPT-II deficiency or carnitine deficiency
+            // Fatty acids cannot enter mitochondrial matrix
+            // Starves beta-oxidation of substrate
+            carnitineBlock: {
+                ACAD: 1.0, ECH: 1.0, HADH: 1.0, KAT: 1.0,
+                feedRate: 0.005, removalRate: 0.03,
+                description: "CPT-II/Carnitine deficiency: blocked mitochondrial entry"
+            },
+            // Ketogenesis: Diabetic ketoacidosis or prolonged starvation
+            // Acetyl-CoA accumulates faster than TCA can consume
+            // Drives ketone body synthesis
+            ketogenesis: {
+                ACAD: 1.4, ECH: 1.2, HADH: 1.3, KAT: 1.6,
+                feedRate: 0.07, removalRate: 0.008,
+                description: "Excess acetyl-CoA accumulation, ketone body formation"
+            },
+            // Exercise: High-intensity physical activity
+            // Maximum flux through pathway, high ATP demand
+            // Electron transport chain rapidly consumes NADH/FADH2
             exercise: {
-                ACAD: 1.8, ECH: 1.5, HADH: 1.5, KAT: 1.8,
-                feedRate: 0.08, removalRate: 0.06
+                ACAD: 1.9, ECH: 1.6, HADH: 1.7, KAT: 1.9,
+                feedRate: 0.085, removalRate: 0.07,
+                description: "Maximal oxidative flux during intense exercise"
             }
         };
 
