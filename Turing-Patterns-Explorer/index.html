@@ -173,6 +173,7 @@
             width: 100%;
             height: 100%;
             cursor: crosshair;
+            image-rendering: pixelated;
         }
 
         .canvas-overlay {
@@ -400,30 +401,12 @@
             <div class="panel">
                 <div class="panel-title">Presets</div>
                 <div class="presets">
-                    <button class="preset-btn active" data-preset="fed">Fed State</button>
-                    <button class="preset-btn" data-preset="fasting">Fasting</button>
-                    <button class="preset-btn" data-preset="mcad">MCAD Def.</button>
-                    <button class="preset-btn" data-preset="exercise">Exercise</button>
-                    <button class="preset-btn" data-preset="ketosis">Ketogenesis</button>
+                    <button class="preset-btn active" data-preset="mitosis">Mitosis</button>
                     <button class="preset-btn" data-preset="coral">Coral</button>
-                </div>
-            </div>
-
-            <div class="panel">
-                <div class="panel-title">Diffusion Rates</div>
-                <div class="slider-group">
-                    <div class="slider-label">
-                        <span>Chemical A (Substrate)</span>
-                        <span class="slider-value" id="da-value">1.00</span>
-                    </div>
-                    <input type="range" id="da-slider" min="0.1" max="2" step="0.01" value="1.0">
-                </div>
-                <div class="slider-group">
-                    <div class="slider-label">
-                        <span>Chemical B (Product)</span>
-                        <span class="slider-value" id="db-value">0.50</span>
-                    </div>
-                    <input type="range" id="db-slider" min="0.1" max="1" step="0.01" value="0.5">
+                    <button class="preset-btn" data-preset="bacteria">Bacteria</button>
+                    <button class="preset-btn" data-preset="fingerprint">Fingerprint</button>
+                    <button class="preset-btn" data-preset="waves">Waves</button>
+                    <button class="preset-btn" data-preset="chaos">Chaos</button>
                 </div>
             </div>
 
@@ -432,16 +415,16 @@
                 <div class="slider-group">
                     <div class="slider-label">
                         <span>Feed Rate (f)</span>
-                        <span class="slider-value" id="feed-value">0.055</span>
+                        <span class="slider-value" id="feed-value">0.0367</span>
                     </div>
-                    <input type="range" id="feed-slider" min="0.01" max="0.1" step="0.001" value="0.055">
+                    <input type="range" id="feed-slider" min="0.01" max="0.08" step="0.0001" value="0.0367">
                 </div>
                 <div class="slider-group">
                     <div class="slider-label">
                         <span>Kill Rate (k)</span>
-                        <span class="slider-value" id="kill-value">0.062</span>
+                        <span class="slider-value" id="kill-value">0.0649</span>
                     </div>
-                    <input type="range" id="kill-slider" min="0.03" max="0.07" step="0.001" value="0.062">
+                    <input type="range" id="kill-slider" min="0.04" max="0.08" step="0.0001" value="0.0649">
                 </div>
             </div>
 
@@ -449,12 +432,12 @@
                 <div class="panel-title">Color Legend</div>
                 <div class="color-legend">
                     <div class="legend-item">
-                        <div class="legend-color" style="background: var(--fatty-acyl)"></div>
-                        <span>High A</span>
+                        <div class="legend-color" style="background: #1A1B26"></div>
+                        <span>Substrate</span>
                     </div>
                     <div class="legend-item">
                         <div class="legend-color" style="background: var(--acetyl)"></div>
-                        <span>High B</span>
+                        <span>Product</span>
                     </div>
                     <div class="legend-item">
                         <div class="legend-color" style="background: var(--energy)"></div>
@@ -467,7 +450,6 @@
                 <div class="panel-title">Instructions</div>
                 <div class="instructions">
                     <p><kbd>Click</kbd> Inject chemicals</p>
-                    <p><kbd>Shift+Click</kbd> Clear area</p>
                     <p><kbd>Space</kbd> Pause/Play</p>
                     <p><kbd>R</kbd> Reset simulation</p>
                     <p><kbd>1-6</kbd> Load presets</p>
@@ -502,408 +484,188 @@
 
     <script>
         // ============================================
-        // METABOLIC TURING PATTERNS - WebGL2 Engine
+        // METABOLIC TURING PATTERNS - Canvas 2D Engine
+        // Using proven Gray-Scott implementation
         // ============================================
 
         const canvas = document.getElementById('simulation-canvas');
-        const gl = canvas.getContext('webgl2');
+        const ctx = canvas.getContext('2d');
 
-        if (!gl) {
-            alert('WebGL2 not supported. Please use a modern browser.');
-            throw new Error('WebGL2 not supported');
-        }
+        // Simulation size
+        const SIM_WIDTH = 256;
+        const SIM_HEIGHT = 256;
+
+        // Chemical concentrations (double-buffered)
+        let gridA = [];
+        let gridB = [];
+        let nextA = [];
+        let nextB = [];
 
         // Simulation parameters
         let params = {
-            Da: 1.0,      // Diffusion rate of A
-            Db: 0.5,      // Diffusion rate of B
-            feed: 0.055,  // Feed rate
-            kill: 0.062,  // Kill rate
-            dt: 1.0,      // Time step
-            brushSize: 20
+            dA: 1.0,      // Diffusion rate of A
+            dB: 0.5,      // Diffusion rate of B
+            feed: 0.0367, // Feed rate
+            kill: 0.0649  // Kill rate
         };
 
-        // Presets matching different metabolic states
+        // Presets - known working Gray-Scott parameters
         const presets = {
-            fed: { Da: 1.0, Db: 0.5, feed: 0.055, kill: 0.062 },       // Stable spots
-            fasting: { Da: 1.0, Db: 0.5, feed: 0.042, kill: 0.063 },   // Stripes
-            mcad: { Da: 1.0, Db: 0.5, feed: 0.026, kill: 0.052 },      // Chaotic
-            exercise: { Da: 1.0, Db: 0.5, feed: 0.014, kill: 0.045 },  // Waves
-            ketosis: { Da: 1.0, Db: 0.5, feed: 0.078, kill: 0.061 },   // Labyrinth
-            coral: { Da: 1.0, Db: 0.5, feed: 0.0545, kill: 0.062 }     // Coral-like
+            mitosis:     { feed: 0.0367, kill: 0.0649 },  // Cell division pattern
+            coral:       { feed: 0.0545, kill: 0.062 },   // Coral-like growth
+            bacteria:    { feed: 0.025,  kill: 0.06 },    // Bacteria colonies
+            fingerprint: { feed: 0.055,  kill: 0.062 },   // Fingerprint whorls
+            waves:       { feed: 0.014,  kill: 0.045 },   // Soliton waves
+            chaos:       { feed: 0.026,  kill: 0.051 }    // Chaotic patterns
         };
 
-        let width, height;
         let isRunning = true;
         let iterations = 0;
         let lastTime = performance.now();
         let frameCount = 0;
 
-        // Framebuffers for ping-pong rendering
-        let framebuffers = [];
-        let textures = [];
-        let currentBuffer = 0;
+        // Initialize grids
+        function initGrids() {
+            gridA = [];
+            gridB = [];
+            nextA = [];
+            nextB = [];
 
-        // Shader programs
-        let simulationProgram, renderProgram;
-
-        // ============================================
-        // SHADER SOURCE CODE
-        // ============================================
-
-        const vertexShaderSource = `#version 300 es
-            layout(location = 0) in vec2 a_position;
-            out vec2 v_texCoord;
-
-            void main() {
-                v_texCoord = a_position * 0.5 + 0.5;
-                gl_Position = vec4(a_position, 0.0, 1.0);
-            }
-        `;
-
-        // Gray-Scott reaction-diffusion simulation shader
-        const simulationShaderSource = `#version 300 es
-            precision highp float;
-
-            uniform sampler2D u_texture;
-            uniform vec2 u_resolution;
-            uniform float u_Da;
-            uniform float u_Db;
-            uniform float u_feed;
-            uniform float u_kill;
-            uniform float u_dt;
-
-            in vec2 v_texCoord;
-            out vec4 fragColor;
-
-            void main() {
-                vec2 texel = 1.0 / u_resolution;
-
-                // Sample center and neighbors for Laplacian
-                vec2 center = texture(u_texture, v_texCoord).rg;
-                vec2 left = texture(u_texture, v_texCoord + vec2(-texel.x, 0.0)).rg;
-                vec2 right = texture(u_texture, v_texCoord + vec2(texel.x, 0.0)).rg;
-                vec2 up = texture(u_texture, v_texCoord + vec2(0.0, texel.y)).rg;
-                vec2 down = texture(u_texture, v_texCoord + vec2(0.0, -texel.y)).rg;
-
-                // Diagonal neighbors for better diffusion
-                vec2 ul = texture(u_texture, v_texCoord + vec2(-texel.x, texel.y)).rg;
-                vec2 ur = texture(u_texture, v_texCoord + vec2(texel.x, texel.y)).rg;
-                vec2 dl = texture(u_texture, v_texCoord + vec2(-texel.x, -texel.y)).rg;
-                vec2 dr = texture(u_texture, v_texCoord + vec2(texel.x, -texel.y)).rg;
-
-                // 9-point Laplacian stencil for smoother diffusion
-                vec2 laplacian = 0.2 * (left + right + up + down) +
-                                 0.05 * (ul + ur + dl + dr) - center;
-
-                float A = center.r;
-                float B = center.g;
-
-                // Gray-Scott equations
-                float reaction = A * B * B;
-                float dA = u_Da * laplacian.r - reaction + u_feed * (1.0 - A);
-                float dB = u_Db * laplacian.g + reaction - (u_kill + u_feed) * B;
-
-                // Update concentrations
-                float newA = A + dA * u_dt;
-                float newB = B + dB * u_dt;
-
-                // Clamp to valid range
-                fragColor = vec4(clamp(newA, 0.0, 1.0), clamp(newB, 0.0, 1.0), 0.0, 1.0);
-            }
-        `;
-
-        // Color mapping shader for visualization
-        const renderShaderSource = `#version 300 es
-            precision highp float;
-
-            uniform sampler2D u_texture;
-
-            in vec2 v_texCoord;
-            out vec4 fragColor;
-
-            // Metabolic color palette - optimized for visibility
-            vec3 colorMap(float a, float b) {
-                // Background (low activity) - dark navy
-                vec3 bg = vec3(0.102, 0.106, 0.149);
-
-                // Chemical A color (Fatty Acyl - coral red)
-                vec3 colorA = vec3(1.0, 0.42, 0.42);
-
-                // Chemical B color (Acetyl - vibrant cyan/blue)
-                vec3 colorB = vec3(0.2, 0.8, 1.0);
-
-                // Reaction zone (energy - magenta/purple)
-                vec3 colorReaction = vec3(1.0, 0.3, 0.8);
-
-                // B is the "interesting" chemical - it forms the patterns
-                // Enhance B visibility significantly
-                float bIntensity = smoothstep(0.0, 0.5, b) * 2.0;
-
-                // Calculate reaction intensity
-                float reaction = a * b * b * 8.0;
-
-                // Start with background
-                vec3 color = bg;
-
-                // Add B chemical (this is what creates visible patterns)
-                color = mix(color, colorB, bIntensity);
-
-                // Add reaction glow
-                color = mix(color, colorReaction, clamp(reaction, 0.0, 1.0));
-
-                // Slight A tint in empty areas
-                color = mix(color, colorA * 0.3, (1.0 - b) * 0.1);
-
-                return color;
-            }
-
-            void main() {
-                vec2 data = texture(u_texture, v_texCoord).rg;
-                vec3 color = colorMap(data.r, data.g);
-                fragColor = vec4(color, 1.0);
-            }
-        `;
-
-        // ============================================
-        // WEBGL UTILITY FUNCTIONS
-        // ============================================
-
-        function createShader(gl, type, source) {
-            const shader = gl.createShader(type);
-            gl.shaderSource(shader, source);
-            gl.compileShader(shader);
-
-            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-                console.error('Shader compile error:', gl.getShaderInfoLog(shader));
-                gl.deleteShader(shader);
-                return null;
-            }
-            return shader;
-        }
-
-        function createProgram(gl, vertexShader, fragmentShader) {
-            const program = gl.createProgram();
-            gl.attachShader(program, vertexShader);
-            gl.attachShader(program, fragmentShader);
-            gl.linkProgram(program);
-
-            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-                console.error('Program link error:', gl.getProgramInfoLog(program));
-                gl.deleteProgram(program);
-                return null;
-            }
-            return program;
-        }
-
-        function createTexture(gl, width, height) {
-            const texture = gl.createTexture();
-            gl.bindTexture(gl.TEXTURE_2D, texture);
-            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, width, height, 0, gl.RGBA, gl.FLOAT, null);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
-            return texture;
-        }
-
-        function createFramebuffer(gl, texture) {
-            const fb = gl.createFramebuffer();
-            gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
-            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
-            return fb;
-        }
-
-        // ============================================
-        // INITIALIZATION
-        // ============================================
-
-        let vao; // Vertex Array Object
-
-        function initWebGL() {
-            // Enable floating point textures
-            const ext = gl.getExtension('EXT_color_buffer_float');
-            if (!ext) {
-                console.error('EXT_color_buffer_float not supported!');
-                alert('Your browser does not support float textures. Try Chrome or Firefox.');
-                return false;
-            }
-
-            // Create shader programs
-            const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
-            const simFragShader = createShader(gl, gl.FRAGMENT_SHADER, simulationShaderSource);
-            const renderFragShader = createShader(gl, gl.FRAGMENT_SHADER, renderShaderSource);
-
-            if (!vertexShader || !simFragShader || !renderFragShader) {
-                console.error('Shader compilation failed');
-                return false;
-            }
-
-            simulationProgram = createProgram(gl, vertexShader, simFragShader);
-            renderProgram = createProgram(gl, vertexShader, renderFragShader);
-
-            if (!simulationProgram || !renderProgram) {
-                console.error('Program linking failed');
-                return false;
-            }
-
-            // Create VAO (required in WebGL2)
-            vao = gl.createVertexArray();
-            gl.bindVertexArray(vao);
-
-            // Create vertex buffer (full-screen quad)
-            const positions = new Float32Array([
-                -1, -1, 1, -1, -1, 1,
-                -1, 1, 1, -1, 1, 1
-            ]);
-
-            const positionBuffer = gl.createBuffer();
-            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-            gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
-
-            // Set up vertex attribute (position is at location 0 in both shaders)
-            gl.enableVertexAttribArray(0);
-            gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
-
-            console.log('WebGL initialized successfully');
-            return true;
-        }
-
-        function resizeCanvas() {
-            const container = canvas.parentElement;
-            const dpr = window.devicePixelRatio || 1;
-
-            // Use power of 2 dimensions for better performance
-            width = Math.min(1024, Math.floor(container.clientWidth * dpr / 2) * 2);
-            height = Math.min(1024, Math.floor(container.clientHeight * dpr / 2) * 2);
-
-            canvas.width = width;
-            canvas.height = height;
-
-            gl.viewport(0, 0, width, height);
-
-            // Recreate textures and framebuffers
-            textures.forEach(t => gl.deleteTexture(t));
-            framebuffers.forEach(fb => gl.deleteFramebuffer(fb));
-
-            textures = [createTexture(gl, width, height), createTexture(gl, width, height)];
-            framebuffers = [createFramebuffer(gl, textures[0]), createFramebuffer(gl, textures[1])];
-
-            initializeState();
-        }
-
-        function initializeState() {
-            // Initialize with A=1 everywhere, B=0 (substrate saturated, no product)
-            const data = new Float32Array(width * height * 4);
-
-            for (let i = 0; i < width * height; i++) {
-                data[i * 4] = 1.0;     // A (substrate)
-                data[i * 4 + 1] = 0.0; // B (product)
-                data[i * 4 + 2] = 0.0;
-                data[i * 4 + 3] = 1.0;
-            }
-
-            // Add initial seed patterns (enzyme hotspots) - larger and more visible
-            const numSeeds = 15;
-            for (let s = 0; s < numSeeds; s++) {
-                const cx = Math.floor(width * 0.1 + Math.random() * width * 0.8);
-                const cy = Math.floor(height * 0.1 + Math.random() * height * 0.8);
-                const radius = 10 + Math.random() * 20;
-
-                for (let y = -radius; y <= radius; y++) {
-                    for (let x = -radius; x <= radius; x++) {
-                        const dist = Math.sqrt(x * x + y * y);
-                        if (dist < radius) {
-                            const px = (cx + Math.floor(x) + width) % width;
-                            const py = (cy + Math.floor(y) + height) % height;
-                            const idx = (py * width + px) * 4;
-                            // Smooth falloff from center
-                            const falloff = 1.0 - dist / radius;
-                            data[idx] = 0.5;                    // Lower A
-                            data[idx + 1] = 0.25 * falloff;     // B with falloff
-                        }
-                    }
+            for (let y = 0; y < SIM_HEIGHT; y++) {
+                gridA[y] = [];
+                gridB[y] = [];
+                nextA[y] = [];
+                nextB[y] = [];
+                for (let x = 0; x < SIM_WIDTH; x++) {
+                    gridA[y][x] = 1.0;  // A starts at 1 everywhere
+                    gridB[y][x] = 0.0;  // B starts at 0
+                    nextA[y][x] = 0.0;
+                    nextB[y][x] = 0.0;
                 }
             }
 
-            // Add a central cluster for immediate visual feedback
-            const centerX = Math.floor(width / 2);
-            const centerY = Math.floor(height / 2);
-            const centerRadius = 30;
-            for (let y = -centerRadius; y <= centerRadius; y++) {
-                for (let x = -centerRadius; x <= centerRadius; x++) {
-                    const dist = Math.sqrt(x * x + y * y);
-                    if (dist < centerRadius) {
-                        const px = centerX + x;
-                        const py = centerY + y;
-                        if (px >= 0 && px < width && py >= 0 && py < height) {
-                            const idx = (py * width + px) * 4;
-                            const falloff = 1.0 - dist / centerRadius;
-                            data[idx] = 0.5;
-                            data[idx + 1] = Math.max(data[idx + 1], 0.3 * falloff);
-                        }
-                    }
-                }
+            // Add seed patterns - multiple spots for B
+            addSeed(SIM_WIDTH / 2, SIM_HEIGHT / 2, 20);
+
+            for (let i = 0; i < 10; i++) {
+                const x = 30 + Math.random() * (SIM_WIDTH - 60);
+                const y = 30 + Math.random() * (SIM_HEIGHT - 60);
+                addSeed(x, y, 5 + Math.random() * 10);
             }
 
-            // Upload to both textures
-            textures.forEach(texture => {
-                gl.bindTexture(gl.TEXTURE_2D, texture);
-                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, width, height, 0, gl.RGBA, gl.FLOAT, data);
-            });
-
-            currentBuffer = 0;
             iterations = 0;
         }
 
-        // ============================================
-        // SIMULATION & RENDERING
-        // ============================================
+        function addSeed(cx, cy, radius) {
+            for (let y = -radius; y <= radius; y++) {
+                for (let x = -radius; x <= radius; x++) {
+                    if (x * x + y * y < radius * radius) {
+                        const px = Math.floor(cx + x);
+                        const py = Math.floor(cy + y);
+                        if (px >= 0 && px < SIM_WIDTH && py >= 0 && py < SIM_HEIGHT) {
+                            gridB[py][px] = 1.0;
+                        }
+                    }
+                }
+            }
+        }
 
+        // Laplacian with wrapping boundaries
+        function laplacian(grid, x, y) {
+            const w = SIM_WIDTH;
+            const h = SIM_HEIGHT;
+
+            // Wrap coordinates
+            const xp = (x + 1) % w;
+            const xm = (x - 1 + w) % w;
+            const yp = (y + 1) % h;
+            const ym = (y - 1 + h) % h;
+
+            // 5-point stencil Laplacian
+            return grid[y][xp] + grid[y][xm] +
+                   grid[yp][x] + grid[ym][x] -
+                   4 * grid[y][x];
+        }
+
+        // One simulation step
         function simulate() {
-            gl.useProgram(simulationProgram);
-            gl.bindVertexArray(vao);
+            const { dA, dB, feed, kill } = params;
 
-            // Set uniforms
-            gl.uniform1i(gl.getUniformLocation(simulationProgram, 'u_texture'), 0);
-            gl.uniform2f(gl.getUniformLocation(simulationProgram, 'u_resolution'), width, height);
-            gl.uniform1f(gl.getUniformLocation(simulationProgram, 'u_Da'), params.Da);
-            gl.uniform1f(gl.getUniformLocation(simulationProgram, 'u_Db'), params.Db);
-            gl.uniform1f(gl.getUniformLocation(simulationProgram, 'u_feed'), params.feed);
-            gl.uniform1f(gl.getUniformLocation(simulationProgram, 'u_kill'), params.kill);
-            gl.uniform1f(gl.getUniformLocation(simulationProgram, 'u_dt'), params.dt);
+            for (let y = 0; y < SIM_HEIGHT; y++) {
+                for (let x = 0; x < SIM_WIDTH; x++) {
+                    const a = gridA[y][x];
+                    const b = gridB[y][x];
 
-            // Ping-pong: read from current, write to next
-            const readTex = textures[currentBuffer];
-            const writeFB = framebuffers[1 - currentBuffer];
+                    const lapA = laplacian(gridA, x, y);
+                    const lapB = laplacian(gridB, x, y);
 
-            gl.activeTexture(gl.TEXTURE0);
-            gl.bindTexture(gl.TEXTURE_2D, readTex);
-            gl.bindFramebuffer(gl.FRAMEBUFFER, writeFB);
+                    const reaction = a * b * b;
 
-            gl.drawArrays(gl.TRIANGLES, 0, 6);
+                    // Gray-Scott equations
+                    nextA[y][x] = a + (dA * lapA - reaction + feed * (1 - a));
+                    nextB[y][x] = b + (dB * lapB + reaction - (kill + feed) * b);
 
-            currentBuffer = 1 - currentBuffer;
+                    // Clamp values
+                    nextA[y][x] = Math.max(0, Math.min(1, nextA[y][x]));
+                    nextB[y][x] = Math.max(0, Math.min(1, nextB[y][x]));
+                }
+            }
+
+            // Swap buffers
+            [gridA, nextA] = [nextA, gridA];
+            [gridB, nextB] = [nextB, gridB];
+
             iterations++;
         }
 
+        // Render to canvas
         function render() {
-            gl.useProgram(renderProgram);
-            gl.bindVertexArray(vao);
+            canvas.width = canvas.clientWidth;
+            canvas.height = canvas.clientHeight;
 
-            gl.uniform1i(gl.getUniformLocation(renderProgram, 'u_texture'), 0);
+            const imageData = ctx.createImageData(SIM_WIDTH, SIM_HEIGHT);
+            const data = imageData.data;
 
-            gl.activeTexture(gl.TEXTURE0);
-            gl.bindTexture(gl.TEXTURE_2D, textures[currentBuffer]);
-            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            for (let y = 0; y < SIM_HEIGHT; y++) {
+                for (let x = 0; x < SIM_WIDTH; x++) {
+                    const idx = (y * SIM_WIDTH + x) * 4;
+                    const a = gridA[y][x];
+                    const b = gridB[y][x];
 
-            gl.drawArrays(gl.TRIANGLES, 0, 6);
+                    // Color mapping
+                    // Background: dark navy (26, 27, 38)
+                    // High B: cyan/blue (77, 171, 247)
+                    // Reaction zones: magenta (218, 119, 242)
+
+                    const reaction = a * b * b * 4;
+
+                    // Base color from B concentration
+                    let r = 26 + b * 51 + reaction * 192;
+                    let g = 27 + b * 144 + reaction * 92;
+                    let bl = 38 + b * 209 + reaction * 204;
+
+                    data[idx] = Math.min(255, r);
+                    data[idx + 1] = Math.min(255, g);
+                    data[idx + 2] = Math.min(255, bl);
+                    data[idx + 3] = 255;
+                }
+            }
+
+            // Scale up to canvas size
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = SIM_WIDTH;
+            tempCanvas.height = SIM_HEIGHT;
+            tempCanvas.getContext('2d').putImageData(imageData, 0, 0);
+
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(tempCanvas, 0, 0, canvas.width, canvas.height);
         }
 
+        // Animation loop
         function animate(currentTime) {
             if (isRunning) {
-                // Run multiple simulation steps per frame for speed
-                for (let i = 0; i < 8; i++) {
+                // Multiple simulation steps per frame
+                for (let i = 0; i < 10; i++) {
                     simulate();
                 }
             }
@@ -923,67 +685,25 @@
             requestAnimationFrame(animate);
         }
 
-        // ============================================
-        // USER INTERACTION
-        // ============================================
-
-        function injectChemical(x, y, clearMode = false) {
+        // Click to add chemicals
+        function handleClick(e) {
             const rect = canvas.getBoundingClientRect();
-            const canvasX = Math.floor((x - rect.left) / rect.width * width);
-            const canvasY = Math.floor((1 - (y - rect.top) / rect.height) * height);
-
-            // Read current texture data
-            gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[currentBuffer]);
-            const data = new Float32Array(width * height * 4);
-            gl.readPixels(0, 0, width, height, gl.RGBA, gl.FLOAT, data);
-
-            // Modify area around click
-            const radius = params.brushSize;
-            for (let dy = -radius; dy <= radius; dy++) {
-                for (let dx = -radius; dx <= radius; dx++) {
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-                    if (dist < radius) {
-                        const px = (canvasX + dx + width) % width;
-                        const py = (canvasY + dy + height) % height;
-                        const idx = (py * width + px) * 4;
-
-                        const falloff = 1 - dist / radius;
-
-                        if (clearMode) {
-                            // Clear: set to initial state
-                            data[idx] = 1.0;
-                            data[idx + 1] = 0.0;
-                        } else {
-                            // Inject: add product chemical
-                            data[idx] = Math.max(0, data[idx] - 0.3 * falloff);
-                            data[idx + 1] = Math.min(1, data[idx + 1] + 0.5 * falloff);
-                        }
-                    }
-                }
-            }
-
-            // Upload modified data
-            gl.bindTexture(gl.TEXTURE_2D, textures[currentBuffer]);
-            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, width, height, 0, gl.RGBA, gl.FLOAT, data);
+            const x = Math.floor((e.clientX - rect.left) / rect.width * SIM_WIDTH);
+            const y = Math.floor((e.clientY - rect.top) / rect.height * SIM_HEIGHT);
+            addSeed(x, y, 10);
         }
 
-        // ============================================
-        // EVENT HANDLERS
-        // ============================================
-
+        // Event listeners
         function setupEventListeners() {
-            // Canvas click
             let isDragging = false;
 
             canvas.addEventListener('mousedown', (e) => {
                 isDragging = true;
-                injectChemical(e.clientX, e.clientY, e.shiftKey);
+                handleClick(e);
             });
 
             canvas.addEventListener('mousemove', (e) => {
-                if (isDragging) {
-                    injectChemical(e.clientX, e.clientY, e.shiftKey);
-                }
+                if (isDragging) handleClick(e);
             });
 
             canvas.addEventListener('mouseup', () => isDragging = false);
@@ -993,13 +713,13 @@
             canvas.addEventListener('touchstart', (e) => {
                 e.preventDefault();
                 const touch = e.touches[0];
-                injectChemical(touch.clientX, touch.clientY);
+                handleClick({ clientX: touch.clientX, clientY: touch.clientY });
             });
 
             canvas.addEventListener('touchmove', (e) => {
                 e.preventDefault();
                 const touch = e.touches[0];
-                injectChemical(touch.clientX, touch.clientY);
+                handleClick({ clientX: touch.clientX, clientY: touch.clientY });
             });
 
             // Control buttons
@@ -1009,54 +729,44 @@
                 document.getElementById('play-text').textContent = isRunning ? 'Pause' : 'Play';
             });
 
-            document.getElementById('reset-btn').addEventListener('click', () => {
-                initializeState();
-            });
+            document.getElementById('reset-btn').addEventListener('click', initGrids);
 
             document.getElementById('clear-btn').addEventListener('click', () => {
-                // Clear to initial uniform state
-                const data = new Float32Array(width * height * 4);
-                for (let i = 0; i < width * height; i++) {
-                    data[i * 4] = 1.0;
-                    data[i * 4 + 1] = 0.0;
-                    data[i * 4 + 2] = 0.0;
-                    data[i * 4 + 3] = 1.0;
+                for (let y = 0; y < SIM_HEIGHT; y++) {
+                    for (let x = 0; x < SIM_WIDTH; x++) {
+                        gridA[y][x] = 1.0;
+                        gridB[y][x] = 0.0;
+                    }
                 }
-                textures.forEach(texture => {
-                    gl.bindTexture(gl.TEXTURE_2D, texture);
-                    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, width, height, 0, gl.RGBA, gl.FLOAT, data);
-                });
                 iterations = 0;
             });
 
-            // Preset buttons
+            // Presets
             document.querySelectorAll('.preset-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
                     document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
 
                     const preset = presets[btn.dataset.preset];
-                    params = { ...params, ...preset };
+                    params.feed = preset.feed;
+                    params.kill = preset.kill;
 
-                    // Update sliders
-                    updateSliders();
+                    document.getElementById('feed-slider').value = preset.feed;
+                    document.getElementById('feed-value').textContent = preset.feed.toFixed(4);
+                    document.getElementById('kill-slider').value = preset.kill;
+                    document.getElementById('kill-value').textContent = preset.kill.toFixed(4);
                 });
             });
 
             // Sliders
-            const sliders = [
-                { id: 'da', param: 'Da', display: 'da-value' },
-                { id: 'db', param: 'Db', display: 'db-value' },
-                { id: 'feed', param: 'feed', display: 'feed-value' },
-                { id: 'kill', param: 'kill', display: 'kill-value' }
-            ];
+            document.getElementById('feed-slider').addEventListener('input', (e) => {
+                params.feed = parseFloat(e.target.value);
+                document.getElementById('feed-value').textContent = params.feed.toFixed(4);
+            });
 
-            sliders.forEach(({ id, param, display }) => {
-                const slider = document.getElementById(`${id}-slider`);
-                slider.addEventListener('input', () => {
-                    params[param] = parseFloat(slider.value);
-                    document.getElementById(display).textContent = slider.value;
-                });
+            document.getElementById('kill-slider').addEventListener('input', (e) => {
+                params.kill = parseFloat(e.target.value);
+                document.getElementById('kill-value').textContent = params.kill.toFixed(4);
             });
 
             // Keyboard shortcuts
@@ -1069,16 +779,15 @@
                         document.getElementById('play-btn').click();
                         break;
                     case 'r':
-                        document.getElementById('reset-btn').click();
+                        initGrids();
                         break;
                     case '1': case '2': case '3': case '4': case '5': case '6':
-                        const presetBtns = document.querySelectorAll('.preset-btn');
-                        presetBtns[parseInt(e.key) - 1]?.click();
+                        document.querySelectorAll('.preset-btn')[parseInt(e.key) - 1]?.click();
                         break;
                 }
             });
 
-            // Tooltips for metabolites
+            // Tooltips
             const tooltip = document.getElementById('tooltip');
             document.querySelectorAll('.metabolite').forEach(el => {
                 el.addEventListener('mouseenter', (e) => {
@@ -1087,65 +796,40 @@
                     tooltip.style.top = e.pageY + 10 + 'px';
                     tooltip.classList.add('visible');
                 });
-
-                el.addEventListener('mouseleave', () => {
-                    tooltip.classList.remove('visible');
-                });
+                el.addEventListener('mouseleave', () => tooltip.classList.remove('visible'));
             });
 
-            // Share button
+            // Share
             document.getElementById('share-btn').addEventListener('click', () => {
                 const url = new URL(window.location);
                 url.searchParams.set('f', params.feed);
                 url.searchParams.set('k', params.kill);
-                url.searchParams.set('da', params.Da);
-                url.searchParams.set('db', params.Db);
-
                 navigator.clipboard.writeText(url.toString()).then(() => {
                     alert('Link copied to clipboard!');
                 });
             });
 
-            // Window resize
-            window.addEventListener('resize', () => {
-                resizeCanvas();
-            });
+            // Load from URL
+            const urlParams = new URL(window.location).searchParams;
+            if (urlParams.has('f')) {
+                params.feed = parseFloat(urlParams.get('f'));
+                document.getElementById('feed-slider').value = params.feed;
+                document.getElementById('feed-value').textContent = params.feed.toFixed(4);
+            }
+            if (urlParams.has('k')) {
+                params.kill = parseFloat(urlParams.get('k'));
+                document.getElementById('kill-slider').value = params.kill;
+                document.getElementById('kill-value').textContent = params.kill.toFixed(4);
+            }
         }
 
-        function updateSliders() {
-            document.getElementById('da-slider').value = params.Da;
-            document.getElementById('da-value').textContent = params.Da.toFixed(2);
-            document.getElementById('db-slider').value = params.Db;
-            document.getElementById('db-value').textContent = params.Db.toFixed(2);
-            document.getElementById('feed-slider').value = params.feed;
-            document.getElementById('feed-value').textContent = params.feed.toFixed(3);
-            document.getElementById('kill-slider').value = params.kill;
-            document.getElementById('kill-value').textContent = params.kill.toFixed(3);
-        }
+        // Start
+        initGrids();
+        setupEventListeners();
+        requestAnimationFrame(animate);
 
-        function loadFromURL() {
-            const url = new URL(window.location);
-            if (url.searchParams.has('f')) params.feed = parseFloat(url.searchParams.get('f'));
-            if (url.searchParams.has('k')) params.kill = parseFloat(url.searchParams.get('k'));
-            if (url.searchParams.has('da')) params.Da = parseFloat(url.searchParams.get('da'));
-            if (url.searchParams.has('db')) params.Db = parseFloat(url.searchParams.get('db'));
-            updateSliders();
-        }
-
-        // ============================================
-        // STARTUP
-        // ============================================
-
-        if (initWebGL()) {
-            resizeCanvas();
-            loadFromURL();
-            setupEventListeners();
-            requestAnimationFrame(animate);
-            console.log('Metabolic Turing Patterns Explorer initialized');
-            console.log('Click to inject chemicals, Shift+Click to clear');
-        } else {
-            document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#1A1B26;color:#FF6B6B;font-family:sans-serif;text-align:center;padding:2rem;"><div><h1>WebGL2 Error</h1><p>Could not initialize WebGL2. Please use a modern browser like Chrome, Firefox, or Edge.</p></div></div>';
-        }
+        console.log('Metabolic Turing Patterns Explorer initialized');
+        console.log('Click anywhere to inject chemicals');
     </script>
 </body>
 </html>
