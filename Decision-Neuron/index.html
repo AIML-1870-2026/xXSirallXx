@@ -510,9 +510,293 @@
             font-size: 1.1rem;
             margin: 0;
         }
+
+        /* Welcome Overlay */
+        .welcome-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
+
+        .welcome-overlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .welcome-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+        }
+
+        .welcome-title {
+            font-size: 2.5rem;
+            color: #00d9ff;
+            text-shadow: 0 0 30px rgba(0, 217, 255, 0.5);
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .welcome-prompt {
+            font-size: 1.3rem;
+            color: #e0e0e0;
+            margin-bottom: 40px;
+            text-align: center;
+            max-width: 600px;
+            line-height: 1.6;
+        }
+
+        .search-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .search-bar {
+            width: 100%;
+            padding: 18px 25px;
+            padding-left: 55px;
+            font-size: 1.1rem;
+            border: 2px solid rgba(0, 217, 255, 0.3);
+            border-radius: 50px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            outline: none;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .search-bar::placeholder {
+            color: #888;
+        }
+
+        .search-bar:focus {
+            border-color: #00d9ff;
+            box-shadow: 0 0 30px rgba(0, 217, 255, 0.3);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.3rem;
+            color: #00d9ff;
+        }
+
+        .recommendations {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin-top: 10px;
+            background: rgba(30, 30, 50, 0.95);
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(0, 217, 255, 0.2);
+            max-height: 350px;
+            overflow-y: auto;
+        }
+
+        .recommendations.hidden {
+            display: none;
+        }
+
+        .recommendation-item {
+            padding: 15px 25px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: background 0.2s ease;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .recommendation-item:last-child {
+            border-bottom: none;
+        }
+
+        .recommendation-item:hover {
+            background: rgba(0, 217, 255, 0.15);
+        }
+
+        .recommendation-item.selected {
+            background: rgba(0, 217, 255, 0.2);
+        }
+
+        .rec-icon {
+            font-size: 1.5rem;
+            width: 40px;
+            text-align: center;
+        }
+
+        .rec-content {
+            flex: 1;
+        }
+
+        .rec-title {
+            color: #fff;
+            font-weight: 500;
+            margin-bottom: 3px;
+        }
+
+        .rec-description {
+            color: #888;
+            font-size: 0.85rem;
+        }
+
+        .rec-arrow {
+            color: #00d9ff;
+            font-size: 1.2rem;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .recommendation-item:hover .rec-arrow {
+            opacity: 1;
+        }
+
+        .search-hint {
+            text-align: center;
+            color: #666;
+            font-size: 0.85rem;
+            margin-top: 20px;
+        }
+
+        .search-hint kbd {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 3px 8px;
+            border-radius: 4px;
+            margin: 0 3px;
+        }
+
+        /* Main content initially hidden */
+        .main-content {
+            opacity: 1;
+            transition: opacity 0.3s ease;
+        }
+
+        .main-content.hidden {
+            opacity: 0;
+        }
     </style>
 </head>
 <body>
+    <!-- Welcome Overlay -->
+    <div class="welcome-overlay" id="welcome-overlay">
+        <div class="welcome-icon">🧠</div>
+        <h1 class="welcome-title">Decision Neuron</h1>
+        <p class="welcome-prompt">What do you need advice with?<br>I will calculate who will be the best person to ask.</p>
+
+        <div class="search-container">
+            <span class="search-icon">🔍</span>
+            <input type="text" class="search-bar" id="advice-search" placeholder="Type what you need advice about..." autocomplete="off">
+
+            <div class="recommendations" id="recommendations">
+                <div class="recommendation-item" data-scenario="0">
+                    <span class="rec-icon">💼</span>
+                    <div class="rec-content">
+                        <div class="rec-title">Career Change Decision</div>
+                        <div class="rec-description">Switching careers and need guidance on making the leap</div>
+                    </div>
+                    <span class="rec-arrow">→</span>
+                </div>
+                <div class="recommendation-item" data-scenario="1">
+                    <span class="rec-icon">💰</span>
+                    <div class="rec-content">
+                        <div class="rec-title">Investment Decision</div>
+                        <div class="rec-description">Financial advice on investing savings wisely</div>
+                    </div>
+                    <span class="rec-arrow">→</span>
+                </div>
+                <div class="recommendation-item" data-scenario="2">
+                    <span class="rec-icon">❤️</span>
+                    <div class="rec-content">
+                        <div class="rec-title">Relationship Advice</div>
+                        <div class="rec-description">Navigating a difficult relationship situation</div>
+                    </div>
+                    <span class="rec-arrow">→</span>
+                </div>
+                <div class="recommendation-item" data-scenario="3">
+                    <span class="rec-icon">🏥</span>
+                    <div class="rec-content">
+                        <div class="rec-title">Health Concern</div>
+                        <div class="rec-description">Medical questions and health-related decisions</div>
+                    </div>
+                    <span class="rec-arrow">→</span>
+                </div>
+                <div class="recommendation-item" data-scenario="4">
+                    <span class="rec-icon">🚀</span>
+                    <div class="rec-content">
+                        <div class="rec-title">Starting a Business</div>
+                        <div class="rec-description">Entrepreneurial advice before taking the plunge</div>
+                    </div>
+                    <span class="rec-arrow">→</span>
+                </div>
+                <div class="recommendation-item" data-scenario="5">
+                    <span class="rec-icon">🏙️</span>
+                    <div class="rec-content">
+                        <div class="rec-title">Moving to a New City</div>
+                        <div class="rec-description">Relocating for work or personal reasons</div>
+                    </div>
+                    <span class="rec-arrow">→</span>
+                </div>
+                <div class="recommendation-item" data-scenario="6">
+                    <span class="rec-icon">🏠</span>
+                    <div class="rec-content">
+                        <div class="rec-title">Buying a House</div>
+                        <div class="rec-description">First-time home buying guidance</div>
+                    </div>
+                    <span class="rec-arrow">→</span>
+                </div>
+                <div class="recommendation-item" data-scenario="7">
+                    <span class="rec-icon">📚</span>
+                    <div class="rec-content">
+                        <div class="rec-title">Learning New Skills</div>
+                        <div class="rec-description">Upskilling for career growth</div>
+                    </div>
+                    <span class="rec-arrow">→</span>
+                </div>
+                <div class="recommendation-item" data-scenario="8">
+                    <span class="rec-icon">⚔️</span>
+                    <div class="rec-content">
+                        <div class="rec-title">Dealing with Conflict</div>
+                        <div class="rec-description">Workplace or personal conflict resolution</div>
+                    </div>
+                    <span class="rec-arrow">→</span>
+                </div>
+                <div class="recommendation-item" data-scenario="9">
+                    <span class="rec-icon">💒</span>
+                    <div class="rec-content">
+                        <div class="rec-title">Planning a Wedding</div>
+                        <div class="rec-description">Wedding planning decisions and advice</div>
+                    </div>
+                    <span class="rec-arrow">→</span>
+                </div>
+            </div>
+        </div>
+
+        <p class="search-hint">Click a suggestion or type your own • Press <kbd>Enter</kbd> to continue</p>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content" id="main-content">
     <h1>⚡ Decision Neuron</h1>
     <p class="subtitle">Modulating advice source selection through weighted neural activation</p>
 
@@ -736,11 +1020,171 @@
             <p>Adjust the sliders or generate a scenario to see the decision reasoning here.</p>
         </div>
     </div>
+    </div> <!-- End main-content -->
 
     <script>
         let customFactors = [];
         let factorCount = 0;
         let currentScenario = null;
+        let selectedRecommendation = -1;
+
+        // Welcome overlay functionality
+        function initWelcomeOverlay() {
+            const overlay = document.getElementById('welcome-overlay');
+            const searchInput = document.getElementById('advice-search');
+            const recommendations = document.getElementById('recommendations');
+            const recItems = document.querySelectorAll('.recommendation-item');
+
+            // Show recommendations on focus
+            searchInput.addEventListener('focus', () => {
+                recommendations.classList.remove('hidden');
+                filterRecommendations(searchInput.value);
+            });
+
+            // Filter recommendations as user types
+            searchInput.addEventListener('input', (e) => {
+                filterRecommendations(e.target.value);
+                selectedRecommendation = -1;
+                updateSelectedRecommendation();
+            });
+
+            // Keyboard navigation
+            searchInput.addEventListener('keydown', (e) => {
+                const visibleItems = document.querySelectorAll('.recommendation-item:not([style*="display: none"])');
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    selectedRecommendation = Math.min(selectedRecommendation + 1, visibleItems.length - 1);
+                    updateSelectedRecommendation();
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    selectedRecommendation = Math.max(selectedRecommendation - 1, -1);
+                    updateSelectedRecommendation();
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (selectedRecommendation >= 0 && visibleItems[selectedRecommendation]) {
+                        const scenarioIdx = parseInt(visibleItems[selectedRecommendation].dataset.scenario);
+                        selectScenario(scenarioIdx);
+                    } else if (searchInput.value.trim()) {
+                        // Custom scenario - just start with defaults
+                        startWithCustomQuery(searchInput.value.trim());
+                    }
+                } else if (e.key === 'Escape') {
+                    recommendations.classList.add('hidden');
+                }
+            });
+
+            // Click on recommendation
+            recItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    const scenarioIdx = parseInt(item.dataset.scenario);
+                    selectScenario(scenarioIdx);
+                });
+            });
+
+            // Close recommendations when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.search-container')) {
+                    recommendations.classList.add('hidden');
+                }
+            });
+        }
+
+        function filterRecommendations(query) {
+            const recItems = document.querySelectorAll('.recommendation-item');
+            const lowerQuery = query.toLowerCase();
+
+            recItems.forEach(item => {
+                const title = item.querySelector('.rec-title').textContent.toLowerCase();
+                const desc = item.querySelector('.rec-description').textContent.toLowerCase();
+
+                if (title.includes(lowerQuery) || desc.includes(lowerQuery) || query === '') {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        function updateSelectedRecommendation() {
+            const visibleItems = document.querySelectorAll('.recommendation-item:not([style*="display: none"])');
+
+            document.querySelectorAll('.recommendation-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+
+            if (selectedRecommendation >= 0 && visibleItems[selectedRecommendation]) {
+                visibleItems[selectedRecommendation].classList.add('selected');
+                visibleItems[selectedRecommendation].scrollIntoView({ block: 'nearest' });
+            }
+        }
+
+        function selectScenario(scenarioIdx) {
+            const overlay = document.getElementById('welcome-overlay');
+            const mainContent = document.getElementById('main-content');
+
+            // Load the scenario
+            currentScenario = scenarios[scenarioIdx];
+
+            // Update scenario display
+            document.getElementById('scenario-title').textContent = currentScenario.title;
+            document.getElementById('scenario-description').textContent = currentScenario.description;
+            document.getElementById('role-a').textContent = currentScenario.roles.a;
+            document.getElementById('role-b').textContent = currentScenario.roles.b;
+            document.getElementById('role-c').textContent = currentScenario.roles.c;
+            document.getElementById('role-d').textContent = currentScenario.roles.d;
+
+            // Set weight sliders
+            document.getElementById('weight-expertise').value = currentScenario.weights.expertise;
+            document.getElementById('weight-availability').value = currentScenario.weights.availability;
+            document.getElementById('weight-trust').value = currentScenario.weights.trust;
+
+            // Set person scores
+            ['a', 'b', 'c', 'd'].forEach(person => {
+                document.getElementById(`expertise-${person}`).value = currentScenario.scores[person].expertise;
+                document.getElementById(`availability-${person}`).value = currentScenario.scores[person].availability;
+                document.getElementById(`trust-${person}`).value = currentScenario.scores[person].trust;
+            });
+
+            // Hide overlay and show main content
+            overlay.classList.add('hidden');
+
+            // Calculate after a short delay
+            setTimeout(() => {
+                calculate();
+            }, 100);
+        }
+
+        function startWithCustomQuery(query) {
+            const overlay = document.getElementById('welcome-overlay');
+
+            // Create a custom scenario based on the query
+            currentScenario = {
+                title: query,
+                description: `You need advice about: "${query}". Adjust the sliders below to rate each person's qualities.`,
+                roles: {
+                    a: 'Advisor A',
+                    b: 'Advisor B',
+                    c: 'Advisor C',
+                    d: 'Advisor D'
+                }
+            };
+
+            // Update scenario display with custom query
+            document.getElementById('scenario-title').textContent = currentScenario.title;
+            document.getElementById('scenario-description').textContent = currentScenario.description;
+            document.getElementById('role-a').textContent = currentScenario.roles.a;
+            document.getElementById('role-b').textContent = currentScenario.roles.b;
+            document.getElementById('role-c').textContent = currentScenario.roles.c;
+            document.getElementById('role-d').textContent = currentScenario.roles.d;
+
+            // Hide overlay
+            overlay.classList.add('hidden');
+
+            setTimeout(() => {
+                calculate();
+            }, 100);
+        }
 
         // Predefined scenarios
         const scenarios = [
@@ -1200,8 +1644,14 @@
 
         // Initial calculation
         window.addEventListener('load', () => {
-            calculate();
+            initWelcomeOverlay();
+            // Don't calculate immediately - wait for user to select a scenario
             window.addEventListener('resize', drawConnections);
+
+            // Focus the search input
+            setTimeout(() => {
+                document.getElementById('advice-search').focus();
+            }, 100);
         });
     </script>
 </body>
