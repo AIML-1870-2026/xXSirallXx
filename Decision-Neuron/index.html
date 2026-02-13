@@ -339,11 +339,212 @@
             font-size: 0.9rem;
             margin-bottom: 10px;
         }
+
+        /* Scenario Section */
+        .scenario-section {
+            max-width: 1200px;
+            margin: 0 auto 30px auto;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .scenario-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .scenario-header h2 {
+            color: #ffd93d;
+            font-size: 1.2rem;
+        }
+
+        .scenario-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #ffd93d, #ff6b6b);
+            color: #1a1a2e;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .scenario-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(255, 217, 61, 0.5);
+        }
+
+        .scenario-display {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            border-left: 4px solid #ffd93d;
+        }
+
+        .scenario-display h3 {
+            color: #fff;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .scenario-display p {
+            color: #aaa;
+            line-height: 1.6;
+        }
+
+        .person-roles {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .person-role {
+            background: rgba(0, 217, 255, 0.1);
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .person-role strong {
+            color: #00d9ff;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .person-role span {
+            color: #888;
+            font-size: 0.85rem;
+        }
+
+        /* Decision Explanation */
+        .explanation-section {
+            max-width: 1200px;
+            margin: 30px auto 0 auto;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .explanation-section h2 {
+            color: #51cf66;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        .explanation-content {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            border-left: 4px solid #51cf66;
+        }
+
+        .explanation-content p {
+            color: #e0e0e0;
+            line-height: 1.8;
+            margin-bottom: 15px;
+        }
+
+        .explanation-content p:last-child {
+            margin-bottom: 0;
+        }
+
+        .highlight-winner {
+            color: #ffd93d;
+            font-weight: bold;
+        }
+
+        .highlight-factor {
+            color: #00d9ff;
+        }
+
+        .highlight-person {
+            color: #ff6b6b;
+        }
+
+        .reasoning-step {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 12px;
+            padding: 10px;
+            background: rgba(0, 217, 255, 0.05);
+            border-radius: 8px;
+        }
+
+        .step-number {
+            background: #00d9ff;
+            color: #1a1a2e;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.8rem;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+
+        .step-text {
+            color: #e0e0e0;
+            line-height: 1.5;
+        }
+
+        .final-verdict {
+            background: linear-gradient(135deg, rgba(255, 217, 61, 0.2), rgba(81, 207, 102, 0.2));
+            border: 2px solid #ffd93d;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .final-verdict p {
+            color: #fff;
+            font-size: 1.1rem;
+            margin: 0;
+        }
     </style>
 </head>
 <body>
     <h1>⚡ Decision Neuron</h1>
     <p class="subtitle">Modulating advice source selection through weighted neural activation</p>
+
+    <!-- Scenario Section -->
+    <div class="scenario-section">
+        <div class="scenario-header">
+            <h2>🎲 Random Scenario Generator</h2>
+            <button class="scenario-btn" onclick="generateRandomScenario()">Generate New Scenario</button>
+        </div>
+        <div class="scenario-display">
+            <h3 id="scenario-title">Click "Generate New Scenario" to start</h3>
+            <p id="scenario-description">A random decision scenario will appear here with preset values for each advisor.</p>
+            <div class="person-roles" id="person-roles">
+                <div class="person-role">
+                    <strong>Person A</strong>
+                    <span id="role-a">—</span>
+                </div>
+                <div class="person-role">
+                    <strong>Person B</strong>
+                    <span id="role-b">—</span>
+                </div>
+                <div class="person-role">
+                    <strong>Person C</strong>
+                    <span id="role-c">—</span>
+                </div>
+                <div class="person-role">
+                    <strong>Person D</strong>
+                    <span id="role-d">—</span>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div class="container">
         <!-- Input Factors -->
@@ -528,9 +729,270 @@
         </div>
     </div>
 
+    <!-- Decision Explanation Section -->
+    <div class="explanation-section">
+        <h2>🧠 Decision Explanation Script</h2>
+        <div class="explanation-content" id="explanation-content">
+            <p>Adjust the sliders or generate a scenario to see the decision reasoning here.</p>
+        </div>
+    </div>
+
     <script>
         let customFactors = [];
         let factorCount = 0;
+        let currentScenario = null;
+
+        // Predefined scenarios
+        const scenarios = [
+            {
+                title: "Career Change Decision",
+                description: "You're considering switching careers and need advice on whether to make the leap. Who should you consult?",
+                roles: { a: "Your Mentor (20 years experience)", b: "HR Friend (knows job market)", c: "Close Friend (knows you well)", d: "Career Coach (professional)" },
+                weights: { expertise: 9, availability: 4, trust: 8 },
+                scores: {
+                    a: { expertise: 9, availability: 3, trust: 9 },
+                    b: { expertise: 7, availability: 8, trust: 5 },
+                    c: { expertise: 3, availability: 9, trust: 10 },
+                    d: { expertise: 8, availability: 6, trust: 6 }
+                }
+            },
+            {
+                title: "Investment Decision",
+                description: "You have savings to invest and need guidance on the best strategy. Who would you trust with financial advice?",
+                roles: { a: "Financial Advisor (certified)", b: "Wealthy Uncle (self-made)", c: "Colleague (similar situation)", d: "Online Guru (popular)" },
+                weights: { expertise: 10, availability: 3, trust: 9 },
+                scores: {
+                    a: { expertise: 10, availability: 4, trust: 7 },
+                    b: { expertise: 6, availability: 7, trust: 8 },
+                    c: { expertise: 4, availability: 9, trust: 6 },
+                    d: { expertise: 5, availability: 10, trust: 2 }
+                }
+            },
+            {
+                title: "Relationship Advice",
+                description: "You're facing a difficult relationship situation and need someone to talk to. Who understands matters of the heart?",
+                roles: { a: "Therapist (professional)", b: "Best Friend (knows history)", c: "Parent (life experience)", d: "Sibling (honest feedback)" },
+                weights: { expertise: 5, availability: 7, trust: 10 },
+                scores: {
+                    a: { expertise: 9, availability: 3, trust: 6 },
+                    b: { expertise: 5, availability: 9, trust: 10 },
+                    c: { expertise: 7, availability: 6, trust: 8 },
+                    d: { expertise: 4, availability: 8, trust: 9 }
+                }
+            },
+            {
+                title: "Health Concern",
+                description: "You're experiencing some health symptoms and need advice on next steps. Medical expertise matters here.",
+                roles: { a: "Doctor (general practice)", b: "Nurse Friend (ER experience)", c: "Health-conscious Friend", d: "Parent (raised you)" },
+                weights: { expertise: 10, availability: 6, trust: 7 },
+                scores: {
+                    a: { expertise: 10, availability: 2, trust: 8 },
+                    b: { expertise: 8, availability: 7, trust: 7 },
+                    c: { expertise: 4, availability: 9, trust: 5 },
+                    d: { expertise: 3, availability: 10, trust: 9 }
+                }
+            },
+            {
+                title: "Starting a Business",
+                description: "You have a business idea and want feedback before taking the plunge. Entrepreneurial insight is valuable.",
+                roles: { a: "Successful Entrepreneur", b: "Business Professor", c: "Supportive Spouse", d: "Potential Co-founder" },
+                weights: { expertise: 8, availability: 5, trust: 7 },
+                scores: {
+                    a: { expertise: 10, availability: 2, trust: 6 },
+                    b: { expertise: 8, availability: 5, trust: 5 },
+                    c: { expertise: 3, availability: 10, trust: 10 },
+                    d: { expertise: 7, availability: 8, trust: 7 }
+                }
+            },
+            {
+                title: "Moving to a New City",
+                description: "You're considering relocating for a job opportunity. This is a major life decision affecting many aspects.",
+                roles: { a: "Friend who moved there", b: "Current colleague (staying)", c: "Family member (wants you close)", d: "Recruiter (job focused)" },
+                weights: { expertise: 6, availability: 5, trust: 8 },
+                scores: {
+                    a: { expertise: 9, availability: 6, trust: 7 },
+                    b: { expertise: 5, availability: 8, trust: 8 },
+                    c: { expertise: 4, availability: 9, trust: 9 },
+                    d: { expertise: 7, availability: 7, trust: 3 }
+                }
+            },
+            {
+                title: "Buying a House",
+                description: "First-time home buying is complex. You need someone who understands the process and market.",
+                roles: { a: "Real Estate Agent", b: "Homeowner Friend", c: "Financial Planner", d: "Parent (bought multiple)" },
+                weights: { expertise: 9, availability: 6, trust: 7 },
+                scores: {
+                    a: { expertise: 9, availability: 8, trust: 4 },
+                    b: { expertise: 6, availability: 7, trust: 8 },
+                    c: { expertise: 8, availability: 4, trust: 7 },
+                    d: { expertise: 7, availability: 9, trust: 9 }
+                }
+            },
+            {
+                title: "Learning New Skills",
+                description: "You want to upskill for career growth. Who can guide your learning journey effectively?",
+                roles: { a: "Industry Expert (speaker)", b: "Online Course Creator", c: "Colleague (self-taught)", d: "Former Professor" },
+                weights: { expertise: 8, availability: 7, trust: 5 },
+                scores: {
+                    a: { expertise: 10, availability: 2, trust: 6 },
+                    b: { expertise: 7, availability: 10, trust: 4 },
+                    c: { expertise: 6, availability: 8, trust: 8 },
+                    d: { expertise: 9, availability: 4, trust: 7 }
+                }
+            },
+            {
+                title: "Dealing with Conflict",
+                description: "You're in a workplace conflict and need advice on how to handle it professionally.",
+                roles: { a: "HR Manager", b: "Trusted Manager", c: "Work Best Friend", d: "Lawyer Friend" },
+                weights: { expertise: 7, availability: 6, trust: 9 },
+                scores: {
+                    a: { expertise: 9, availability: 5, trust: 4 },
+                    b: { expertise: 7, availability: 6, trust: 7 },
+                    c: { expertise: 4, availability: 9, trust: 10 },
+                    d: { expertise: 8, availability: 3, trust: 6 }
+                }
+            },
+            {
+                title: "Planning a Wedding",
+                description: "Wedding planning is overwhelming. You need someone with taste, experience, and patience.",
+                roles: { a: "Wedding Planner (pro)", b: "Recently Married Friend", c: "Creative Sibling", d: "Mother (traditional)" },
+                weights: { expertise: 6, availability: 8, trust: 7 },
+                scores: {
+                    a: { expertise: 10, availability: 6, trust: 5 },
+                    b: { expertise: 7, availability: 7, trust: 8 },
+                    c: { expertise: 5, availability: 9, trust: 9 },
+                    d: { expertise: 6, availability: 10, trust: 7 }
+                }
+            }
+        ];
+
+        function generateRandomScenario() {
+            const scenario = scenarios[Math.floor(Math.random() * scenarios.length)];
+            currentScenario = scenario;
+
+            // Update scenario display
+            document.getElementById('scenario-title').textContent = scenario.title;
+            document.getElementById('scenario-description').textContent = scenario.description;
+            document.getElementById('role-a').textContent = scenario.roles.a;
+            document.getElementById('role-b').textContent = scenario.roles.b;
+            document.getElementById('role-c').textContent = scenario.roles.c;
+            document.getElementById('role-d').textContent = scenario.roles.d;
+
+            // Set weight sliders
+            document.getElementById('weight-expertise').value = scenario.weights.expertise;
+            document.getElementById('weight-availability').value = scenario.weights.availability;
+            document.getElementById('weight-trust').value = scenario.weights.trust;
+
+            // Set person scores
+            ['a', 'b', 'c', 'd'].forEach(person => {
+                document.getElementById(`expertise-${person}`).value = scenario.scores[person].expertise;
+                document.getElementById(`availability-${person}`).value = scenario.scores[person].availability;
+                document.getElementById(`trust-${person}`).value = scenario.scores[person].trust;
+            });
+
+            calculate();
+        }
+
+        function generateExplanation(scores, activations, weights, winner) {
+            const people = ['a', 'b', 'c', 'd'];
+            const personNames = currentScenario ?
+                { a: currentScenario.roles.a, b: currentScenario.roles.b, c: currentScenario.roles.c, d: currentScenario.roles.d } :
+                { a: 'Person A', b: 'Person B', c: 'Person C', d: 'Person D' };
+
+            const winnerName = personNames[winner];
+            const winnerActivation = (activations[people.indexOf(winner)] * 100).toFixed(1);
+
+            // Find the strongest factor for the winner
+            const winnerScores = {
+                expertise: getValue(`expertise-${winner}`) * weights.expertise,
+                availability: getValue(`availability-${winner}`) * weights.availability,
+                trust: getValue(`trust-${winner}`) * weights.trust
+            };
+
+            const strongestFactor = Object.entries(winnerScores).reduce((a, b) => a[1] > b[1] ? a : b)[0];
+            const factorLabels = { expertise: 'Domain Expertise', availability: 'Availability', trust: 'Trust Level' };
+
+            // Find runner-up
+            const sortedIndices = activations.map((a, i) => ({ activation: a, person: people[i] }))
+                .sort((a, b) => b.activation - a.activation);
+            const runnerUp = sortedIndices[1];
+            const runnerUpName = personNames[runnerUp.person];
+            const margin = ((activations[people.indexOf(winner)] - runnerUp.activation) * 100).toFixed(1);
+
+            // Generate explanation HTML
+            let html = `
+                <div class="reasoning-step">
+                    <span class="step-number">1</span>
+                    <span class="step-text">
+                        <strong>Analyzing the decision context:</strong> ${currentScenario ? `"${currentScenario.title}" - ${currentScenario.description}` : 'Custom scenario with your defined parameters.'}
+                    </span>
+                </div>
+
+                <div class="reasoning-step">
+                    <span class="step-number">2</span>
+                    <span class="step-text">
+                        <strong>Weighing factor importance:</strong>
+                        <span class="highlight-factor">Expertise</span> is weighted at ${(weights.expertise * 10).toFixed(0)}%,
+                        <span class="highlight-factor">Availability</span> at ${(weights.availability * 10).toFixed(0)}%, and
+                        <span class="highlight-factor">Trust</span> at ${(weights.trust * 10).toFixed(0)}%.
+                        ${weights.expertise > weights.availability && weights.expertise > weights.trust ?
+                            'This scenario prioritizes domain knowledge over accessibility.' :
+                            weights.trust > weights.expertise && weights.trust > weights.availability ?
+                            'This scenario values trust and reliability most highly.' :
+                            'Availability is a key factor in this time-sensitive decision.'}
+                    </span>
+                </div>
+
+                <div class="reasoning-step">
+                    <span class="step-number">3</span>
+                    <span class="step-text">
+                        <strong>Evaluating each candidate:</strong><br>
+                        ${people.map(p => {
+                            const exp = getValue(`expertise-${p}`);
+                            const avail = getValue(`availability-${p}`);
+                            const trust = getValue(`trust-${p}`);
+                            return `• <span class="highlight-person">${personNames[p]}</span>: Expertise ${exp}/10, Availability ${avail}/10, Trust ${trust}/10`;
+                        }).join('<br>')}
+                    </span>
+                </div>
+
+                <div class="reasoning-step">
+                    <span class="step-number">4</span>
+                    <span class="step-text">
+                        <strong>Computing neural activations:</strong> After applying weighted calculations and softmax normalization,
+                        <span class="highlight-winner">${winnerName}</span> achieved the highest activation at
+                        <span class="highlight-winner">${winnerActivation}%</span>.
+                        Their strongest contribution came from <span class="highlight-factor">${factorLabels[strongestFactor]}</span>
+                        (weighted score: ${winnerScores[strongestFactor].toFixed(1)}).
+                    </span>
+                </div>
+
+                <div class="reasoning-step">
+                    <span class="step-number">5</span>
+                    <span class="step-text">
+                        <strong>Competitive analysis:</strong> ${runnerUpName} was the closest competitor at ${(runnerUp.activation * 100).toFixed(1)}% activation,
+                        trailing by ${margin} percentage points.
+                        ${parseFloat(margin) < 5 ?
+                            'This is a close decision—you might consider consulting both.' :
+                            parseFloat(margin) > 20 ?
+                            'The clear margin suggests high confidence in this recommendation.' :
+                            'A moderate margin indicates a reasonably confident choice.'}
+                    </span>
+                </div>
+
+                <div class="final-verdict">
+                    <p>
+                        <strong>RECOMMENDATION:</strong> Seek advice from <span class="highlight-winner">${winnerName}</span>
+                        ${currentScenario ? ` for your ${currentScenario.title.toLowerCase()} decision` : ''}.
+                        ${parseFloat(winnerActivation) > 40 ?
+                            'They stand out as the optimal choice given your priorities.' :
+                            'While no single advisor dominates, they best match your weighted criteria.'}
+                    </p>
+                </div>
+            `;
+
+            document.getElementById('explanation-content').innerHTML = html;
+        }
 
         function sigmoid(x) {
             return 1 / (1 + Math.exp(-x));
@@ -626,6 +1088,9 @@
             document.getElementById('winner-text').textContent = `Person ${people[maxIdx].toUpperCase()}`;
 
             drawConnections();
+
+            // Generate explanation
+            generateExplanation(scores, activations, weights, people[maxIdx]);
         }
 
         function addCustomFactor() {
