@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Decision Neuron - Advice Selector</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #e0e0e0;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            color: #00d9ff;
+            text-shadow: 0 0 20px rgba(0, 217, 255, 0.5);
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 30px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 200px 1fr;
+            gap: 30px;
+            align-items: center;
+        }
+
+        /* Input Factors Panel */
+        .factors-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .factors-panel h2 {
+            color: #ff6b6b;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+        }
+
+        .factor-group {
+            margin-bottom: 25px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            border-left: 3px solid #ff6b6b;
+        }
+
+        .factor-group h3 {
+            font-size: 0.9rem;
+            color: #ffd93d;
+            margin-bottom: 10px;
+        }
+
+        .factor-slider {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+        }
+
+        .factor-slider label {
+            width: 80px;
+            font-size: 0.85rem;
+        }
+
+        .factor-slider input[type="range"] {
+            flex: 1;
+            margin: 0 10px;
+            -webkit-appearance: none;
+            height: 6px;
+            border-radius: 3px;
+            background: #333;
+        }
+
+        .factor-slider input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #00d9ff;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 217, 255, 0.5);
+        }
+
+        .factor-slider .value {
+            width: 30px;
+            text-align: right;
+            font-size: 0.85rem;
+            color: #00d9ff;
+        }
+
+        /* Neuron Visualization */
+        .neuron-viz {
+            position: relative;
+            height: 500px;
+        }
+
+        .neuron-core {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(circle, #00d9ff 0%, #0066ff 100%);
+            border-radius: 50%;
+            box-shadow: 0 0 40px rgba(0, 217, 255, 0.6),
+                        0 0 80px rgba(0, 217, 255, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.8rem;
+            text-align: center;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.05); }
+        }
+
+        .input-node {
+            position: absolute;
+            left: 10px;
+            width: 60px;
+            height: 60px;
+            background: radial-gradient(circle, #ff6b6b 0%, #c92a2a 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.65rem;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(255, 107, 107, 0.5);
+        }
+
+        .input-node:nth-child(1) { top: 50px; }
+        .input-node:nth-child(2) { top: 150px; }
+        .input-node:nth-child(3) { top: 250px; }
+        .input-node:nth-child(4) { top: 350px; }
+
+        .output-node {
+            position: absolute;
+            right: 10px;
+            width: 70px;
+            height: 70px;
+            background: radial-gradient(circle, #51cf66 0%, #2b8a3e 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            font-size: 0.75rem;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(81, 207, 102, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        .output-node:nth-child(6) { top: 80px; }
+        .output-node:nth-child(7) { top: 180px; }
+        .output-node:nth-child(8) { top: 280px; }
+        .output-node:nth-child(9) { top: 380px; }
+
+        .output-node.winner {
+            transform: scale(1.2);
+            box-shadow: 0 0 40px rgba(81, 207, 102, 0.8),
+                        0 0 60px rgba(255, 217, 61, 0.5);
+            background: radial-gradient(circle, #ffd93d 0%, #f59f00 100%);
+        }
+
+        .output-node .score {
+            font-size: 0.65rem;
+            opacity: 0.8;
+        }
+
+        /* SVG Connections */
+        .connections {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .connections line {
+            stroke-width: 2;
+            opacity: 0.6;
+        }
+
+        /* Output Panel */
+        .output-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .output-panel h2 {
+            color: #51cf66;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+        }
+
+        .person-card {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 3px solid #51cf66;
+            transition: all 0.3s ease;
+        }
+
+        .person-card.winner {
+            border-left-color: #ffd93d;
+            background: rgba(255, 217, 61, 0.1);
+            transform: scale(1.02);
+        }
+
+        .person-card h3 {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .person-card h3 span:first-child {
+            color: #fff;
+        }
+
+        .person-card .activation {
+            color: #00d9ff;
+            font-size: 1.1rem;
+        }
+
+        .score-bar {
+            height: 8px;
+            background: #333;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .score-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00d9ff, #51cf66);
+            transition: width 0.3s ease;
+        }
+
+        .person-card.winner .score-bar-fill {
+            background: linear-gradient(90deg, #ffd93d, #ff6b6b);
+        }
+
+        .breakdown {
+            margin-top: 10px;
+            font-size: 0.75rem;
+            color: #888;
+        }
+
+        .decision-banner {
+            text-align: center;
+            padding: 20px;
+            margin-top: 20px;
+            background: linear-gradient(135deg, rgba(255, 217, 61, 0.2), rgba(255, 107, 107, 0.2));
+            border-radius: 10px;
+            border: 2px solid #ffd93d;
+        }
+
+        .decision-banner h3 {
+            color: #ffd93d;
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+        }
+
+        .decision-banner p {
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+
+        /* Custom Factor Input */
+        .add-custom {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .add-custom input {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            background: rgba(0, 0, 0, 0.3);
+            color: #fff;
+            margin-bottom: 10px;
+        }
+
+        .add-custom button {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            background: #ff6b6b;
+            color: #fff;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .add-custom button:hover {
+            background: #ff8787;
+        }
+
+        .weight-importance {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0, 217, 255, 0.1);
+            border-radius: 10px;
+            border: 1px solid rgba(0, 217, 255, 0.3);
+        }
+
+        .weight-importance h3 {
+            color: #00d9ff;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>⚡ Decision Neuron</h1>
+    <p class="subtitle">Modulating advice source selection through weighted neural activation</p>
+
+    <div class="container">
+        <!-- Input Factors -->
+        <div class="factors-panel">
+            <h2>📊 Input Factors</h2>
+
+            <div class="weight-importance">
+                <h3>Factor Importance Weights</h3>
+                <div class="factor-slider">
+                    <label>Expertise</label>
+                    <input type="range" id="weight-expertise" min="0" max="10" value="8" oninput="calculate()">
+                    <span class="value" id="weight-expertise-val">8</span>
+                </div>
+                <div class="factor-slider">
+                    <label>Availability</label>
+                    <input type="range" id="weight-availability" min="0" max="10" value="5" oninput="calculate()">
+                    <span class="value" id="weight-availability-val">5</span>
+                </div>
+                <div class="factor-slider">
+                    <label>Trust</label>
+                    <input type="range" id="weight-trust" min="0" max="10" value="7" oninput="calculate()">
+                    <span class="value" id="weight-trust-val">7</span>
+                </div>
+            </div>
+
+            <div class="factor-group" id="expertise-group">
+                <h3>🎯 Domain Expertise</h3>
+                <div class="factor-slider">
+                    <label>Person A</label>
+                    <input type="range" id="expertise-a" min="0" max="10" value="8" oninput="calculate()">
+                    <span class="value">8</span>
+                </div>
+                <div class="factor-slider">
+                    <label>Person B</label>
+                    <input type="range" id="expertise-b" min="0" max="10" value="6" oninput="calculate()">
+                    <span class="value">6</span>
+                </div>
+                <div class="factor-slider">
+                    <label>Person C</label>
+                    <input type="range" id="expertise-c" min="0" max="10" value="4" oninput="calculate()">
+                    <span class="value">4</span>
+                </div>
+                <div class="factor-slider">
+                    <label>Person D</label>
+                    <input type="range" id="expertise-d" min="0" max="10" value="7" oninput="calculate()">
+                    <span class="value">7</span>
+                </div>
+            </div>
+
+            <div class="factor-group" id="availability-group">
+                <h3>⏰ Availability</h3>
+                <div class="factor-slider">
+                    <label>Person A</label>
+                    <input type="range" id="availability-a" min="0" max="10" value="3" oninput="calculate()">
+                    <span class="value">3</span>
+                </div>
+                <div class="factor-slider">
+                    <label>Person B</label>
+                    <input type="range" id="availability-b" min="0" max="10" value="9" oninput="calculate()">
+                    <span class="value">9</span>
+                </div>
+                <div class="factor-slider">
+                    <label>Person C</label>
+                    <input type="range" id="availability-c" min="0" max="10" value="5" oninput="calculate()">
+                    <span class="value">5</span>
+                </div>
+                <div class="factor-slider">
+                    <label>Person D</label>
+                    <input type="range" id="availability-d" min="0" max="10" value="7" oninput="calculate()">
+                    <span class="value">7</span>
+                </div>
+            </div>
+
+            <div class="factor-group" id="trust-group">
+                <h3>🤝 Trust Level</h3>
+                <div class="factor-slider">
+                    <label>Person A</label>
+                    <input type="range" id="trust-a" min="0" max="10" value="9" oninput="calculate()">
+                    <span class="value">9</span>
+                </div>
+                <div class="factor-slider">
+                    <label>Person B</label>
+                    <input type="range" id="trust-b" min="0" max="10" value="5" oninput="calculate()">
+                    <span class="value">5</span>
+                </div>
+                <div class="factor-slider">
+                    <label>Person C</label>
+                    <input type="range" id="trust-c" min="0" max="10" value="8" oninput="calculate()">
+                    <span class="value">8</span>
+                </div>
+                <div class="factor-slider">
+                    <label>Person D</label>
+                    <input type="range" id="trust-d" min="0" max="10" value="6" oninput="calculate()">
+                    <span class="value">6</span>
+                </div>
+            </div>
+
+            <div class="add-custom">
+                <input type="text" id="custom-factor-name" placeholder="Add custom factor name...">
+                <button onclick="addCustomFactor()">+ Add Custom Factor</button>
+            </div>
+        </div>
+
+        <!-- Neuron Visualization -->
+        <div class="neuron-viz">
+            <svg class="connections" id="connections"></svg>
+            <div class="input-node">Expertise</div>
+            <div class="input-node">Availability</div>
+            <div class="input-node">Trust</div>
+            <div class="input-node" id="custom-node" style="display: none;">Custom</div>
+            <div class="neuron-core">DECISION<br>NEURON</div>
+            <div class="output-node" id="output-a">
+                <span>Person A</span>
+                <span class="score" id="viz-score-a">0.00</span>
+            </div>
+            <div class="output-node" id="output-b">
+                <span>Person B</span>
+                <span class="score" id="viz-score-b">0.00</span>
+            </div>
+            <div class="output-node" id="output-c">
+                <span>Person C</span>
+                <span class="score" id="viz-score-c">0.00</span>
+            </div>
+            <div class="output-node" id="output-d">
+                <span>Person D</span>
+                <span class="score" id="viz-score-d">0.00</span>
+            </div>
+        </div>
+
+        <!-- Output Panel -->
+        <div class="output-panel">
+            <h2>🎯 Neural Output</h2>
+
+            <div class="person-card" id="card-a">
+                <h3>
+                    <span>Person A</span>
+                    <span class="activation" id="score-a">0.00</span>
+                </h3>
+                <div class="score-bar">
+                    <div class="score-bar-fill" id="bar-a" style="width: 0%"></div>
+                </div>
+                <div class="breakdown" id="breakdown-a"></div>
+            </div>
+
+            <div class="person-card" id="card-b">
+                <h3>
+                    <span>Person B</span>
+                    <span class="activation" id="score-b">0.00</span>
+                </h3>
+                <div class="score-bar">
+                    <div class="score-bar-fill" id="bar-b" style="width: 0%"></div>
+                </div>
+                <div class="breakdown" id="breakdown-b"></div>
+            </div>
+
+            <div class="person-card" id="card-c">
+                <h3>
+                    <span>Person C</span>
+                    <span class="activation" id="score-c">0.00</span>
+                </h3>
+                <div class="score-bar">
+                    <div class="score-bar-fill" id="bar-c" style="width: 0%"></div>
+                </div>
+                <div class="breakdown" id="breakdown-c"></div>
+            </div>
+
+            <div class="person-card" id="card-d">
+                <h3>
+                    <span>Person D</span>
+                    <span class="activation" id="score-d">0.00</span>
+                </h3>
+                <div class="score-bar">
+                    <div class="score-bar-fill" id="bar-d" style="width: 0%"></div>
+                </div>
+                <div class="breakdown" id="breakdown-d"></div>
+            </div>
+
+            <div class="decision-banner">
+                <h3 id="winner-text">Person A</h3>
+                <p>Highest activation - recommended advice source</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let customFactors = [];
+        let factorCount = 0;
+
+        function sigmoid(x) {
+            return 1 / (1 + Math.exp(-x));
+        }
+
+        function softmax(arr) {
+            const max = Math.max(...arr);
+            const exps = arr.map(x => Math.exp(x - max));
+            const sum = exps.reduce((a, b) => a + b, 0);
+            return exps.map(x => x / sum);
+        }
+
+        function getValue(id) {
+            const el = document.getElementById(id);
+            if (!el) return 0;
+            const val = parseInt(el.value);
+            // Update display value
+            const container = el.parentElement;
+            const valueSpan = container.querySelector('.value');
+            if (valueSpan) valueSpan.textContent = val;
+            return val;
+        }
+
+        function calculate() {
+            // Get importance weights
+            const weights = {
+                expertise: getValue('weight-expertise') / 10,
+                availability: getValue('weight-availability') / 10,
+                trust: getValue('weight-trust') / 10
+            };
+
+            // Calculate weighted scores for each person
+            const people = ['a', 'b', 'c', 'd'];
+            const scores = {};
+            const breakdowns = {};
+
+            people.forEach(person => {
+                const expertise = getValue(`expertise-${person}`) * weights.expertise;
+                const availability = getValue(`availability-${person}`) * weights.availability;
+                const trust = getValue(`trust-${person}`) * weights.trust;
+
+                let customScore = 0;
+                customFactors.forEach(factor => {
+                    const factorWeight = getValue(`weight-custom-${factor.id}`) / 10;
+                    const personValue = getValue(`custom-${factor.id}-${person}`);
+                    customScore += personValue * factorWeight;
+                });
+
+                const totalWeight = weights.expertise + weights.availability + weights.trust +
+                    customFactors.reduce((sum, f) => sum + getValue(`weight-custom-${f.id}`) / 10, 0);
+
+                const rawScore = (expertise + availability + trust + customScore) / (totalWeight || 1);
+                scores[person] = rawScore;
+
+                breakdowns[person] = `Exp: ${expertise.toFixed(1)} | Avail: ${availability.toFixed(1)} | Trust: ${trust.toFixed(1)}`;
+                if (customScore > 0) {
+                    breakdowns[person] += ` | Custom: ${customScore.toFixed(1)}`;
+                }
+            });
+
+            // Apply softmax for competitive selection
+            const scoreArray = people.map(p => scores[p]);
+            const activations = softmax(scoreArray);
+
+            // Find winner
+            let maxIdx = 0;
+            activations.forEach((a, i) => {
+                if (a > activations[maxIdx]) maxIdx = i;
+            });
+
+            // Update UI
+            people.forEach((person, idx) => {
+                const activation = activations[idx];
+                const percentage = (activation * 100).toFixed(1);
+
+                document.getElementById(`score-${person}`).textContent = activation.toFixed(3);
+                document.getElementById(`viz-score-${person}`).textContent = activation.toFixed(2);
+                document.getElementById(`bar-${person}`).style.width = `${percentage}%`;
+                document.getElementById(`breakdown-${person}`).textContent = breakdowns[person];
+
+                const card = document.getElementById(`card-${person}`);
+                const outputNode = document.getElementById(`output-${person}`);
+
+                if (idx === maxIdx) {
+                    card.classList.add('winner');
+                    outputNode.classList.add('winner');
+                } else {
+                    card.classList.remove('winner');
+                    outputNode.classList.remove('winner');
+                }
+            });
+
+            document.getElementById('winner-text').textContent = `Person ${people[maxIdx].toUpperCase()}`;
+
+            drawConnections();
+        }
+
+        function addCustomFactor() {
+            const nameInput = document.getElementById('custom-factor-name');
+            const name = nameInput.value.trim();
+            if (!name) return;
+
+            factorCount++;
+            const factorId = factorCount;
+            customFactors.push({ id: factorId, name });
+
+            // Add weight slider
+            const weightSection = document.querySelector('.weight-importance');
+            const weightDiv = document.createElement('div');
+            weightDiv.className = 'factor-slider';
+            weightDiv.innerHTML = `
+                <label>${name.substring(0, 10)}</label>
+                <input type="range" id="weight-custom-${factorId}" min="0" max="10" value="5" oninput="calculate()">
+                <span class="value" id="weight-custom-${factorId}-val">5</span>
+            `;
+            weightSection.appendChild(weightDiv);
+
+            // Add factor group
+            const factorsPanel = document.querySelector('.factors-panel');
+            const addCustomDiv = document.querySelector('.add-custom');
+
+            const groupDiv = document.createElement('div');
+            groupDiv.className = 'factor-group';
+            groupDiv.id = `custom-${factorId}-group`;
+            groupDiv.innerHTML = `
+                <h3>✨ ${name}</h3>
+                <div class="factor-slider">
+                    <label>Person A</label>
+                    <input type="range" id="custom-${factorId}-a" min="0" max="10" value="5" oninput="calculate()">
+                    <span class="value">5</span>
+                </div>
+                <div class="factor-slider">
+                    <label>Person B</label>
+                    <input type="range" id="custom-${factorId}-b" min="0" max="10" value="5" oninput="calculate()">
+                    <span class="value">5</span>
+                </div>
+                <div class="factor-slider">
+                    <label>Person C</label>
+                    <input type="range" id="custom-${factorId}-c" min="0" max="10" value="5" oninput="calculate()">
+                    <span class="value">5</span>
+                </div>
+                <div class="factor-slider">
+                    <label>Person D</label>
+                    <input type="range" id="custom-${factorId}-d" min="0" max="10" value="5" oninput="calculate()">
+                    <span class="value">5</span>
+                </div>
+            `;
+            factorsPanel.insertBefore(groupDiv, addCustomDiv);
+
+            nameInput.value = '';
+            calculate();
+        }
+
+        function drawConnections() {
+            const svg = document.getElementById('connections');
+            const rect = svg.getBoundingClientRect();
+
+            svg.innerHTML = '';
+            svg.setAttribute('viewBox', `0 0 ${rect.width} ${rect.height}`);
+
+            // Input nodes positions (left side)
+            const inputNodes = [
+                { x: 40, y: 80 },
+                { x: 40, y: 180 },
+                { x: 40, y: 280 },
+                { x: 40, y: 380 }
+            ];
+
+            // Center neuron
+            const center = { x: rect.width / 2, y: rect.height / 2 };
+
+            // Output nodes positions (right side)
+            const outputNodes = [
+                { x: rect.width - 45, y: 115 },
+                { x: rect.width - 45, y: 215 },
+                { x: rect.width - 45, y: 315 },
+                { x: rect.width - 45, y: 415 }
+            ];
+
+            // Draw input connections
+            inputNodes.forEach((node, i) => {
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', node.x + 30);
+                line.setAttribute('y1', node.y);
+                line.setAttribute('x2', center.x - 50);
+                line.setAttribute('y2', center.y);
+                line.setAttribute('stroke', '#ff6b6b');
+                svg.appendChild(line);
+            });
+
+            // Draw output connections
+            outputNodes.forEach((node, i) => {
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', center.x + 50);
+                line.setAttribute('y1', center.y);
+                line.setAttribute('x2', node.x - 35);
+                line.setAttribute('y2', node.y);
+                line.setAttribute('stroke', '#51cf66');
+                svg.appendChild(line);
+            });
+        }
+
+        // Initial calculation
+        window.addEventListener('load', () => {
+            calculate();
+            window.addEventListener('resize', drawConnections);
+        });
+    </script>
+</body>
+</html>
