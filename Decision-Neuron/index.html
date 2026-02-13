@@ -695,6 +695,163 @@
         .main-content.hidden {
             opacity: 0;
         }
+
+        /* How It Works Button */
+        .how-it-works-btn {
+            margin-top: 25px;
+            padding: 12px 28px;
+            background: transparent;
+            border: 2px solid rgba(0, 217, 255, 0.5);
+            border-radius: 25px;
+            color: #00d9ff;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .how-it-works-btn:hover {
+            background: rgba(0, 217, 255, 0.1);
+            border-color: #00d9ff;
+            box-shadow: 0 0 20px rgba(0, 217, 255, 0.3);
+        }
+
+        /* Methodology Modal */
+        .methodology-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            padding: 20px;
+        }
+
+        .methodology-modal.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #1e1e30, #252545);
+            border-radius: 20px;
+            max-width: 800px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 40px;
+            position: relative;
+            border: 1px solid rgba(0, 217, 255, 0.3);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 2rem;
+            color: #888;
+            cursor: pointer;
+            transition: color 0.2s;
+            background: none;
+            border: none;
+        }
+
+        .modal-close:hover {
+            color: #ff6b6b;
+        }
+
+        .modal-title {
+            color: #00d9ff;
+            font-size: 1.8rem;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        .method-section {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            border-left: 4px solid #ffd93d;
+        }
+
+        .method-section h3 {
+            color: #ffd93d;
+            font-size: 1.1rem;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .method-section p {
+            color: #ccc;
+            line-height: 1.7;
+            margin-bottom: 10px;
+        }
+
+        .method-section p:last-child {
+            margin-bottom: 0;
+        }
+
+        .method-section code {
+            background: rgba(0, 217, 255, 0.15);
+            padding: 2px 8px;
+            border-radius: 4px;
+            color: #00d9ff;
+            font-family: monospace;
+        }
+
+        .formula-box {
+            background: rgba(0, 217, 255, 0.1);
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+            text-align: center;
+            font-family: monospace;
+            color: #00d9ff;
+            font-size: 1rem;
+        }
+
+        .method-diagram {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .diagram-node {
+            padding: 12px 20px;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        .diagram-input {
+            background: linear-gradient(135deg, #ff6b6b, #c92a2a);
+        }
+
+        .diagram-process {
+            background: linear-gradient(135deg, #00d9ff, #0066ff);
+        }
+
+        .diagram-output {
+            background: linear-gradient(135deg, #51cf66, #2b8a3e);
+        }
+
+        .diagram-arrow {
+            color: #888;
+            font-size: 1.5rem;
+        }
     </style>
 </head>
 <body>
@@ -793,6 +950,80 @@
         </div>
 
         <p class="search-hint">Click a suggestion or type your own • Press <kbd>Enter</kbd> to continue</p>
+
+        <button class="how-it-works-btn" onclick="showMethodology()">🔬 How do I calculate who to ask?</button>
+    </div>
+
+    <!-- Methodology Modal -->
+    <div class="methodology-modal" id="methodology-modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="hideMethodology()">×</button>
+
+            <h2 class="modal-title">🧠 How the Decision Neuron Works</h2>
+
+            <div class="method-section">
+                <h3>📥 Step 1: Gathering Inputs</h3>
+                <p>The system collects three key factors for each potential advisor:</p>
+                <p>• <strong>Domain Expertise</strong> - How knowledgeable are they about your topic?</p>
+                <p>• <strong>Availability</strong> - How accessible and responsive are they?</p>
+                <p>• <strong>Trust Level</strong> - How much do you trust their judgment?</p>
+                <p>Each factor is rated from 0-10 for each of the four people you're considering.</p>
+            </div>
+
+            <div class="method-section">
+                <h3>⚖️ Step 2: Weighting Importance</h3>
+                <p>Not all factors matter equally for every decision. The system lets you assign <strong>importance weights</strong> to each factor.</p>
+                <p>For example, for a medical question, you might weight Expertise at 10 (very important) but Availability at only 3 (less critical).</p>
+                <div class="formula-box">
+                    Weighted Score = (Factor Value × Factor Weight)
+                </div>
+            </div>
+
+            <div class="method-section">
+                <h3>🔢 Step 3: Computing Raw Scores</h3>
+                <p>For each person, we calculate their total weighted score by summing up all weighted factors:</p>
+                <div class="formula-box">
+                    Person Score = Σ(Factor<sub>i</sub> × Weight<sub>i</sub>) / Total Weights
+                </div>
+                <p>This gives us a normalized score that accounts for how well each person matches your priorities.</p>
+            </div>
+
+            <div class="method-section">
+                <h3>🧮 Step 4: Softmax Activation</h3>
+                <p>Here's where the "neural" magic happens. We apply the <strong>softmax function</strong> to convert raw scores into probabilities:</p>
+                <div class="formula-box">
+                    Activation<sub>i</sub> = e<sup>score<sub>i</sub></sup> / Σ(e<sup>score<sub>j</sub></sup>)
+                </div>
+                <p>This creates a <strong>competitive dynamic</strong>—all activations sum to 100%, and small score differences get amplified. The person with the highest score "wins" more decisively.</p>
+            </div>
+
+            <div class="method-section">
+                <h3>🔄 The Neural Network Flow</h3>
+                <div class="method-diagram">
+                    <div class="diagram-node diagram-input">Input Factors<br>(Expertise, etc.)</div>
+                    <span class="diagram-arrow">→</span>
+                    <div class="diagram-node diagram-process">Decision Neuron<br>(Weighted Sum + Softmax)</div>
+                    <span class="diagram-arrow">→</span>
+                    <div class="diagram-node diagram-output">Output<br>(Best Advisor)</div>
+                </div>
+                <p>Just like a neuron in your brain, this decision neuron takes multiple inputs, processes them through weighted connections, and fires an output signal indicating the strongest choice.</p>
+            </div>
+
+            <div class="method-section">
+                <h3>🎯 Step 5: The Recommendation</h3>
+                <p>The person with the <strong>highest activation percentage</strong> is recommended as your best advice source.</p>
+                <p>The explanation script then analyzes:</p>
+                <p>• Which factor contributed most to the winner's score</p>
+                <p>• How close the competition was</p>
+                <p>• Confidence level based on the margin of victory</p>
+            </div>
+
+            <div class="method-section">
+                <h3>💡 Why This Works</h3>
+                <p>This approach mirrors how decisions actually work in your brain—multiple factors compete for attention, weighted by importance, until one option emerges as the clear winner.</p>
+                <p>By making these weights <strong>explicit and adjustable</strong>, you can see exactly why one person is recommended over another, and tweak the parameters if your priorities change.</p>
+            </div>
+        </div>
     </div>
 
     <!-- Main Content -->
@@ -1027,6 +1258,31 @@
         let factorCount = 0;
         let currentScenario = null;
         let selectedRecommendation = -1;
+
+        // Methodology modal functions
+        function showMethodology() {
+            document.getElementById('methodology-modal').classList.add('visible');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function hideMethodology() {
+            document.getElementById('methodology-modal').classList.remove('visible');
+            document.body.style.overflow = '';
+        }
+
+        // Close modal on background click
+        document.addEventListener('click', (e) => {
+            if (e.target.id === 'methodology-modal') {
+                hideMethodology();
+            }
+        });
+
+        // Close modal on Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                hideMethodology();
+            }
+        });
 
         // Welcome overlay functionality
         function initWelcomeOverlay() {
