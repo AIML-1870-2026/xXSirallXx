@@ -1,4 +1,4 @@
-# Bee Movie Script - Accessible Reader
+# BeeMovieReader
 
 ## Vision
 
