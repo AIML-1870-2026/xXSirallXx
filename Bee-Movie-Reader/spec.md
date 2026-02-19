@@ -150,6 +150,12 @@ Bee-Movie-Reader/
 
 ---
 
+## Live URL
+
+https://aiml-1870-2026.github.io/xXSirallXx/Bee-Movie-Reader/
+
+---
+
 ## References
 - WCAG 2.1 Contrast Guidelines: https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum
 - Brettel, Vienot & Mollon (1997) — Color blindness simulation matrices
