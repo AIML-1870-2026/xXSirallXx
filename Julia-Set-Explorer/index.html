@@ -1,0 +1,1942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Julia Set Explorer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0a0a;
+            color: #fff;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Rainbow Header */
+        .header {
+            text-align: center;
+            padding: 15px;
+            background: linear-gradient(180deg, #1a1a2e 0%, #0a0a0a 100%);
+            border-bottom: 1px solid #333;
+        }
+
+        .rainbow-title {
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: 0.3em;
+            background: linear-gradient(
+                90deg,
+                #ff0000,
+                #ff7f00,
+                #ffff00,
+                #00ff00,
+                #0000ff,
+                #4b0082,
+                #9400d3
+            );
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: rainbow-shift 3s linear infinite;
+            background-size: 200% 100%;
+        }
+
+        @keyframes rainbow-shift {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 200% 50%; }
+        }
+
+        .subtitle {
+            font-size: 0.9rem;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        /* Main Canvas Area */
+        .canvas-container {
+            flex: 1;
+            display: flex;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .fractal-panel {
+            flex: 1;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .fractal-panel:first-child {
+            border-right: 1px solid #333;
+        }
+
+        .panel-label {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 5px 12px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            z-index: 10;
+            backdrop-filter: blur(10px);
+            border: 1px solid #333;
+        }
+
+        .panel-info {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            z-index: 10;
+            backdrop-filter: blur(10px);
+            border: 1px solid #333;
+            font-family: 'Consolas', monospace;
+        }
+
+        .panel-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            gap: 5px;
+            z-index: 10;
+        }
+
+        .panel-btn {
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid #444;
+            color: #fff;
+            width: 32px;
+            height: 32px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+            transition: all 0.2s;
+        }
+
+        .panel-btn:hover {
+            background: rgba(80, 80, 80, 0.7);
+            border-color: #666;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+
+        /* Crosshair overlay for Mandelbrot */
+        .crosshair {
+            position: absolute;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .crosshair-h, .crosshair-v {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        .crosshair-h {
+            width: 20px;
+            height: 1px;
+            left: -10px;
+            top: 0;
+        }
+
+        .crosshair-v {
+            width: 1px;
+            height: 20px;
+            left: 0;
+            top: -10px;
+        }
+
+        .crosshair-dot {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border: 1px solid #fff;
+            border-radius: 50%;
+            left: -3px;
+            top: -3px;
+        }
+
+        /* Control Panel */
+        .control-panel {
+            background: rgba(20, 20, 30, 0.95);
+            border-top: 1px solid #333;
+            backdrop-filter: blur(20px);
+            transition: height 0.3s ease;
+            overflow: hidden;
+        }
+
+        .control-panel.collapsed {
+            height: 40px;
+        }
+
+        .control-panel.expanded {
+            height: 280px;
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 15px;
+            border-bottom: 1px solid #333;
+            cursor: pointer;
+        }
+
+        .panel-header:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 5px;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: 1px solid #444;
+            color: #aaa;
+            padding: 6px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .tab-btn:hover {
+            border-color: #666;
+            color: #fff;
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-color: transparent;
+            color: #fff;
+        }
+
+        .toggle-btn {
+            background: transparent;
+            border: none;
+            color: #888;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 5px;
+            transition: transform 0.3s;
+        }
+
+        .control-panel.collapsed .toggle-btn {
+            transform: rotate(180deg);
+        }
+
+        .panel-content {
+            padding: 15px;
+            height: calc(100% - 45px);
+            overflow-y: auto;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Control Styles */
+        .control-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            gap: 15px;
+        }
+
+        .control-label {
+            min-width: 120px;
+            font-size: 0.85rem;
+            color: #aaa;
+        }
+
+        .control-value {
+            min-width: 60px;
+            text-align: right;
+            font-family: 'Consolas', monospace;
+            font-size: 0.8rem;
+            color: #888;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            height: 4px;
+            -webkit-appearance: none;
+            background: #333;
+            border-radius: 2px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: #333;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        /* Gradient Editor */
+        .gradient-preview {
+            height: 30px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .gradient-stops {
+            position: absolute;
+            bottom: -8px;
+            left: 0;
+            right: 0;
+            height: 16px;
+        }
+
+        .gradient-stop {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            transform: translateX(-50%);
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .gradient-stop.selected {
+            border-color: #667eea;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.5);
+        }
+
+        .preset-gradients {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+
+        .preset-gradient {
+            width: 60px;
+            height: 25px;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .preset-gradient:hover {
+            border-color: #fff;
+            transform: scale(1.05);
+        }
+
+        .preset-gradient.active {
+            border-color: #667eea;
+        }
+
+        /* Animation Path */
+        .path-options {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .path-btn {
+            padding: 6px 12px;
+            background: #222;
+            border: 1px solid #444;
+            color: #aaa;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+
+        .path-btn:hover {
+            border-color: #666;
+            color: #fff;
+        }
+
+        .path-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-color: transparent;
+            color: #fff;
+        }
+
+        .playback-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .play-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: #fff;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .progress-bar {
+            flex: 1;
+            height: 4px;
+            background: #333;
+            border-radius: 2px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 2px;
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+
+        /* Presets Grid */
+        .presets-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 10px;
+        }
+
+        .preset-card {
+            background: #1a1a2e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .preset-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        .preset-thumbnail {
+            width: 100%;
+            height: 60px;
+            background: #0a0a0a;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+
+        .preset-name {
+            font-size: 0.8rem;
+            text-align: center;
+        }
+
+        /* Checkbox */
+        .checkbox-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .checkbox {
+            width: 18px;
+            height: 18px;
+            border: 2px solid #444;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .checkbox.checked {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-color: transparent;
+        }
+
+        .checkbox.checked::after {
+            content: '✓';
+            color: #fff;
+            font-size: 0.7rem;
+        }
+
+        /* Color Picker */
+        .color-picker-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        .color-picker-btn {
+            width: 30px;
+            height: 30px;
+            border: 2px solid #444;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        input[type="color"] {
+            position: absolute;
+            opacity: 0;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+        }
+
+        /* CRAZY MODE Button */
+        .crazy-mode-btn {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 100;
+            padding: 20px 40px;
+            font-size: 1.8rem;
+            font-weight: 900;
+            letter-spacing: 0.1em;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            background: linear-gradient(135deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #9400d3);
+            background-size: 400% 400%;
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5), 0 0 20px rgba(255,255,255,0.5);
+            box-shadow: 0 0 30px rgba(255, 0, 255, 0.5), 0 0 60px rgba(0, 255, 255, 0.3);
+            animation: crazy-gradient 2s ease infinite, crazy-pulse 0.5s ease-in-out infinite alternate;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .crazy-mode-btn:hover {
+            transform: translate(-50%, -50%) scale(1.1);
+            box-shadow: 0 0 50px rgba(255, 0, 255, 0.8), 0 0 100px rgba(0, 255, 255, 0.5);
+        }
+
+        .crazy-mode-btn.active {
+            animation: crazy-gradient 0.3s ease infinite, crazy-shake 0.1s ease-in-out infinite;
+            background: linear-gradient(135deg, #ff00ff, #00ffff, #ffff00, #ff00ff);
+            background-size: 400% 400%;
+        }
+
+        @keyframes crazy-gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        @keyframes crazy-pulse {
+            0% { box-shadow: 0 0 30px rgba(255, 0, 255, 0.5), 0 0 60px rgba(0, 255, 255, 0.3); }
+            100% { box-shadow: 0 0 50px rgba(255, 0, 255, 0.8), 0 0 80px rgba(0, 255, 255, 0.5); }
+        }
+
+        @keyframes crazy-shake {
+            0% { transform: translate(-50%, -50%) rotate(-2deg) scale(1.05); }
+            25% { transform: translate(-50%, -50%) rotate(2deg) scale(1.08); }
+            50% { transform: translate(-50%, -50%) rotate(-1deg) scale(1.05); }
+            75% { transform: translate(-50%, -50%) rotate(1deg) scale(1.08); }
+            100% { transform: translate(-50%, -50%) rotate(-2deg) scale(1.05); }
+        }
+
+        /* Strobe Overlay */
+        .strobe-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 50;
+            opacity: 0;
+            mix-blend-mode: overlay;
+        }
+
+        .strobe-overlay.active {
+            animation: strobe-effect 0.15s linear infinite;
+        }
+
+        @keyframes strobe-effect {
+            0% {
+                opacity: 0.3;
+                background: radial-gradient(circle at 30% 40%, #ff00ff, transparent 50%),
+                            radial-gradient(circle at 70% 60%, #00ffff, transparent 50%);
+            }
+            20% {
+                opacity: 0.4;
+                background: radial-gradient(circle at 60% 20%, #ffff00, transparent 50%),
+                            radial-gradient(circle at 40% 80%, #ff0000, transparent 50%);
+            }
+            40% {
+                opacity: 0.2;
+                background: radial-gradient(circle at 80% 50%, #00ff00, transparent 50%),
+                            radial-gradient(circle at 20% 30%, #0000ff, transparent 50%);
+            }
+            60% {
+                opacity: 0.5;
+                background: radial-gradient(circle at 50% 70%, #ff00ff, transparent 60%),
+                            radial-gradient(circle at 50% 30%, #00ffff, transparent 60%);
+            }
+            80% {
+                opacity: 0.3;
+                background: radial-gradient(circle at 25% 60%, #ff7700, transparent 50%),
+                            radial-gradient(circle at 75% 40%, #7700ff, transparent 50%);
+            }
+            100% {
+                opacity: 0.35;
+                background: radial-gradient(circle at 45% 55%, #ff0077, transparent 50%),
+                            radial-gradient(circle at 55% 45%, #00ff77, transparent 50%);
+            }
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .canvas-container {
+                flex-direction: column;
+            }
+
+            .fractal-panel:first-child {
+                border-right: none;
+                border-bottom: 1px solid #333;
+            }
+
+            .rainbow-title {
+                font-size: 1.2rem;
+                letter-spacing: 0.15em;
+            }
+
+            .control-panel.expanded {
+                height: 320px;
+            }
+
+            .tab-btn {
+                padding: 5px 10px;
+                font-size: 0.75rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1 class="rainbow-title">A R T I F I C I A L &nbsp; I N T E L L I G E N C E</h1>
+        <p class="subtitle">Julia Set Explorer</p>
+    </div>
+
+    <div class="canvas-container">
+        <!-- CRAZY MODE Button -->
+        <button class="crazy-mode-btn" id="crazy-mode-btn">CRAZY MODE!!!</button>
+
+        <!-- Strobe Overlay -->
+        <div class="strobe-overlay" id="strobe-overlay"></div>
+
+        <!-- Mandelbrot Panel -->
+        <div class="fractal-panel" id="mandelbrot-panel">
+            <div class="panel-label">Mandelbrot Set</div>
+            <div class="panel-info" id="mandelbrot-info">
+                <div>Pos: 0.000 + 0.000i</div>
+                <div>Zoom: 1.0x</div>
+            </div>
+            <div class="panel-controls">
+                <button class="panel-btn" id="mandelbrot-reset" title="Reset View">⟲</button>
+                <button class="panel-btn" id="mandelbrot-zoomin" title="Zoom In">+</button>
+                <button class="panel-btn" id="mandelbrot-zoomout" title="Zoom Out">−</button>
+            </div>
+            <div class="crosshair" id="crosshair">
+                <div class="crosshair-h"></div>
+                <div class="crosshair-v"></div>
+                <div class="crosshair-dot"></div>
+            </div>
+            <canvas id="mandelbrot-canvas"></canvas>
+        </div>
+
+        <!-- Julia Panel -->
+        <div class="fractal-panel" id="julia-panel">
+            <div class="panel-label">Julia Set</div>
+            <div class="panel-info" id="julia-info">
+                <div>c = -0.750 + 0.000i</div>
+                <div>Zoom: 1.0x</div>
+            </div>
+            <div class="panel-controls">
+                <button class="panel-btn" id="julia-reset" title="Reset View">⟲</button>
+                <button class="panel-btn" id="julia-zoomin" title="Zoom In">+</button>
+                <button class="panel-btn" id="julia-zoomout" title="Zoom Out">−</button>
+            </div>
+            <canvas id="julia-canvas"></canvas>
+        </div>
+    </div>
+
+    <div class="control-panel expanded" id="control-panel">
+        <div class="panel-header" id="panel-toggle">
+            <div class="tab-buttons">
+                <button class="tab-btn active" data-tab="animation">Animation</button>
+                <button class="tab-btn" data-tab="colors">Colors</button>
+                <button class="tab-btn" data-tab="rendering">Rendering</button>
+                <button class="tab-btn" data-tab="presets">Presets</button>
+            </div>
+            <button class="toggle-btn">▼</button>
+        </div>
+
+        <div class="panel-content">
+            <!-- Animation Tab -->
+            <div class="tab-content active" id="tab-animation">
+                <div class="control-row">
+                    <span class="control-label">Animation Path:</span>
+                    <div class="path-options">
+                        <button class="path-btn" data-path="custom">Custom</button>
+                        <button class="path-btn active" data-path="circle">Circle</button>
+                        <button class="path-btn" data-path="figure8">Figure-8</button>
+                        <button class="path-btn" data-path="spiral">Spiral</button>
+                        <button class="path-btn" data-path="heart">Heart</button>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-label">Center Point:</span>
+                    <input type="range" id="path-center-x" min="-2" max="1" step="0.01" value="-0.5">
+                    <span class="control-value" id="path-center-x-val">-0.50</span>
+                    <input type="range" id="path-center-y" min="-1.5" max="1.5" step="0.01" value="0">
+                    <span class="control-value" id="path-center-y-val">0.00i</span>
+                </div>
+                <div class="control-row">
+                    <span class="control-label">Path Radius:</span>
+                    <input type="range" id="path-radius" min="0.05" max="1" step="0.01" value="0.3">
+                    <span class="control-value" id="path-radius-val">0.30</span>
+                </div>
+                <div class="control-row">
+                    <span class="control-label">Speed:</span>
+                    <input type="range" id="anim-speed" min="0.1" max="5" step="0.1" value="1">
+                    <span class="control-value" id="anim-speed-val">1.0x</span>
+                </div>
+                <div class="playback-controls">
+                    <button class="play-btn" id="play-btn">▶</button>
+                    <div class="progress-bar" id="progress-bar">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                    <div class="checkbox-wrapper">
+                        <div class="checkbox checked" id="loop-toggle"></div>
+                        <span style="font-size: 0.85rem; color: #aaa;">Loop</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Colors Tab -->
+            <div class="tab-content" id="tab-colors">
+                <div class="control-row">
+                    <span class="control-label">Current Gradient:</span>
+                </div>
+                <div class="gradient-preview" id="gradient-preview">
+                    <div class="gradient-stops" id="gradient-stops"></div>
+                </div>
+                <div class="control-row">
+                    <span class="control-label">Stop Color:</span>
+                    <div class="color-picker-wrapper">
+                        <input type="color" id="stop-color" value="#667eea">
+                        <div class="color-picker-btn" id="color-btn" style="background: #667eea;"></div>
+                    </div>
+                    <button class="btn btn-secondary" id="add-stop">Add Stop</button>
+                    <button class="btn btn-secondary" id="remove-stop">Remove</button>
+                </div>
+                <div class="control-row">
+                    <span class="control-label">Color Cycling:</span>
+                    <div class="checkbox-wrapper">
+                        <div class="checkbox" id="color-cycle-toggle"></div>
+                        <span style="font-size: 0.85rem; color: #aaa;">Enable</span>
+                    </div>
+                    <input type="range" id="cycle-speed" min="0.1" max="3" step="0.1" value="1" style="margin-left: 20px;">
+                    <span class="control-value" id="cycle-speed-val">1.0x</span>
+                </div>
+                <div class="control-row">
+                    <span class="control-label">Presets:</span>
+                </div>
+                <div class="preset-gradients" id="preset-gradients"></div>
+            </div>
+
+            <!-- Rendering Tab -->
+            <div class="tab-content" id="tab-rendering">
+                <div class="control-row">
+                    <span class="control-label">Max Iterations:</span>
+                    <input type="range" id="max-iterations" min="50" max="2000" step="10" value="300">
+                    <span class="control-value" id="max-iterations-val">300</span>
+                </div>
+                <div class="control-row">
+                    <span class="control-label">Escape Radius:</span>
+                    <input type="range" id="escape-radius" min="1.5" max="10" step="0.1" value="2">
+                    <span class="control-value" id="escape-radius-val">2.0</span>
+                </div>
+                <div class="control-row">
+                    <span class="control-label">Smooth Coloring:</span>
+                    <div class="checkbox-wrapper">
+                        <div class="checkbox checked" id="smooth-toggle"></div>
+                        <span style="font-size: 0.85rem; color: #aaa;">Enable smooth gradients</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-label">Resolution:</span>
+                    <div class="btn-group">
+                        <button class="btn btn-secondary" data-res="0.5">0.5x</button>
+                        <button class="btn" data-res="1">1x</button>
+                        <button class="btn btn-secondary" data-res="2">2x</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Presets Tab -->
+            <div class="tab-content" id="tab-presets">
+                <div class="presets-grid" id="presets-grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // WebGL Fractal Renderer
+        // ============================================
+
+        class FractalRenderer {
+            constructor(canvas, type) {
+                this.canvas = canvas;
+                this.type = type; // 'mandelbrot' or 'julia'
+                this.gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+
+                if (!this.gl) {
+                    console.error('WebGL not supported');
+                    return;
+                }
+
+                // View parameters
+                this.centerX = type === 'mandelbrot' ? -0.5 : 0;
+                this.centerY = 0;
+                this.zoom = type === 'mandelbrot' ? 1.5 : 1.5;
+
+                // Julia parameters
+                this.juliaC = { x: -0.75, y: 0 };
+
+                // Rendering parameters
+                this.maxIterations = 300;
+                this.escapeRadius = 2.0;
+                this.smoothColoring = true;
+                this.colorOffset = 0;
+
+                // Gradient colors
+                this.gradientColors = [
+                    [0.0, 0, 0, 0],
+                    [0.16, 0.1, 0.1, 0.4],
+                    [0.42, 0.4, 0.5, 1.0],
+                    [0.6425, 1.0, 1.0, 1.0],
+                    [0.8575, 1.0, 0.6, 0.2],
+                    [1.0, 0, 0, 0]
+                ];
+
+                this.initShaders();
+                this.initBuffers();
+                this.resize();
+            }
+
+            initShaders() {
+                const vsSource = `
+                    attribute vec2 aPosition;
+                    void main() {
+                        gl_Position = vec4(aPosition, 0.0, 1.0);
+                    }
+                `;
+
+                const fsSource = `
+                    precision highp float;
+
+                    uniform vec2 uResolution;
+                    uniform vec2 uCenter;
+                    uniform float uZoom;
+                    uniform vec2 uJuliaC;
+                    uniform int uMaxIterations;
+                    uniform float uEscapeRadius;
+                    uniform bool uSmoothColoring;
+                    uniform bool uIsJulia;
+                    uniform float uColorOffset;
+                    uniform vec4 uColors[8];
+                    uniform float uColorPositions[8];
+                    uniform int uNumColors;
+
+                    vec3 getColor(float t) {
+                        t = fract(t + uColorOffset);
+
+                        for (int i = 0; i < 7; i++) {
+                            if (i >= uNumColors - 1) break;
+                            float p1 = uColorPositions[i];
+                            float p2 = uColorPositions[i + 1];
+                            if (t >= p1 && t <= p2) {
+                                float localT = (t - p1) / (p2 - p1);
+                                return mix(uColors[i].rgb, uColors[i + 1].rgb, localT);
+                            }
+                        }
+                        return uColors[0].rgb;
+                    }
+
+                    void main() {
+                        vec2 uv = (gl_FragCoord.xy - uResolution * 0.5) / min(uResolution.x, uResolution.y);
+                        uv = uv * uZoom + uCenter;
+
+                        vec2 z, c;
+                        if (uIsJulia) {
+                            z = uv;
+                            c = uJuliaC;
+                        } else {
+                            z = vec2(0.0);
+                            c = uv;
+                        }
+
+                        float iterations = 0.0;
+                        float maxIter = float(uMaxIterations);
+                        float escapeR2 = uEscapeRadius * uEscapeRadius;
+
+                        for (int i = 0; i < 2000; i++) {
+                            if (i >= uMaxIterations) break;
+
+                            float x2 = z.x * z.x;
+                            float y2 = z.y * z.y;
+
+                            if (x2 + y2 > escapeR2) break;
+
+                            z = vec2(x2 - y2 + c.x, 2.0 * z.x * z.y + c.y);
+                            iterations += 1.0;
+                        }
+
+                        if (iterations >= maxIter) {
+                            gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+                        } else {
+                            float t;
+                            if (uSmoothColoring) {
+                                float log_zn = log(z.x * z.x + z.y * z.y) / 2.0;
+                                float nu = log(log_zn / log(2.0)) / log(2.0);
+                                t = (iterations + 1.0 - nu) / maxIter;
+                            } else {
+                                t = iterations / maxIter;
+                            }
+
+                            vec3 color = getColor(t * 4.0);
+                            gl_FragColor = vec4(color, 1.0);
+                        }
+                    }
+                `;
+
+                const vs = this.compileShader(vsSource, this.gl.VERTEX_SHADER);
+                const fs = this.compileShader(fsSource, this.gl.FRAGMENT_SHADER);
+
+                this.program = this.gl.createProgram();
+                this.gl.attachShader(this.program, vs);
+                this.gl.attachShader(this.program, fs);
+                this.gl.linkProgram(this.program);
+
+                if (!this.gl.getProgramParameter(this.program, this.gl.LINK_STATUS)) {
+                    console.error('Shader link error:', this.gl.getProgramInfoLog(this.program));
+                }
+
+                this.gl.useProgram(this.program);
+
+                // Get uniform locations
+                this.uniforms = {
+                    resolution: this.gl.getUniformLocation(this.program, 'uResolution'),
+                    center: this.gl.getUniformLocation(this.program, 'uCenter'),
+                    zoom: this.gl.getUniformLocation(this.program, 'uZoom'),
+                    juliaC: this.gl.getUniformLocation(this.program, 'uJuliaC'),
+                    maxIterations: this.gl.getUniformLocation(this.program, 'uMaxIterations'),
+                    escapeRadius: this.gl.getUniformLocation(this.program, 'uEscapeRadius'),
+                    smoothColoring: this.gl.getUniformLocation(this.program, 'uSmoothColoring'),
+                    isJulia: this.gl.getUniformLocation(this.program, 'uIsJulia'),
+                    colorOffset: this.gl.getUniformLocation(this.program, 'uColorOffset'),
+                    colors: this.gl.getUniformLocation(this.program, 'uColors'),
+                    colorPositions: this.gl.getUniformLocation(this.program, 'uColorPositions'),
+                    numColors: this.gl.getUniformLocation(this.program, 'uNumColors')
+                };
+            }
+
+            compileShader(source, type) {
+                const shader = this.gl.createShader(type);
+                this.gl.shaderSource(shader, source);
+                this.gl.compileShader(shader);
+
+                if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
+                    console.error('Shader compile error:', this.gl.getShaderInfoLog(shader));
+                }
+
+                return shader;
+            }
+
+            initBuffers() {
+                const positions = new Float32Array([
+                    -1, -1,
+                    1, -1,
+                    -1, 1,
+                    1, 1
+                ]);
+
+                const buffer = this.gl.createBuffer();
+                this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer);
+                this.gl.bufferData(this.gl.ARRAY_BUFFER, positions, this.gl.STATIC_DRAW);
+
+                const aPosition = this.gl.getAttribLocation(this.program, 'aPosition');
+                this.gl.enableVertexAttribArray(aPosition);
+                this.gl.vertexAttribPointer(aPosition, 2, this.gl.FLOAT, false, 0, 0);
+            }
+
+            resize() {
+                const rect = this.canvas.getBoundingClientRect();
+                const dpr = window.devicePixelRatio || 1;
+                this.canvas.width = rect.width * dpr * this.resolutionScale;
+                this.canvas.height = rect.height * dpr * this.resolutionScale;
+                this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+            }
+
+            get resolutionScale() {
+                return this._resolutionScale || 1;
+            }
+
+            set resolutionScale(value) {
+                this._resolutionScale = value;
+                this.resize();
+            }
+
+            setGradient(colors) {
+                this.gradientColors = colors;
+            }
+
+            render() {
+                this.gl.useProgram(this.program);
+
+                this.gl.uniform2f(this.uniforms.resolution, this.canvas.width, this.canvas.height);
+                this.gl.uniform2f(this.uniforms.center, this.centerX, this.centerY);
+                this.gl.uniform1f(this.uniforms.zoom, this.zoom);
+                this.gl.uniform2f(this.uniforms.juliaC, this.juliaC.x, this.juliaC.y);
+                this.gl.uniform1i(this.uniforms.maxIterations, this.maxIterations);
+                this.gl.uniform1f(this.uniforms.escapeRadius, this.escapeRadius);
+                this.gl.uniform1i(this.uniforms.smoothColoring, this.smoothColoring ? 1 : 0);
+                this.gl.uniform1i(this.uniforms.isJulia, this.type === 'julia' ? 1 : 0);
+                this.gl.uniform1f(this.uniforms.colorOffset, this.colorOffset);
+
+                // Set gradient colors
+                const colors = [];
+                const positions = [];
+                for (let i = 0; i < 8; i++) {
+                    if (i < this.gradientColors.length) {
+                        const c = this.gradientColors[i];
+                        colors.push(c[1], c[2], c[3], 1.0);
+                        positions.push(c[0]);
+                    } else {
+                        colors.push(0, 0, 0, 1);
+                        positions.push(1);
+                    }
+                }
+                this.gl.uniform4fv(this.uniforms.colors, new Float32Array(colors));
+                this.gl.uniform1fv(this.uniforms.colorPositions, new Float32Array(positions));
+                this.gl.uniform1i(this.uniforms.numColors, this.gradientColors.length);
+
+                this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
+            }
+
+            screenToComplex(x, y) {
+                const rect = this.canvas.getBoundingClientRect();
+                const aspect = rect.width / rect.height;
+                const scale = Math.min(rect.width, rect.height);
+
+                const cx = (x - rect.width / 2) / scale * this.zoom + this.centerX;
+                const cy = -(y - rect.height / 2) / scale * this.zoom + this.centerY;
+
+                return { x: cx, y: cy };
+            }
+
+            complexToScreen(cx, cy) {
+                const rect = this.canvas.getBoundingClientRect();
+                const scale = Math.min(rect.width, rect.height);
+
+                const x = (cx - this.centerX) / this.zoom * scale + rect.width / 2;
+                const y = -(cy - this.centerY) / this.zoom * scale + rect.height / 2;
+
+                return { x, y };
+            }
+
+            zoomAt(x, y, factor) {
+                const complex = this.screenToComplex(x, y);
+                this.centerX = complex.x - (complex.x - this.centerX) / factor;
+                this.centerY = complex.y - (complex.y - this.centerY) / factor;
+                this.zoom /= factor;
+            }
+
+            reset() {
+                this.centerX = this.type === 'mandelbrot' ? -0.5 : 0;
+                this.centerY = 0;
+                this.zoom = 1.5;
+            }
+        }
+
+        // ============================================
+        // Application State
+        // ============================================
+
+        const state = {
+            mandelbrot: null,
+            julia: null,
+            isPlaying: false,
+            crazyMode: false,
+            crazyTime: 0,
+            crazySpeed: 1,
+            crazyPhase: 0,
+            animationTime: 0,
+            animationPath: 'circle',
+            pathCenter: { x: -0.5, y: 0 },
+            pathRadius: 0.3,
+            animSpeed: 1,
+            loop: true,
+            colorCycling: false,
+            cycleSpeed: 1,
+            customPath: [],
+            selectedGradientStop: 0,
+            currentGradient: [
+                [0.0, 0, 0, 0],
+                [0.16, 0.1, 0.1, 0.4],
+                [0.42, 0.4, 0.5, 1.0],
+                [0.6425, 1.0, 1.0, 1.0],
+                [0.8575, 1.0, 0.6, 0.2],
+                [1.0, 0, 0, 0]
+            ],
+            presetGradients: {
+                classic: [
+                    [0.0, 0, 0, 0],
+                    [0.16, 0.1, 0.1, 0.4],
+                    [0.42, 0.4, 0.5, 1.0],
+                    [0.6425, 1.0, 1.0, 1.0],
+                    [0.8575, 1.0, 0.6, 0.2],
+                    [1.0, 0, 0, 0]
+                ],
+                fire: [
+                    [0.0, 0, 0, 0],
+                    [0.25, 0.5, 0, 0],
+                    [0.5, 1, 0.4, 0],
+                    [0.75, 1, 1, 0],
+                    [1.0, 1, 1, 1]
+                ],
+                ocean: [
+                    [0.0, 0, 0.05, 0.15],
+                    [0.33, 0, 0.3, 0.6],
+                    [0.66, 0.2, 0.7, 0.9],
+                    [1.0, 0.9, 1, 1]
+                ],
+                neon: [
+                    [0.0, 0, 0, 0],
+                    [0.25, 1, 0, 0.5],
+                    [0.5, 0, 1, 1],
+                    [0.75, 1, 1, 0],
+                    [1.0, 1, 0, 0.5]
+                ],
+                grayscale: [
+                    [0.0, 0, 0, 0],
+                    [1.0, 1, 1, 1]
+                ],
+                rainbow: [
+                    [0.0, 1, 0, 0],
+                    [0.16, 1, 0.5, 0],
+                    [0.33, 1, 1, 0],
+                    [0.5, 0, 1, 0],
+                    [0.66, 0, 0.5, 1],
+                    [0.83, 0.5, 0, 1],
+                    [1.0, 1, 0, 0.5]
+                ],
+                psychedelic: [
+                    [0.0, 1, 0, 1],
+                    [0.2, 0, 1, 1],
+                    [0.4, 1, 1, 0],
+                    [0.6, 1, 0, 0],
+                    [0.8, 0, 0, 1],
+                    [1.0, 1, 0, 1]
+                ]
+            },
+            juliaPresets: [
+                { name: 'San Marco', c: { x: -0.75, y: 0 } },
+                { name: 'Dendrite', c: { x: 0.36, y: 0.1 } },
+                { name: 'Siegel Disk', c: { x: -0.391, y: -0.587 } },
+                { name: 'Douady Rabbit', c: { x: -0.123, y: 0.745 } },
+                { name: 'Lightning', c: { x: -0.4, y: 0.6 } },
+                { name: 'Galaxies', c: { x: 0.285, y: 0.01 } },
+                { name: 'Dragon', c: { x: -0.8, y: 0.156 } },
+                { name: 'Frost', c: { x: -0.7269, y: 0.1889 } }
+            ]
+        };
+
+        // ============================================
+        // Initialization
+        // ============================================
+
+        function init() {
+            // Create renderers
+            state.mandelbrot = new FractalRenderer(
+                document.getElementById('mandelbrot-canvas'),
+                'mandelbrot'
+            );
+            state.julia = new FractalRenderer(
+                document.getElementById('julia-canvas'),
+                'julia'
+            );
+
+            // Set initial Julia c value
+            state.julia.juliaC = { x: -0.75, y: 0 };
+
+            // Initial render
+            render();
+
+            // Setup event listeners
+            setupPanelEvents();
+            setupCanvasEvents();
+            setupControlEvents();
+            setupResizeHandler();
+
+            // Initialize UI
+            initGradientUI();
+            initPresetsUI();
+            updateCrosshair();
+            setupCrazyMode();
+
+            // Start animation loop
+            requestAnimationFrame(animate);
+        }
+
+        function render() {
+            state.mandelbrot.render();
+            state.julia.render();
+        }
+
+        // ============================================
+        // Animation Loop
+        // ============================================
+
+        let lastTime = 0;
+
+        function animate(time) {
+            const dt = (time - lastTime) / 1000;
+            lastTime = time;
+
+            // Color cycling
+            if (state.colorCycling) {
+                state.mandelbrot.colorOffset += dt * state.cycleSpeed * 0.1;
+                state.julia.colorOffset += dt * state.cycleSpeed * 0.1;
+            }
+
+            // CRAZY MODE - trace along Mandelbrot boundary chaotically
+            if (state.crazyMode) {
+                state.crazyTime += dt * 2.5;
+                state.crazyPhase += dt * 0.7;
+
+                // Multiple overlapping oscillations for chaotic movement along the boundary
+                const t = state.crazyTime;
+                const p = state.crazyPhase;
+
+                // Main cardioid boundary with perturbations
+                const theta = t * 2 + Math.sin(t * 3.7) * 0.5 + Math.sin(t * 7.3) * 0.3;
+
+                // Cardioid parametric formula with chaos
+                let r = 0.5 * (1 - Math.cos(theta));
+
+                // Add chaotic perturbations to jump between interesting regions
+                const chaos = Math.sin(t * 5.1) * Math.cos(t * 3.3) * 0.15;
+                const chaos2 = Math.sin(p * 11.7) * 0.1;
+
+                // Sometimes jump to the main bulb or antenna
+                const jumpFactor = Math.sin(t * 0.5);
+                if (jumpFactor > 0.7) {
+                    // Jump to the period-2 bulb region
+                    r = 0.25 + Math.sin(t * 4) * 0.1;
+                } else if (jumpFactor < -0.7) {
+                    // Jump to the antenna/needle region
+                    r = 0.1 + Math.abs(Math.sin(t * 6)) * 0.4;
+                }
+
+                // Calculate position with multiple frequency oscillations
+                const baseX = r * Math.cos(theta) - 0.25;
+                const baseY = r * Math.sin(theta);
+
+                // Add high-frequency jitter for extra craziness
+                const jitterX = Math.sin(t * 17.3) * 0.05 + Math.sin(t * 31.7) * 0.02;
+                const jitterY = Math.cos(t * 19.1) * 0.05 + Math.cos(t * 29.3) * 0.02;
+
+                // Occasionally spiral inward or outward
+                const spiral = Math.sin(p * 2.1) * 0.2;
+
+                state.julia.juliaC = {
+                    x: baseX + chaos + jitterX + spiral * Math.cos(t * 3),
+                    y: baseY + chaos2 + jitterY + spiral * Math.sin(t * 3)
+                };
+
+                // Also cycle colors during crazy mode for extra effect
+                state.mandelbrot.colorOffset += dt * 0.5;
+                state.julia.colorOffset += dt * 0.5;
+
+                updateJuliaInfo();
+                updateCrosshair();
+            }
+
+            // Path animation
+            if (state.isPlaying && !state.crazyMode) {
+                state.animationTime += dt * state.animSpeed * 0.5;
+
+                if (state.animationTime >= 1) {
+                    if (state.loop) {
+                        state.animationTime = state.animationTime % 1;
+                    } else {
+                        state.animationTime = 1;
+                        state.isPlaying = false;
+                        document.getElementById('play-btn').textContent = '▶';
+                    }
+                }
+
+                const pos = getPathPosition(state.animationTime);
+                state.julia.juliaC = pos;
+                updateJuliaInfo();
+                updateCrosshair();
+                updateProgressBar();
+            }
+
+            render();
+            requestAnimationFrame(animate);
+        }
+
+        function getPathPosition(t) {
+            const cx = state.pathCenter.x;
+            const cy = state.pathCenter.y;
+            const r = state.pathRadius;
+            const angle = t * Math.PI * 2;
+
+            switch (state.animationPath) {
+                case 'circle':
+                    return {
+                        x: cx + Math.cos(angle) * r,
+                        y: cy + Math.sin(angle) * r
+                    };
+                case 'figure8':
+                    return {
+                        x: cx + Math.sin(angle) * r,
+                        y: cy + Math.sin(angle * 2) * r * 0.5
+                    };
+                case 'spiral':
+                    const spiralR = r * (1 - t * 0.5);
+                    return {
+                        x: cx + Math.cos(angle * 3) * spiralR,
+                        y: cy + Math.sin(angle * 3) * spiralR
+                    };
+                case 'heart':
+                    const ht = angle;
+                    return {
+                        x: cx + r * 0.8 * Math.pow(Math.sin(ht), 3),
+                        y: cy + r * 0.7 * (0.8125 * Math.cos(ht) - 0.3125 * Math.cos(2*ht) - 0.125 * Math.cos(3*ht) - 0.0625 * Math.cos(4*ht))
+                    };
+                case 'custom':
+                    if (state.customPath.length < 2) {
+                        return { x: cx, y: cy };
+                    }
+                    const idx = t * (state.customPath.length - 1);
+                    const i = Math.floor(idx);
+                    const frac = idx - i;
+                    const p1 = state.customPath[Math.min(i, state.customPath.length - 1)];
+                    const p2 = state.customPath[Math.min(i + 1, state.customPath.length - 1)];
+                    return {
+                        x: p1.x + (p2.x - p1.x) * frac,
+                        y: p1.y + (p2.y - p1.y) * frac
+                    };
+                default:
+                    return { x: cx, y: cy };
+            }
+        }
+
+        // ============================================
+        // Canvas Events
+        // ============================================
+
+        function setupCanvasEvents() {
+            const mandelbrotCanvas = document.getElementById('mandelbrot-canvas');
+            const juliaCanvas = document.getElementById('julia-canvas');
+
+            // Mandelbrot interactions
+            let isDraggingMandelbrot = false;
+            let lastMousePos = { x: 0, y: 0 };
+
+            mandelbrotCanvas.addEventListener('mousedown', (e) => {
+                if (e.button === 0) {
+                    isDraggingMandelbrot = true;
+                    lastMousePos = { x: e.clientX, y: e.clientY };
+                }
+            });
+
+            mandelbrotCanvas.addEventListener('mousemove', (e) => {
+                const rect = mandelbrotCanvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                if (isDraggingMandelbrot) {
+                    const dx = (e.clientX - lastMousePos.x) / Math.min(rect.width, rect.height) * state.mandelbrot.zoom;
+                    const dy = (e.clientY - lastMousePos.y) / Math.min(rect.width, rect.height) * state.mandelbrot.zoom;
+                    state.mandelbrot.centerX -= dx;
+                    state.mandelbrot.centerY += dy;
+                    lastMousePos = { x: e.clientX, y: e.clientY };
+                } else {
+                    // Hover preview
+                    const complex = state.mandelbrot.screenToComplex(x, y);
+                    state.julia.juliaC = complex;
+                    updateJuliaInfo();
+                }
+
+                updateMandelbrotInfo(x, y);
+                updateCrosshairFromMouse(x, y);
+            });
+
+            mandelbrotCanvas.addEventListener('mouseup', () => {
+                isDraggingMandelbrot = false;
+            });
+
+            mandelbrotCanvas.addEventListener('mouseleave', () => {
+                isDraggingMandelbrot = false;
+            });
+
+            mandelbrotCanvas.addEventListener('click', (e) => {
+                if (state.animationPath === 'custom') {
+                    const rect = mandelbrotCanvas.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    const complex = state.mandelbrot.screenToComplex(x, y);
+                    state.customPath.push(complex);
+                }
+            });
+
+            mandelbrotCanvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const rect = mandelbrotCanvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const factor = e.deltaY > 0 ? 0.8 : 1.25;
+                state.mandelbrot.zoomAt(x, y, factor);
+                updateMandelbrotInfo(x, y);
+            });
+
+            // Julia interactions
+            let isDraggingJulia = false;
+
+            juliaCanvas.addEventListener('mousedown', (e) => {
+                if (e.button === 0) {
+                    isDraggingJulia = true;
+                    lastMousePos = { x: e.clientX, y: e.clientY };
+                }
+            });
+
+            juliaCanvas.addEventListener('mousemove', (e) => {
+                const rect = juliaCanvas.getBoundingClientRect();
+
+                if (isDraggingJulia) {
+                    const dx = (e.clientX - lastMousePos.x) / Math.min(rect.width, rect.height) * state.julia.zoom;
+                    const dy = (e.clientY - lastMousePos.y) / Math.min(rect.width, rect.height) * state.julia.zoom;
+                    state.julia.centerX -= dx;
+                    state.julia.centerY += dy;
+                    lastMousePos = { x: e.clientX, y: e.clientY };
+                }
+            });
+
+            juliaCanvas.addEventListener('mouseup', () => {
+                isDraggingJulia = false;
+            });
+
+            juliaCanvas.addEventListener('mouseleave', () => {
+                isDraggingJulia = false;
+            });
+
+            juliaCanvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const rect = juliaCanvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const factor = e.deltaY > 0 ? 0.8 : 1.25;
+                state.julia.zoomAt(x, y, factor);
+                updateJuliaZoomInfo();
+            });
+
+            // Touch events for mobile
+            setupTouchEvents(mandelbrotCanvas, state.mandelbrot, true);
+            setupTouchEvents(juliaCanvas, state.julia, false);
+
+            // Reset buttons
+            document.getElementById('mandelbrot-reset').addEventListener('click', () => {
+                state.mandelbrot.reset();
+            });
+
+            document.getElementById('julia-reset').addEventListener('click', () => {
+                state.julia.reset();
+            });
+
+            // Zoom buttons
+            document.getElementById('mandelbrot-zoomin').addEventListener('click', () => {
+                state.mandelbrot.zoom /= 1.5;
+            });
+
+            document.getElementById('mandelbrot-zoomout').addEventListener('click', () => {
+                state.mandelbrot.zoom *= 1.5;
+            });
+
+            document.getElementById('julia-zoomin').addEventListener('click', () => {
+                state.julia.zoom /= 1.5;
+            });
+
+            document.getElementById('julia-zoomout').addEventListener('click', () => {
+                state.julia.zoom *= 1.5;
+            });
+        }
+
+        function setupTouchEvents(canvas, renderer, isMandelbrot) {
+            let lastTouches = [];
+            let lastDist = 0;
+
+            canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                lastTouches = Array.from(e.touches);
+                if (e.touches.length === 2) {
+                    lastDist = getTouchDistance(e.touches);
+                }
+            }, { passive: false });
+
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                const rect = canvas.getBoundingClientRect();
+
+                if (e.touches.length === 1) {
+                    // Pan
+                    const dx = (e.touches[0].clientX - lastTouches[0].clientX) / Math.min(rect.width, rect.height) * renderer.zoom;
+                    const dy = (e.touches[0].clientY - lastTouches[0].clientY) / Math.min(rect.width, rect.height) * renderer.zoom;
+                    renderer.centerX -= dx;
+                    renderer.centerY += dy;
+
+                    if (isMandelbrot) {
+                        const x = e.touches[0].clientX - rect.left;
+                        const y = e.touches[0].clientY - rect.top;
+                        const complex = renderer.screenToComplex(x, y);
+                        state.julia.juliaC = complex;
+                        updateJuliaInfo();
+                    }
+                } else if (e.touches.length === 2) {
+                    // Pinch zoom
+                    const dist = getTouchDistance(e.touches);
+                    const factor = dist / lastDist;
+                    renderer.zoom /= factor;
+                    lastDist = dist;
+                }
+
+                lastTouches = Array.from(e.touches);
+            }, { passive: false });
+        }
+
+        function getTouchDistance(touches) {
+            const dx = touches[0].clientX - touches[1].clientX;
+            const dy = touches[0].clientY - touches[1].clientY;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        // ============================================
+        // Info Updates
+        // ============================================
+
+        function updateMandelbrotInfo(x, y) {
+            const complex = state.mandelbrot.screenToComplex(x, y);
+            const zoomLevel = (1.5 / state.mandelbrot.zoom).toFixed(1);
+            document.getElementById('mandelbrot-info').innerHTML = `
+                <div>Pos: ${complex.x.toFixed(3)} ${complex.y >= 0 ? '+' : ''}${complex.y.toFixed(3)}i</div>
+                <div>Zoom: ${zoomLevel}x</div>
+            `;
+        }
+
+        function updateJuliaInfo() {
+            const c = state.julia.juliaC;
+            const zoomLevel = (1.5 / state.julia.zoom).toFixed(1);
+            document.getElementById('julia-info').innerHTML = `
+                <div>c = ${c.x.toFixed(3)} ${c.y >= 0 ? '+' : ''}${c.y.toFixed(3)}i</div>
+                <div>Zoom: ${zoomLevel}x</div>
+            `;
+        }
+
+        function updateJuliaZoomInfo() {
+            const c = state.julia.juliaC;
+            const zoomLevel = (1.5 / state.julia.zoom).toFixed(1);
+            document.getElementById('julia-info').innerHTML = `
+                <div>c = ${c.x.toFixed(3)} ${c.y >= 0 ? '+' : ''}${c.y.toFixed(3)}i</div>
+                <div>Zoom: ${zoomLevel}x</div>
+            `;
+        }
+
+        function updateCrosshair() {
+            const crosshair = document.getElementById('crosshair');
+            const pos = state.mandelbrot.complexToScreen(state.julia.juliaC.x, state.julia.juliaC.y);
+            crosshair.style.left = pos.x + 'px';
+            crosshair.style.top = pos.y + 'px';
+        }
+
+        function updateCrosshairFromMouse(x, y) {
+            const crosshair = document.getElementById('crosshair');
+            crosshair.style.left = x + 'px';
+            crosshair.style.top = y + 'px';
+        }
+
+        function updateProgressBar() {
+            const fill = document.getElementById('progress-fill');
+            fill.style.width = (state.animationTime * 100) + '%';
+        }
+
+        // ============================================
+        // Control Panel Events
+        // ============================================
+
+        function setupPanelEvents() {
+            // Toggle panel
+            document.getElementById('panel-toggle').addEventListener('click', (e) => {
+                if (e.target.closest('.tab-btn')) return;
+                const panel = document.getElementById('control-panel');
+                panel.classList.toggle('collapsed');
+                panel.classList.toggle('expanded');
+            });
+
+            // Tab switching
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    btn.classList.add('active');
+                    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+                });
+            });
+        }
+
+        function setupControlEvents() {
+            // Animation controls
+            document.querySelectorAll('.path-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.path-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    state.animationPath = btn.dataset.path;
+                    if (btn.dataset.path === 'custom') {
+                        state.customPath = [];
+                    }
+                });
+            });
+
+            document.getElementById('path-center-x').addEventListener('input', (e) => {
+                state.pathCenter.x = parseFloat(e.target.value);
+                document.getElementById('path-center-x-val').textContent = state.pathCenter.x.toFixed(2);
+            });
+
+            document.getElementById('path-center-y').addEventListener('input', (e) => {
+                state.pathCenter.y = parseFloat(e.target.value);
+                document.getElementById('path-center-y-val').textContent = state.pathCenter.y.toFixed(2) + 'i';
+            });
+
+            document.getElementById('path-radius').addEventListener('input', (e) => {
+                state.pathRadius = parseFloat(e.target.value);
+                document.getElementById('path-radius-val').textContent = state.pathRadius.toFixed(2);
+            });
+
+            document.getElementById('anim-speed').addEventListener('input', (e) => {
+                state.animSpeed = parseFloat(e.target.value);
+                document.getElementById('anim-speed-val').textContent = state.animSpeed.toFixed(1) + 'x';
+            });
+
+            document.getElementById('play-btn').addEventListener('click', () => {
+                state.isPlaying = !state.isPlaying;
+                document.getElementById('play-btn').textContent = state.isPlaying ? '⏸' : '▶';
+                if (state.isPlaying && state.animationTime >= 1) {
+                    state.animationTime = 0;
+                }
+            });
+
+            document.getElementById('loop-toggle').addEventListener('click', (e) => {
+                state.loop = !state.loop;
+                e.target.classList.toggle('checked', state.loop);
+            });
+
+            document.getElementById('progress-bar').addEventListener('click', (e) => {
+                const rect = e.target.getBoundingClientRect();
+                state.animationTime = (e.clientX - rect.left) / rect.width;
+                updateProgressBar();
+            });
+
+            // Color controls
+            document.getElementById('color-cycle-toggle').addEventListener('click', (e) => {
+                state.colorCycling = !state.colorCycling;
+                e.target.classList.toggle('checked', state.colorCycling);
+            });
+
+            document.getElementById('cycle-speed').addEventListener('input', (e) => {
+                state.cycleSpeed = parseFloat(e.target.value);
+                document.getElementById('cycle-speed-val').textContent = state.cycleSpeed.toFixed(1) + 'x';
+            });
+
+            document.getElementById('stop-color').addEventListener('input', (e) => {
+                document.getElementById('color-btn').style.background = e.target.value;
+                if (state.selectedGradientStop !== null && state.currentGradient[state.selectedGradientStop]) {
+                    const hex = e.target.value;
+                    const r = parseInt(hex.slice(1,3), 16) / 255;
+                    const g = parseInt(hex.slice(3,5), 16) / 255;
+                    const b = parseInt(hex.slice(5,7), 16) / 255;
+                    state.currentGradient[state.selectedGradientStop][1] = r;
+                    state.currentGradient[state.selectedGradientStop][2] = g;
+                    state.currentGradient[state.selectedGradientStop][3] = b;
+                    updateGradientUI();
+                    applyGradient();
+                }
+            });
+
+            document.getElementById('add-stop').addEventListener('click', () => {
+                if (state.currentGradient.length < 8) {
+                    state.currentGradient.push([0.5, 0.5, 0.5, 0.5]);
+                    state.currentGradient.sort((a, b) => a[0] - b[0]);
+                    updateGradientUI();
+                    applyGradient();
+                }
+            });
+
+            document.getElementById('remove-stop').addEventListener('click', () => {
+                if (state.currentGradient.length > 2 && state.selectedGradientStop !== null) {
+                    state.currentGradient.splice(state.selectedGradientStop, 1);
+                    state.selectedGradientStop = Math.min(state.selectedGradientStop, state.currentGradient.length - 1);
+                    updateGradientUI();
+                    applyGradient();
+                }
+            });
+
+            // Rendering controls
+            document.getElementById('max-iterations').addEventListener('input', (e) => {
+                const val = parseInt(e.target.value);
+                state.mandelbrot.maxIterations = val;
+                state.julia.maxIterations = val;
+                document.getElementById('max-iterations-val').textContent = val;
+            });
+
+            document.getElementById('escape-radius').addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                state.mandelbrot.escapeRadius = val;
+                state.julia.escapeRadius = val;
+                document.getElementById('escape-radius-val').textContent = val.toFixed(1);
+            });
+
+            document.getElementById('smooth-toggle').addEventListener('click', (e) => {
+                const smooth = e.target.classList.toggle('checked');
+                state.mandelbrot.smoothColoring = smooth;
+                state.julia.smoothColoring = smooth;
+            });
+
+            document.querySelectorAll('[data-res]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('[data-res]').forEach(b => {
+                        b.classList.remove('btn');
+                        b.classList.add('btn-secondary');
+                    });
+                    btn.classList.remove('btn-secondary');
+                    btn.classList.add('btn');
+                    const scale = parseFloat(btn.dataset.res);
+                    state.mandelbrot.resolutionScale = scale;
+                    state.julia.resolutionScale = scale;
+                });
+            });
+        }
+
+        // ============================================
+        // Gradient UI
+        // ============================================
+
+        function initGradientUI() {
+            updateGradientUI();
+
+            // Create preset gradient buttons
+            const container = document.getElementById('preset-gradients');
+            Object.keys(state.presetGradients).forEach(name => {
+                const btn = document.createElement('div');
+                btn.className = 'preset-gradient';
+                btn.style.background = createGradientCSS(state.presetGradients[name]);
+                btn.title = name.charAt(0).toUpperCase() + name.slice(1);
+                btn.addEventListener('click', () => {
+                    state.currentGradient = JSON.parse(JSON.stringify(state.presetGradients[name]));
+                    updateGradientUI();
+                    applyGradient();
+                    document.querySelectorAll('.preset-gradient').forEach(p => p.classList.remove('active'));
+                    btn.classList.add('active');
+                });
+                container.appendChild(btn);
+            });
+        }
+
+        function updateGradientUI() {
+            const preview = document.getElementById('gradient-preview');
+            preview.style.background = createGradientCSS(state.currentGradient);
+
+            const stopsContainer = document.getElementById('gradient-stops');
+            stopsContainer.innerHTML = '';
+
+            state.currentGradient.forEach((stop, i) => {
+                const el = document.createElement('div');
+                el.className = 'gradient-stop' + (i === state.selectedGradientStop ? ' selected' : '');
+                el.style.left = (stop[0] * 100) + '%';
+                el.style.background = `rgb(${stop[1]*255}, ${stop[2]*255}, ${stop[3]*255})`;
+
+                el.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    state.selectedGradientStop = i;
+                    updateGradientUI();
+                    const hex = '#' +
+                        Math.round(stop[1]*255).toString(16).padStart(2,'0') +
+                        Math.round(stop[2]*255).toString(16).padStart(2,'0') +
+                        Math.round(stop[3]*255).toString(16).padStart(2,'0');
+                    document.getElementById('stop-color').value = hex;
+                    document.getElementById('color-btn').style.background = hex;
+                });
+
+                // Drag to reposition
+                let isDragging = false;
+                el.addEventListener('mousedown', () => isDragging = true);
+                document.addEventListener('mousemove', (e) => {
+                    if (isDragging && i !== 0 && i !== state.currentGradient.length - 1) {
+                        const rect = preview.getBoundingClientRect();
+                        let pos = (e.clientX - rect.left) / rect.width;
+                        pos = Math.max(0.01, Math.min(0.99, pos));
+                        state.currentGradient[i][0] = pos;
+                        state.currentGradient.sort((a, b) => a[0] - b[0]);
+                        state.selectedGradientStop = state.currentGradient.findIndex(s => s[0] === pos);
+                        updateGradientUI();
+                        applyGradient();
+                    }
+                });
+                document.addEventListener('mouseup', () => isDragging = false);
+
+                stopsContainer.appendChild(el);
+            });
+        }
+
+        function createGradientCSS(colors) {
+            const stops = colors.map(c =>
+                `rgb(${c[1]*255}, ${c[2]*255}, ${c[3]*255}) ${c[0]*100}%`
+            ).join(', ');
+            return `linear-gradient(90deg, ${stops})`;
+        }
+
+        function applyGradient() {
+            state.mandelbrot.setGradient(state.currentGradient);
+            state.julia.setGradient(state.currentGradient);
+        }
+
+        // ============================================
+        // Presets UI
+        // ============================================
+
+        function initPresetsUI() {
+            const container = document.getElementById('presets-grid');
+
+            state.juliaPresets.forEach(preset => {
+                const card = document.createElement('div');
+                card.className = 'preset-card';
+                card.innerHTML = `
+                    <div class="preset-thumbnail"></div>
+                    <div class="preset-name">${preset.name}</div>
+                `;
+
+                card.addEventListener('click', () => {
+                    state.julia.juliaC = { ...preset.c };
+                    state.julia.reset();
+                    updateJuliaInfo();
+                    updateCrosshair();
+                });
+
+                container.appendChild(card);
+            });
+        }
+
+        // ============================================
+        // Window Resize
+        // ============================================
+
+        function setupResizeHandler() {
+            window.addEventListener('resize', () => {
+                state.mandelbrot.resize();
+                state.julia.resize();
+            });
+        }
+
+        // ============================================
+        // CRAZY MODE
+        // ============================================
+
+        function setupCrazyMode() {
+            const btn = document.getElementById('crazy-mode-btn');
+
+            btn.addEventListener('click', () => {
+                state.crazyMode = !state.crazyMode;
+                btn.classList.toggle('active', state.crazyMode);
+                btn.textContent = state.crazyMode ? 'STOP THE MADNESS!' : 'CRAZY MODE!!!';
+
+                // Toggle strobe overlay
+                const strobe = document.getElementById('strobe-overlay');
+                strobe.classList.toggle('active', state.crazyMode);
+
+                if (state.crazyMode) {
+                    state.crazyTime = 0;
+                    state.crazyPhase = Math.random() * Math.PI * 2;
+                    // Stop regular animation
+                    state.isPlaying = false;
+                    document.getElementById('play-btn').textContent = '▶';
+                }
+            });
+        }
+
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
