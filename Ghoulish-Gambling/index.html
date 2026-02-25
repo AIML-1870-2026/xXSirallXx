@@ -4,638 +4,804 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ghoulish Gambling — Blackjack</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Cinzel+Decorative:wght@700&display=swap" rel="stylesheet">
 <style>
-/* ===== RESET ===== */
-*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-:root {
-  --black:   #080810;
-  --surface: #12121e;
-  --panel:   #191926;
-  --felt:    #0b1f0e;
-  --gold:    #c9a84c;
-  --gold2:   #e8c96a;
-  --purple:  #7b2fff;
-  --purple2: #4a1a99;
-  --orange:  #ff6b1a;
-  --green:   #22cc66;
-  --red:     #ff2244;
-  --bone:    #ede8d8;
-  --dim:     #666;
-  --cw: 72px;
-  --ch: 104px;
-  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --ink:#06060f;
+  --deep:#0d0d1a;
+  --panel:#14141f;
+  --felt:#0f2912;
+  --felt-hi:#183d1b;
+  --gold:#c8a84a;
+  --gold2:#f0d480;
+  --purple:#7b2fff;
+  --pur2:#3d0d99;
+  --orange:#ff6b1a;
+  --green:#19d45a;
+  --red:#ff2040;
+  --bone:#ede8d8;
+  --muted:#5a5a72;
+  --shadow:rgba(0,0,0,.85);
 }
-html, body { height: 100%; overflow: hidden; }
-body {
-  font-family: 'Cinzel', Georgia, serif;
-  background: var(--black);
-  color: var(--bone);
-  display: flex; align-items: center; justify-content: center;
-  min-height: 100vh;
-  user-select: none;
+html,body{height:100%;overflow:hidden;background:var(--ink)}
+body{
+  font-family:'Cinzel',Georgia,serif;
+  color:var(--bone);
+  display:flex;flex-direction:column;
+  min-height:100vh;
+  user-select:none;
 }
 
-/* ===== SCREENS ===== */
-.screen {
-  position: absolute; inset: 0;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  transition: opacity 0.4s var(--ease);
+/* ─── SCREENS ─────────────────────────────────── */
+.screen{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  transition:opacity .45s ease;
 }
-.screen.hidden { opacity: 0; pointer-events: none; }
+.screen.gone{opacity:0;pointer-events:none}
 
-/* ============================
-   TITLE SCREEN
-   ============================ */
-#titleScreen {
-  background: radial-gradient(ellipse 80% 60% at 50% 42%, #220044 0%, #0a0a12 65%);
-  gap: 14px;
-}
-.ghost-float {
-  position: absolute; font-size: 2.4rem;
-  animation: ghostDrift 9s ease-in-out infinite;
-  opacity: 0.1; pointer-events: none;
-}
-.g1 { top: 8%;  left: 8%;  animation-delay: 0s; }
-.g2 { top: 14%; right:11%; animation-delay: 2.5s; font-size:1.8rem; }
-.g3 { bottom:18%; left:14%; animation-delay: 5s;  font-size:2rem; }
-.g4 { bottom:24%; right:7%; animation-delay: 1s;  font-size:1.5rem; }
-.g5 { top:48%; left:4%;     animation-delay: 3.5s; font-size:1.2rem; }
-@keyframes ghostDrift {
-  0%,100% { transform: translateY(0) rotate(-4deg); }
-  50%      { transform: translateY(-28px) rotate(4deg); }
-}
-.title-skull {
-  font-size: 4.5rem;
-  animation: skullPulse 2.5s ease-in-out infinite;
-  filter: drop-shadow(0 0 18px var(--purple));
-}
-@keyframes skullPulse {
-  0%,100% { filter:drop-shadow(0 0 18px var(--purple)); transform:scale(1); }
-  50%      { filter:drop-shadow(0 0 38px var(--orange)); transform:scale(1.06); }
-}
-.title-main {
-  font-size: clamp(2rem, 6vw, 4.5rem); font-weight: 900;
-  background: linear-gradient(135deg, var(--orange) 0%, var(--gold) 50%, var(--orange) 100%);
-  background-size: 200%;
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-  animation: shimmer 3s linear infinite;
-  text-align: center; letter-spacing: 0.05em;
-}
-@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-.title-sub {
-  font-size: clamp(0.8rem, 2vw, 1.05rem);
-  color: var(--purple); letter-spacing: 0.3em; text-transform: uppercase;
-  text-align: center; opacity: 0.9;
-}
-.title-rule {
-  width: 120px; height: 1px;
-  background: linear-gradient(90deg, transparent, var(--gold), transparent);
-  margin: 4px 0;
-}
-.btn-primary {
-  padding: 14px 52px;
-  font-family: 'Cinzel', serif; font-size: 1.1rem; font-weight: 700;
-  background: linear-gradient(135deg, var(--purple2), var(--purple));
-  color: #fff; border: 2px solid var(--purple); border-radius: 999px;
-  cursor: pointer; letter-spacing: 0.15em; text-transform: uppercase;
-  box-shadow: 0 0 32px rgba(123,47,255,.35), 0 4px 16px rgba(0,0,0,.5);
-  transition: all 0.2s; margin-top: 6px;
-}
-.btn-primary:hover { transform: translateY(-2px) scale(1.04); box-shadow: 0 0 52px rgba(123,47,255,.55), 0 8px 24px rgba(0,0,0,.6); }
-.btn-primary:active { transform: none; }
-.title-hints {
-  font-size: 0.68rem; color: var(--dim);
-  font-family: system-ui, monospace; letter-spacing: 0.06em;
-  margin-top: 8px; text-align: center;
-}
-
-/* ============================
-   GAME SCREEN
-   ============================ */
-#gameScreen {
-  flex-direction: column; justify-content: stretch; padding: 0; overflow: hidden;
-}
-
-/* --- HUD --- */
-.hud {
-  width: 100%; display: flex; align-items: center; justify-content: space-between;
-  padding: 9px 20px;
-  background: rgba(0,0,0,.62);
-  border-bottom: 1px solid rgba(255,255,255,.05);
-  flex-shrink: 0; gap: 10px;
-}
-.hud-brand { font-size: .9rem; font-weight: 700; color: var(--gold); letter-spacing: .12em; white-space: nowrap; }
-.hud-stats { display: flex; gap: 18px; align-items: center; }
-.hud-stat  { display: flex; flex-direction: column; align-items: center; gap: 1px; }
-.hud-lbl   { font-size: .55rem; color: var(--dim); text-transform: uppercase; letter-spacing: .12em; font-family: system-ui, sans-serif; }
-.hud-val   { font-size: .95rem; font-weight: 700; line-height: 1; }
-.hud-val.g { color: var(--gold); }
-.hud-val.gr{ color: var(--green); }
-.strikes   { display: flex; gap: 4px; align-items: center; }
-.s-dot     { width: 9px; height: 9px; border-radius: 50%; background: #333; transition: all .35s; }
-.s-dot.lit { background: var(--red); box-shadow: 0 0 7px var(--red); }
-
-/* --- TABLE --- */
-.table {
-  flex: 1; width: 100%; position: relative;
-  display: flex; flex-direction: column; overflow: hidden;
+/* ─── TITLE ────────────────────────────────────── */
+#titleScreen{
   background:
-    radial-gradient(ellipse 90% 55% at 50% 28%, rgba(18,56,18,.75) 0%, transparent 70%),
-    radial-gradient(ellipse 100% 100% at 50% 50%, #0c200d 0%, #060e07 100%);
+    radial-gradient(ellipse 70% 55% at 50% 38%,#2a0060 0%,transparent 65%),
+    radial-gradient(ellipse 100% 100% at 50% 80%,#1a1a08 0%,var(--ink) 60%);
+  gap:0;
 }
-.table::before {
-  content: ''; position: absolute; inset: 14px;
-  border: 1px solid rgba(255,255,255,.035); border-radius: 130px;
-  pointer-events: none; z-index: 0;
+.gf{
+  position:absolute;pointer-events:none;
+  animation:gDrift 10s ease-in-out infinite;
+  opacity:.1;
 }
-
-/* --- Swap banner --- */
-.swap-banner {
-  position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
-  background: linear-gradient(135deg, var(--purple2), var(--purple));
-  color: #fff; padding: 5px 18px; border-radius: 999px;
-  font-size: .7rem; font-weight: 700; letter-spacing: .1em; white-space: nowrap;
-  box-shadow: 0 0 16px rgba(123,47,255,.5);
-  display: none; z-index: 10;
-  animation: bannerPulse 1.2s ease-in-out infinite;
+.gf:nth-child(1){font-size:3rem;top:8%;left:7%;animation-delay:0s}
+.gf:nth-child(2){font-size:2rem;top:15%;right:10%;animation-delay:2.5s}
+.gf:nth-child(3){font-size:2.5rem;bottom:20%;left:12%;animation-delay:5s}
+.gf:nth-child(4){font-size:1.6rem;bottom:28%;right:7%;animation-delay:1.5s}
+.gf:nth-child(5){font-size:1.2rem;top:50%;left:4%;animation-delay:4s}
+.gf:nth-child(6){font-size:2rem;top:40%;right:4%;animation-delay:3s}
+@keyframes gDrift{
+  0%,100%{transform:translateY(0) rotate(-4deg)}
+  50%{transform:translateY(-30px) rotate(4deg)}
 }
-@keyframes bannerPulse { 0%,100%{opacity:1} 50%{opacity:.6} }
-.swap-banner.on { display: block; }
-
-/* --- Opponents row (NPCs + dealer) --- */
-.opponents-row {
-  display: flex; align-items: flex-start; justify-content: space-around;
-  width: 100%; padding: 14px 20px 4px; position: relative; z-index: 1;
+.t-skull{
+  font-size:5.5rem;margin-bottom:16px;
+  animation:skulPulse 2.5s ease-in-out infinite;
+  filter:drop-shadow(0 0 24px var(--purple));
 }
-.npc-zone {
-  display: flex; flex-direction: column; align-items: center; gap: 5px;
-  position: relative; min-width: 96px;
+@keyframes skulPulse{
+  0%,100%{filter:drop-shadow(0 0 24px var(--purple));transform:scale(1)}
+  50%{filter:drop-shadow(0 0 48px var(--orange));transform:scale(1.07)}
 }
-.npc-ava  { font-size: 1.5rem; opacity: .7; }
-.npc-name { font-size: .6rem; color: var(--dim); letter-spacing: .1em; font-family: system-ui, sans-serif; }
-.npc-react {
-  position: absolute; top: -22px; font-size: 1.25rem;
-  animation: reactPop 1.6s ease-out forwards; pointer-events: none; z-index: 10;
+.t-main{
+  font-family:'Cinzel Decorative',serif;
+  font-size:clamp(1.8rem,5.5vw,4.2rem);font-weight:700;
+  background:linear-gradient(135deg,var(--orange) 0%,var(--gold) 40%,var(--gold2) 60%,var(--orange) 100%);
+  background-size:200%;
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  animation:shim 4s linear infinite;
+  letter-spacing:.04em;text-align:center;margin-bottom:8px;
 }
-@keyframes reactPop { 0%{opacity:1;transform:translateY(0) scale(1)} 50%{transform:translateY(-10px) scale(1.35)} 100%{opacity:0;transform:translateY(-26px) scale(.8)} }
-
-/* --- Dealer zone --- */
-.dealer-zone {
-  display: flex; flex-direction: column; align-items: center; gap: 6px;
-  position: relative; z-index: 1;
+@keyframes shim{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.t-sub{
+  font-size:clamp(.75rem,1.8vw,.95rem);
+  color:var(--purple);letter-spacing:.35em;text-transform:uppercase;
+  margin-bottom:36px;text-align:center;
 }
-.zone-lbl   { font-size: .6rem; text-transform: uppercase; letter-spacing: .2em; color: var(--dim); font-family: system-ui, sans-serif; }
-.dealer-spr {
-  font-size: 2.8rem; line-height: 1;
-  animation: dealerIdle 3s ease-in-out infinite;
-  filter: drop-shadow(0 0 8px rgba(255,107,26,.25));
+.t-divider{
+  width:160px;height:1px;margin:0 auto 36px;
+  background:linear-gradient(90deg,transparent,var(--gold),transparent);
 }
-@keyframes dealerIdle { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
-.dealer-spr.charging {
-  animation: dealerCharge .72s ease-in forwards !important;
-  filter: drop-shadow(0 0 28px var(--red)) !important;
+.btn-enter{
+  padding:16px 60px;
+  font-family:'Cinzel',serif;font-size:1.1rem;font-weight:700;
+  background:linear-gradient(135deg,var(--pur2),var(--purple));
+  color:#fff;border:2px solid var(--purple);border-radius:999px;
+  cursor:pointer;letter-spacing:.18em;text-transform:uppercase;
+  box-shadow:0 0 40px rgba(123,47,255,.4),0 6px 24px var(--shadow);
+  transition:all .22s;
 }
-@keyframes dealerCharge {
-  0%   { transform: translateX(0) scale(1); }
-  20%  { transform: translateX(-14px) scale(1.1); }
-  55%  { transform: translateX(38vw) scale(2.8); }
-  100% { transform: translateX(48vw) scale(4); opacity: 0; }
+.btn-enter:hover{
+  transform:translateY(-3px) scale(1.04);
+  box-shadow:0 0 64px rgba(123,47,255,.6),0 10px 32px var(--shadow);
 }
-.dealer-total { font-size: .82rem; color: var(--orange); font-weight: 700; min-height: 1.1rem; font-family: system-ui, sans-serif; }
-
-/* --- Divider --- */
-.felt-divider {
-  width: calc(100% - 80px); height: 1px; margin: 6px auto;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,.06), transparent);
-  position: relative; z-index: 1;
+.t-keys{
+  margin-top:20px;font-size:.68rem;color:var(--muted);
+  font-family:system-ui,monospace;letter-spacing:.06em;
 }
 
-/* --- Player zone --- */
-.player-zone {
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
-  padding: 8px 16px 14px; position: relative; z-index: 1;
-  flex: 1; justify-content: flex-end;
+/* ─── GAME SCREEN ──────────────────────────────── */
+#gameScreen{
+  flex-direction:column;justify-content:stretch;
+  position:absolute;inset:0;padding:0;
 }
-.player-zone-lbl { font-size: .6rem; text-transform: uppercase; letter-spacing: .2em; color: var(--dim); font-family: system-ui, sans-serif; }
-.player-total {
-  font-size: 1.25rem; font-weight: 700; color: var(--green);
-  min-height: 1.5rem; font-family: system-ui, sans-serif; transition: color .3s;
-}
-.player-total.bust { color: var(--red); }
 
-/* ===== CARDS ===== */
-.hand {
-  display: flex; gap: 7px; flex-wrap: wrap;
-  justify-content: center; align-items: flex-end;
-  min-height: calc(var(--ch) + 4px);
+/* ── HUD ── */
+.hud{
+  width:100%;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 24px;
+  background:rgba(0,0,0,.75);
+  border-bottom:1px solid rgba(201,168,74,.18);
+  flex-shrink:0;
 }
-.card {
-  width: var(--cw); height: var(--ch);
-  border-radius: 9px; flex-shrink: 0;
-  display: flex; flex-direction: column; justify-content: space-between;
-  padding: 5px 5px;
-  border: 1px solid rgba(0,0,0,.12);
-  box-shadow: 0 4px 12px rgba(0,0,0,.65), inset 0 1px 0 rgba(255,255,255,.28);
-  position: relative; transition: transform .18s;
+.hud-logo{
+  font-family:'Cinzel Decorative',serif;
+  font-size:.85rem;color:var(--gold);letter-spacing:.1em;white-space:nowrap;
 }
-.card:hover:not(.back) { transform: translateY(-6px); }
-@keyframes cDeal {
-  from { transform: translateY(-44px) rotate(-7deg) scale(.8); opacity: 0; }
-  to   { transform: none; opacity: 1; }
-}
-.card.red   { background: linear-gradient(155deg, #fff9f9, #fff0f0); color: #bf0025; }
-.card.black { background: linear-gradient(155deg, #f9f9ff, #f0f0ff); color: #111; }
-.card.back  {
-  background: linear-gradient(145deg, #1e0044, #3a0080, #1e0044);
-  border: 2px solid var(--purple);
-  box-shadow: 0 4px 14px rgba(0,0,0,.7), 0 0 10px rgba(123,47,255,.2);
-  cursor: pointer; overflow: hidden;
-}
-.card.back::before {
-  content: '✦'; position: absolute; inset: 0;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.8rem; color: rgba(123,47,255,.4);
-  text-shadow: 0 0 10px rgba(123,47,255,.7);
-}
-.card.back::after {
-  content: '👁'; position: absolute; inset: 0;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.5rem; opacity: 0; transition: opacity .2s; z-index: 1;
-}
-.card.back:hover { border-color: var(--orange); box-shadow: 0 0 18px rgba(255,107,26,.4), 0 4px 14px rgba(0,0,0,.7); }
-.card.back:hover::after { opacity: 1; }
+.hud-stats{display:flex;gap:24px;align-items:center}
+.hud-item{display:flex;flex-direction:column;align-items:center;gap:2px}
+.hud-cap{font-size:.5rem;text-transform:uppercase;letter-spacing:.15em;color:var(--muted);font-family:system-ui}
+.hud-num{font-size:.95rem;font-weight:700;line-height:1}
+.hud-num.gold{color:var(--gold)}
+.hud-num.grn{color:var(--green)}
+.hud-strikes{display:flex;gap:5px;align-items:center}
+.sk{width:11px;height:11px;border-radius:50%;background:#222;transition:all .35s}
+.sk.lit{background:var(--red);box-shadow:0 0 8px var(--red)}
 
-.c-corner  { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.1; }
-.c-corner.bot { align-items: flex-end; transform: rotate(180deg); }
-.c-val  { font-size: .82rem; font-weight: 900; }
-.c-suit { font-size: .65rem; }
-.c-mid  { font-size: 1.6rem; line-height: 1; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
-
-/* NPC smaller cards */
-.ncard { --cw: 46px; --ch: 68px; width: 46px; height: 68px; border-radius: 7px; padding: 3px 3px; }
-.ncard .c-mid { font-size: 1.1rem; }
-.ncard .c-val { font-size: .65rem; }
-.ncard.back::before { font-size: 1.3rem; }
-.ncard.back::after  { font-size: 1.2rem; }
-
-/* Split hand active highlight */
-.split-active { outline: 2px solid var(--green); border-radius: 10px; padding: 4px; box-shadow: 0 0 14px rgba(34,204,102,.3); }
-
-/* ===== RESULT OVERLAY (inside table) ===== */
-#resultOverlay {
-  position: absolute; inset: 0; z-index: 60;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  background: rgba(0,0,0,.72); backdrop-filter: blur(5px);
-  opacity: 0; pointer-events: none; transition: opacity .35s;
+/* ── TABLE WRAPPER ── */
+.table-wrap{
+  flex:1;display:flex;align-items:center;justify-content:center;
+  padding:14px 20px 10px;
+  background:
+    radial-gradient(ellipse 60% 80% at 50% 50%,rgba(10,30,10,.6) 0%,transparent 70%),
+    var(--ink);
+  position:relative;overflow:hidden;
 }
-#resultOverlay.show { opacity: 1; pointer-events: all; }
-.result-box {
-  background: var(--surface); border-radius: 20px;
-  padding: 26px 48px; text-align: center;
-  border: 2px solid var(--dim);
-  box-shadow: 0 16px 60px rgba(0,0,0,.75);
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
-  min-width: 240px;
-  animation: rPop .4s cubic-bezier(.34,1.56,.64,1);
+/* atmospheric candle glow corners */
+.table-wrap::before{
+  content:'';position:absolute;
+  width:200px;height:200px;border-radius:50%;
+  background:radial-gradient(ellipse,rgba(255,120,30,.07) 0%,transparent 70%);
+  top:-60px;left:-60px;animation:flicker 4s ease-in-out infinite;
 }
-@keyframes rPop { from{transform:scale(.55) translateY(20px);opacity:0} to{transform:none;opacity:1} }
-.result-box.win  { border-color: var(--gold);   }
-.result-box.lose { border-color: var(--red);    }
-.result-box.push { border-color: #555;          }
-.result-box.bj   { border-color: var(--orange); }
-.r-icon  { font-size: 2.4rem; }
-.r-text  { font-size: 1.5rem; font-weight: 900; }
-.r-text.win  { color: var(--gold);   }
-.r-text.lose { color: var(--red);    }
-.r-text.push { color: var(--bone);   }
-.r-text.bj   { color: var(--orange); font-size: 1.8rem; }
-.r-chips { font-size: .85rem; color: var(--dim); font-family: system-ui, sans-serif; margin-top: 2px; }
-.r-chips .pos { color: var(--green); font-weight: 700; }
-.r-chips .neg { color: var(--red); font-weight: 700; }
-
-/* ===== PEEK RESULT ===== */
-#peekBubble {
-  position: absolute; top: 44%; left: 50%; transform: translate(-50%, -50%);
-  background: rgba(8,0,20,.96); border: 2px solid var(--purple);
-  border-radius: 14px; padding: 14px 26px; text-align: center;
-  z-index: 45; font-family: system-ui, sans-serif; font-size: .9rem;
-  box-shadow: 0 0 24px rgba(123,47,255,.4);
-  opacity: 0; pointer-events: none; transition: opacity .25s;
+.table-wrap::after{
+  content:'';position:absolute;
+  width:200px;height:200px;border-radius:50%;
+  background:radial-gradient(ellipse,rgba(255,120,30,.07) 0%,transparent 70%);
+  top:-60px;right:-60px;animation:flicker 4s ease-in-out infinite 1.5s;
 }
-#peekBubble.show { opacity: 1; }
-#peekBubble strong { color: var(--purple); font-size: 1.05rem; }
+@keyframes flicker{
+  0%,100%{opacity:1;transform:scale(1)}
+  33%{opacity:.7;transform:scale(.95)}
+  66%{opacity:.9;transform:scale(1.03)}
+}
 
-/* ============================
-   CONTROLS FOOTER
-   ============================ */
-.controls {
-  width: 100%; background: rgba(0,0,0,.6);
-  border-top: 1px solid rgba(255,255,255,.05);
-  padding: 12px 20px; flex-shrink: 0;
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
+/* ── THE TABLE ── */
+.table{
+  width:100%;max-width:960px;height:100%;max-height:520px;
+  border-radius:200px;
+  position:relative;overflow:hidden;
+  display:flex;flex-direction:column;
+  /* Layered felt */
+  background:
+    radial-gradient(ellipse 60% 45% at 50% 35%,var(--felt-hi) 0%,var(--felt) 50%,#0a1e0a 100%);
+  /* Gold rim */
+  border:3px solid var(--gold);
+  box-shadow:
+    0 0 0 1px rgba(201,168,74,.15),
+    0 0 0 6px rgba(201,168,74,.06),
+    0 24px 80px rgba(0,0,0,.9),
+    inset 0 2px 0 rgba(255,255,255,.05),
+    inset 0 0 60px rgba(0,0,0,.4);
+}
+/* Oval inset guide line */
+.table::before{
+  content:'';position:absolute;
+  inset:18px 30px;
+  border:1px solid rgba(201,168,74,.12);
+  border-radius:160px;
+  pointer-events:none;z-index:0;
+}
+/* Suit watermarks */
+.table::after{
+  content:'♠ ♥ ♦ ♣';
+  position:absolute;bottom:14px;right:24px;
+  font-size:.75rem;color:rgba(201,168,74,.08);
+  letter-spacing:.5em;pointer-events:none;z-index:0;
+}
+
+/* ── UPPER HALF: NPCs + Dealer ── */
+.upper{
+  flex:1;display:flex;align-items:center;justify-content:space-around;
+  padding:20px 24px 8px;position:relative;z-index:1;
+}
+
+/* NPC zones */
+.npc-zone{
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  position:relative;min-width:110px;
+}
+.npc-avatar{font-size:1.8rem;opacity:.65;line-height:1}
+.npc-name{
+  font-size:.58rem;letter-spacing:.15em;text-transform:uppercase;
+  color:var(--muted);font-family:system-ui,sans-serif;
+}
+.npc-react{
+  position:absolute;top:-26px;
+  font-size:1.3rem;
+  animation:rPop 1.6s ease-out forwards;
+  pointer-events:none;z-index:10;
+}
+@keyframes rPop{
+  0%{opacity:1;transform:translateY(0) scale(1)}
+  50%{transform:translateY(-12px) scale(1.4)}
+  100%{opacity:0;transform:translateY(-28px) scale(.8)}
+}
+
+/* Dealer zone */
+.dealer-zone{
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  flex:0 0 auto;
+}
+.dealer-cap{
+  font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--muted);font-family:system-ui,sans-serif;
+}
+.dealer-sprite{
+  font-size:3rem;line-height:1;
+  animation:dIdle 3s ease-in-out infinite;
+  filter:drop-shadow(0 4px 16px rgba(255,107,26,.3));
+}
+@keyframes dIdle{
+  0%,100%{transform:translateY(0)}
+  50%{transform:translateY(-6px)}
+}
+.dealer-sprite.charging{
+  animation:dCharge .75s ease-in forwards!important;
+  filter:drop-shadow(0 0 32px var(--red))!important;
+}
+@keyframes dCharge{
+  0%{transform:translateX(0) scale(1)}
+  18%{transform:translateX(-16px) scale(1.12)}
+  55%{transform:translateX(40vw) scale(3)}
+  100%{transform:translateX(50vw) scale(5);opacity:0}
+}
+.dealer-total{
+  font-size:.82rem;color:var(--orange);font-weight:700;
+  min-height:1.1em;font-family:system-ui,sans-serif;letter-spacing:.04em;
+}
+
+/* ── DIVIDER ── */
+.felt-sep{
+  width:calc(100% - 80px);height:1px;margin:0 auto;
+  background:linear-gradient(90deg,transparent,rgba(201,168,74,.18),transparent);
+  position:relative;z-index:1;flex-shrink:0;
+}
+
+/* ── LOWER HALF: Player ── */
+.lower{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:10px;
+  padding:8px 24px 18px;position:relative;z-index:1;
+}
+.player-cap{
+  font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--muted);font-family:system-ui,sans-serif;
+}
+.player-total{
+  font-size:1.2rem;font-weight:700;
+  font-family:system-ui,sans-serif;
+  min-height:1.5em;transition:color .3s;letter-spacing:.03em;
+  color:var(--green);
+}
+.player-total.bust{color:var(--red)}
+
+/* ── SWAP BANNER ── */
+.swap-banner{
+  position:absolute;top:12px;left:50%;transform:translateX(-50%);
+  background:linear-gradient(135deg,var(--pur2),var(--purple));
+  color:#fff;padding:5px 20px;border-radius:999px;
+  font-size:.68rem;font-weight:700;letter-spacing:.1em;white-space:nowrap;
+  box-shadow:0 0 20px rgba(123,47,255,.55);
+  display:none;z-index:10;
+  animation:bPulse 1.3s ease-in-out infinite;
+}
+@keyframes bPulse{0%,100%{opacity:1}50%{opacity:.6}}
+.swap-banner.on{display:block}
+
+/* ─── CARDS ───────────────────────────────────── */
+.hand{
+  display:flex;gap:8px;flex-wrap:wrap;
+  justify-content:center;align-items:flex-end;
+  min-height:112px;
+}
+/* REAL playing card */
+.card{
+  width:72px;height:104px;border-radius:8px;flex-shrink:0;
+  display:grid;
+  grid-template-rows:auto 1fr auto;
+  padding:5px 5px;
+  position:relative;
+  transition:transform .2s;
+  animation:cDeal .3s cubic-bezier(.34,1.56,.64,1) both;
+}
+.card:hover:not(.cback){transform:translateY(-8px)}
+@keyframes cDeal{
+  from{transform:translateY(-50px) rotate(-8deg) scale(.75);opacity:0}
+  to{transform:none;opacity:1}
+}
+.card.cred{
+  background:linear-gradient(160deg,#fff 0%,#fdf8f8 100%);
+  color:#c80028;
+  border:1px solid #ddd;
+  box-shadow:0 4px 14px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.8);
+}
+.card.cblk{
+  background:linear-gradient(160deg,#fff 0%,#f8f8fd 100%);
+  color:#0a0a20;
+  border:1px solid #ddd;
+  box-shadow:0 4px 14px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.8);
+}
+.card.cback{
+  background:linear-gradient(145deg,#200050,#3e0088,#200050);
+  border:2px solid var(--purple);
+  box-shadow:0 4px 16px rgba(0,0,0,.8),0 0 12px rgba(123,47,255,.2);
+  cursor:pointer;overflow:hidden;
+}
+/* Gothic pattern on card back */
+.card.cback::before{
+  content:'';position:absolute;inset:4px;
+  background:
+    repeating-linear-gradient(45deg,rgba(123,47,255,.1) 0,rgba(123,47,255,.1) 1px,transparent 1px,transparent 8px),
+    repeating-linear-gradient(-45deg,rgba(123,47,255,.1) 0,rgba(123,47,255,.1) 1px,transparent 1px,transparent 8px);
+  border-radius:5px;
+}
+.card.cback::after{
+  content:'👁';position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.6rem;opacity:0;transition:opacity .2s;z-index:1;
+}
+.card.cback:hover{border-color:var(--orange);box-shadow:0 0 20px rgba(255,107,26,.45),0 4px 16px rgba(0,0,0,.8)}
+.card.cback:hover::after{opacity:1}
+
+/* Card corner indices */
+.ci{display:flex;flex-direction:column;align-items:flex-start;line-height:1.1}
+.ci.flip{align-items:flex-end;transform:rotate(180deg)}
+.ci-v{font-size:.85rem;font-weight:900;letter-spacing:-.02em}
+.ci-s{font-size:.65rem;line-height:.9}
+/* Center suit */
+.cc{
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.7rem;line-height:1;
+}
+
+/* NPC small cards */
+.ncard{width:48px;height:70px;border-radius:6px;padding:3px;animation:cDeal .28s cubic-bezier(.34,1.56,.64,1) both}
+.ncard .ci-v{font-size:.68rem}
+.ncard .ci-s{font-size:.52rem}
+.ncard .cc{font-size:1.1rem}
+.ncard.cback::after{font-size:1.1rem}
+
+/* Split active glow */
+.splitActive{outline:2px solid var(--green);border-radius:12px;padding:5px;box-shadow:0 0 18px rgba(25,212,90,.3)}
+
+/* ─── RESULT OVERLAY ──────────────────────────── */
+#resultOverlay{
+  position:absolute;inset:0;z-index:70;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.75);backdrop-filter:blur(6px);
+  opacity:0;pointer-events:none;transition:opacity .35s;
+  border-radius:197px;
+}
+#resultOverlay.show{opacity:1;pointer-events:all}
+.rbox{
+  background:var(--panel);border-radius:22px;
+  padding:28px 54px;text-align:center;
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  min-width:250px;
+  animation:rPop2 .42s cubic-bezier(.34,1.56,.64,1);
+  box-shadow:0 20px 70px rgba(0,0,0,.8);
+}
+@keyframes rPop2{from{transform:scale(.5) translateY(30px);opacity:0}to{transform:none;opacity:1}}
+.rbox.win{border:2px solid var(--gold)}
+.rbox.lose{border:2px solid var(--red)}
+.rbox.push{border:2px solid #444}
+.rbox.bj{border:2px solid var(--orange)}
+.r-ico{font-size:2.8rem;line-height:1}
+.r-lbl{font-size:1.55rem;font-weight:900;line-height:1}
+.r-lbl.win{color:var(--gold)}
+.r-lbl.lose{color:var(--red)}
+.r-lbl.push{color:var(--bone)}
+.r-lbl.bj{color:var(--orange);font-size:2rem}
+.r-chips{font-size:.82rem;color:var(--muted);font-family:system-ui,sans-serif;margin-top:2px}
+.r-chips .pos{color:var(--green);font-weight:700}
+.r-chips .neg{color:var(--red);font-weight:700}
+
+/* ─── PEEK BUBBLE ─────────────────────────────── */
+#peekBubble{
+  position:absolute;top:42%;left:50%;transform:translate(-50%,-50%);
+  background:rgba(5,0,18,.97);border:2px solid var(--purple);border-radius:14px;
+  padding:13px 26px;text-align:center;z-index:60;
+  font-family:system-ui,sans-serif;font-size:.88rem;
+  box-shadow:0 0 28px rgba(123,47,255,.5);
+  opacity:0;pointer-events:none;transition:opacity .25s;
+}
+#peekBubble.show{opacity:1}
+#peekBubble strong{color:var(--purple);font-size:1.1rem}
+
+/* ─── CONTROLS ─────────────────────────────────── */
+.controls{
+  width:100%;
+  background:linear-gradient(180deg,rgba(0,0,0,.5) 0%,rgba(0,0,0,.8) 100%);
+  border-top:1px solid rgba(201,168,74,.14);
+  padding:14px 24px 16px;
+  flex-shrink:0;
+  display:flex;flex-direction:column;align-items:center;gap:0;
 }
 
 /* Bet phase */
-.bet-phase { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
-.bet-top   { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; justify-content: center; }
-.bet-label { font-size: .68rem; text-transform: uppercase; letter-spacing: .14em; color: var(--dim); font-family: system-ui, sans-serif; text-align: center; }
-.bet-amount { font-size: 1.9rem; font-weight: 900; color: var(--gold); text-align: center; min-width: 90px; }
-.chips-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
-.chip {
-  width: 44px; height: 44px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: .68rem; font-weight: 700; cursor: pointer;
-  border: 3px dashed; transition: transform .15s, box-shadow .15s;
-  font-family: system-ui, sans-serif;
+.bet-phase{
+  display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;
 }
-.chip:hover  { transform: scale(1.18) translateY(-2px); }
-.chip:active { transform: scale(1); }
-.c10  { background:#191928; border-color:#777; color:#bbb; }
-.c25  { background:#0c2200; border-color:#4caf50; color:#70da74; }
-.c50  { background:#001840; border-color:#5090ff; color:#88aaff; }
-.c100 { background:#280010; border-color:#e91e63; color:#ff6699; }
-.c500 { background:#281600; border-color:var(--gold); color:var(--gold); }
+.bet-row1{display:flex;align-items:center;gap:20px;flex-wrap:wrap;justify-content:center}
+.bet-info{text-align:center}
+.bet-cap{font-size:.6rem;text-transform:uppercase;letter-spacing:.15em;color:var(--muted);font-family:system-ui}
+.bet-num{
+  font-size:2.2rem;font-weight:900;color:var(--gold);
+  font-family:'Cinzel',serif;
+  text-shadow:0 0 20px rgba(200,168,74,.4);
+  line-height:1;
+}
+.chips-wrap{display:flex;gap:9px;flex-wrap:wrap;justify-content:center}
+.chip{
+  width:46px;height:46px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:.68rem;font-weight:700;cursor:pointer;
+  transition:transform .15s,box-shadow .15s;
+  font-family:system-ui,sans-serif;
+  border:3px dashed;
+  position:relative;
+}
+.chip::after{content:'';position:absolute;inset:3px;border-radius:50%;border:1px dashed;opacity:.4}
+.chip:hover{transform:translateY(-3px) scale(1.15)}
+.chip:active{transform:scale(.95)}
+.chip.c10{background:#18182a;border-color:#888;color:#ccc}
+.chip.c10::after{border-color:#888}
+.chip.c25{background:#0d2200;border-color:#4caf50;color:#70da74}
+.chip.c25::after{border-color:#4caf50}
+.chip.c50{background:#001840;border-color:#5090ff;color:#88aaff}
+.chip.c50::after{border-color:#5090ff}
+.chip.c100{background:#280010;border-color:#e91e63;color:#ff6699}
+.chip.c100::after{border-color:#e91e63}
+.chip.c500{background:#281600;border-color:var(--gold);color:var(--gold)}
+.chip.c500::after{border-color:var(--gold)}
 
-.bet-bottom { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; align-items: center; }
-.btn-clear {
-  padding: 8px 18px; background: transparent;
-  border: 1px solid var(--dim); border-radius: 7px;
-  color: var(--dim); cursor: pointer; font-size: .78rem;
-  font-family: 'Cinzel', serif; transition: all .2s;
+.bet-row2{display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:center}
+.btn-sm{
+  padding:8px 20px;background:transparent;
+  border:1px solid var(--muted);border-radius:8px;
+  color:var(--muted);cursor:pointer;
+  font-size:.78rem;font-family:'Cinzel',serif;
+  transition:all .2s;
 }
-.btn-clear:hover { border-color: var(--red); color: var(--red); }
-.btn-deal-big {
-  padding: 12px 44px; border-radius: 10px; border: none; cursor: pointer;
-  font-family: 'Cinzel', serif; font-weight: 700; font-size: 1rem;
-  background: linear-gradient(135deg, var(--purple2), var(--purple));
-  color: #fff; letter-spacing: .12em;
-  box-shadow: 0 4px 18px rgba(123,47,255,.35);
-  transition: all .2s;
+.btn-sm:hover{border-color:var(--red);color:var(--red)}
+.btn-max{border-color:var(--gold);color:var(--gold)}
+.btn-max:hover{border-color:var(--gold2);color:var(--gold2);background:rgba(200,168,74,.08)}
+.btn-deal{
+  padding:13px 52px;
+  font-family:'Cinzel',serif;font-size:1rem;font-weight:700;
+  background:linear-gradient(135deg,var(--pur2),var(--purple));
+  color:#fff;border:2px solid var(--purple);border-radius:12px;
+  cursor:pointer;letter-spacing:.14em;text-transform:uppercase;
+  box-shadow:0 4px 22px rgba(123,47,255,.38);
+  transition:all .2s;
 }
-.btn-deal-big:hover { transform: translateY(-2px); box-shadow: 0 6px 28px rgba(123,47,255,.5); }
-.btn-deal-big:disabled { opacity: .38; cursor: not-allowed; transform: none; }
+.btn-deal:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(123,47,255,.55)}
+.btn-deal:disabled{opacity:.35;cursor:not-allowed;transform:none}
 
 /* Action phase */
-.action-phase { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; }
-.action-info  { font-size: .72rem; color: var(--dim); font-family: system-ui, sans-serif; text-align: center; }
-.action-info span { color: var(--gold); font-weight: 700; font-size: .88rem; }
-.action-btns  { display: flex; gap: 9px; flex-wrap: wrap; justify-content: center; }
-.abtn {
-  display: flex; flex-direction: column; align-items: center; gap: 3px;
-  padding: 10px 18px; border-radius: 10px; border: none; cursor: pointer;
-  font-family: 'Cinzel', serif; font-weight: 700; font-size: .88rem;
-  transition: all .15s; min-width: 70px;
-  box-shadow: 0 3px 10px rgba(0,0,0,.45);
-  letter-spacing: .04em;
+.action-phase{
+  display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;
 }
-.abtn:hover:not(:disabled) { transform: translateY(-3px); filter: brightness(1.18); box-shadow: 0 7px 18px rgba(0,0,0,.5); }
-.abtn:active:not(:disabled){ transform: none; }
-.abtn:disabled { opacity: .28; cursor: not-allowed; }
-.abtn .kh { font-size: .52rem; opacity: .45; font-family: monospace; }
-.abtn-hit    { background: linear-gradient(145deg,#133a13,#1e621e); color:#aaffaa; border:1px solid rgba(34,204,102,.2); }
-.abtn-stand  { background: linear-gradient(145deg,#3e1111,#651c1c); color:#ffaaaa; border:1px solid rgba(255,34,68,.2); }
-.abtn-double { background: linear-gradient(145deg,#332300,#5a3d00); color:#ffd066; border:1px solid rgba(201,168,76,.2); }
-.abtn-split  { background: linear-gradient(145deg,#111340,#1b1b60); color:#aaaaff; border:1px solid rgba(100,100,255,.2); }
-.abtn-peek   { background: linear-gradient(145deg,#240040,#3f006c); color:#cc88ff; border:1px solid rgba(123,47,255,.3); }
-.abtn-peek:hover:not(:disabled) { box-shadow: 0 0 22px rgba(123,47,255,.42); }
+.action-binfo{
+  font-size:.7rem;color:var(--muted);
+  font-family:system-ui,sans-serif;text-align:center;
+}
+.action-binfo em{color:var(--gold);font-style:normal;font-weight:700;font-size:.88rem}
+.action-btns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+
+/* Big action buttons */
+.abtn{
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  padding:11px 20px;border-radius:12px;border:none;cursor:pointer;
+  font-family:'Cinzel',serif;font-weight:700;font-size:.88rem;
+  letter-spacing:.05em;transition:all .16s;
+  min-width:78px;
+  position:relative;overflow:hidden;
+}
+.abtn::before{
+  content:'';position:absolute;inset:0;
+  background:rgba(255,255,255,0);transition:background .15s;
+}
+.abtn:hover:not(:disabled)::before{background:rgba(255,255,255,.08)}
+.abtn:hover:not(:disabled){transform:translateY(-4px);box-shadow:0 8px 22px rgba(0,0,0,.55)}
+.abtn:active:not(:disabled){transform:translateY(0)}
+.abtn:disabled{opacity:.25;cursor:not-allowed}
+.kh{font-size:.5rem;opacity:.4;font-family:monospace;letter-spacing:0}
+.abtn-hit   {background:linear-gradient(160deg,#112811,#1a4a1a);color:#aaff99;border:1px solid rgba(25,212,90,.25);box-shadow:0 3px 12px rgba(0,0,0,.5)}
+.abtn-stand {background:linear-gradient(160deg,#380a0a,#5a1414);color:#ffaaaa;border:1px solid rgba(255,32,64,.25);box-shadow:0 3px 12px rgba(0,0,0,.5)}
+.abtn-double{background:linear-gradient(160deg,#2e2000,#503800);color:#ffcc66;border:1px solid rgba(200,168,74,.25);box-shadow:0 3px 12px rgba(0,0,0,.5)}
+.abtn-split {background:linear-gradient(160deg,#0e0e38,#1a1a5a);color:#aaaaff;border:1px solid rgba(100,100,255,.25);box-shadow:0 3px 12px rgba(0,0,0,.5)}
+.abtn-peek  {background:linear-gradient(160deg,#1e0038,#38006a);color:#cc88ff;border:1px solid rgba(123,47,255,.3);box-shadow:0 3px 12px rgba(0,0,0,.5)}
 
 /* Dealer playing */
-.dealer-phase { display: flex; align-items: center; gap: 12px; justify-content: center; color: var(--dim); font-family: system-ui, sans-serif; font-size: .88rem; }
-.spin { width: 20px; height: 20px; border: 2px solid rgba(255,255,255,.1); border-top-color: var(--orange); border-radius: 50%; animation: spin .8s linear infinite; }
-@keyframes spin { to{transform:rotate(360deg)} }
+.dealer-phase{
+  display:flex;align-items:center;gap:14px;
+  justify-content:center;color:var(--muted);
+  font-family:system-ui,sans-serif;font-size:.88rem;
+  padding:10px 0;
+}
+.spinner{
+  width:22px;height:22px;
+  border:2px solid rgba(255,255,255,.1);
+  border-top-color:var(--orange);
+  border-radius:50%;
+  animation:spin .75s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
 
 /* Next round */
-.next-phase { text-align: center; }
-.btn-next {
-  padding: 12px 46px; border-radius: 10px; border: 2px solid var(--green);
-  background: transparent; color: var(--green); cursor: pointer;
-  font-family: 'Cinzel', serif; font-weight: 700; font-size: 1rem;
-  letter-spacing: .12em; transition: all .2s;
-  box-shadow: 0 0 18px rgba(34,204,102,.18);
+.next-phase{padding:8px 0;text-align:center}
+.btn-next{
+  padding:13px 54px;border-radius:12px;
+  border:2px solid var(--green);background:transparent;
+  color:var(--green);cursor:pointer;
+  font-family:'Cinzel',serif;font-weight:700;font-size:1rem;
+  letter-spacing:.14em;transition:all .2s;
+  box-shadow:0 0 20px rgba(25,212,90,.15);
 }
-.btn-next:hover { background: rgba(34,204,102,.1); box-shadow: 0 0 32px rgba(34,204,102,.35); transform: translateY(-2px); }
+.btn-next:hover{
+  background:rgba(25,212,90,.1);
+  box-shadow:0 0 36px rgba(25,212,90,.35);
+  transform:translateY(-2px);
+}
 
-/* ============================
-   SOUL SWAP OVERLAY
-   ============================ */
-#soulSwap {
-  position: fixed; inset: 0; z-index: 200;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  pointer-events: none; opacity: 0; background: transparent;
-  transition: opacity .35s, background .35s;
+/* ─── INSURANCE MODAL ─────────────────────────── */
+#insModal{
+  position:absolute;inset:0;z-index:80;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.8);backdrop-filter:blur(8px);
+  opacity:0;pointer-events:none;transition:opacity .28s;
+  border-radius:197px;
 }
-#soulSwap.on { opacity: 1; pointer-events: all; background: rgba(0,0,0,.92); }
-.soul-orb   { font-size: 4.5rem; animation: sOrb 1.5s ease-in-out infinite alternate; }
-@keyframes sOrb {
-  from { transform:scale(1) rotate(-5deg); filter:drop-shadow(0 0 20px var(--purple)); }
-  to   { transform:scale(1.12) rotate(5deg); filter:drop-shadow(0 0 50px var(--orange)); }
+#insModal.show{opacity:1;pointer-events:all}
+.ins-box{
+  background:var(--panel);
+  border:2px solid var(--gold);border-radius:22px;
+  padding:30px 42px;text-align:center;max-width:340px;
+  box-shadow:0 20px 70px rgba(0,0,0,.85);
+  animation:rPop2 .35s cubic-bezier(.34,1.56,.64,1);
 }
-.soul-title { font-size: clamp(1.8rem,5vw,3.2rem); font-weight: 900; color: var(--purple); margin-top: 16px; letter-spacing: .1em; animation: sGlow .6s ease-in-out infinite alternate; }
-@keyframes sGlow { from{text-shadow:0 0 22px var(--purple)} to{text-shadow:0 0 44px var(--orange),0 0 80px var(--purple)} }
-.soul-sub   { font-size: .95rem; color: var(--bone); opacity: .75; margin-top: 12px; text-align: center; font-family: system-ui, sans-serif; max-width: 300px; }
+.ins-box h3{font-size:1.2rem;color:var(--gold);margin-bottom:10px}
+.ins-box p{font-size:.82rem;color:var(--muted);font-family:system-ui;line-height:1.6;margin-bottom:18px}
+.ins-btns{display:flex;gap:12px;justify-content:center}
+.btn-ins-y{
+  padding:10px 26px;
+  background:linear-gradient(135deg,#0c3000,#1a5500);
+  color:#88ff88;border:1px solid #4caf50;border-radius:9px;
+  cursor:pointer;font-family:'Cinzel',serif;font-weight:700;
+  transition:all .2s;
+}
+.btn-ins-y:hover{background:linear-gradient(135deg,#1a5500,#2a8000);transform:translateY(-1px)}
+.btn-ins-n{
+  padding:10px 26px;background:transparent;
+  color:var(--muted);border:1px solid var(--muted);border-radius:9px;
+  cursor:pointer;font-family:'Cinzel',serif;font-weight:700;
+  transition:all .2s;
+}
+.btn-ins-n:hover{border-color:var(--red);color:var(--red)}
 
-/* ============================
-   INSURANCE MODAL
-   ============================ */
-#insModal {
-  position: absolute; inset: 0; z-index: 50;
-  display: flex; align-items: center; justify-content: center;
-  background: rgba(0,0,0,.72); backdrop-filter: blur(6px);
-  opacity: 0; pointer-events: none; transition: opacity .25s;
+/* ─── SOUL SWAP ────────────────────────────────── */
+#soulSwap{
+  position:fixed;inset:0;z-index:200;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  pointer-events:none;opacity:0;background:transparent;
+  transition:opacity .4s,background .4s;
 }
-#insModal.show { opacity: 1; pointer-events: all; }
-.ins-box {
-  background: var(--surface); border: 2px solid var(--gold);
-  border-radius: 20px; padding: 28px 36px; text-align: center;
-  box-shadow: 0 14px 54px rgba(0,0,0,.75);
-  animation: rPop .35s cubic-bezier(.34,1.56,.64,1);
-  max-width: 320px;
+#soulSwap.on{opacity:1;pointer-events:all;background:rgba(0,0,0,.94)}
+.ss-orb{
+  font-size:5rem;
+  animation:ssOrb 1.6s ease-in-out infinite alternate;
 }
-.ins-box h3 { font-size: 1.2rem; color: var(--gold); margin-bottom: 8px; }
-.ins-box p  { font-size: .82rem; color: var(--dim); font-family: system-ui, sans-serif; line-height: 1.55; margin-bottom: 16px; }
-.ins-btns   { display: flex; gap: 10px; justify-content: center; }
-.ins-yes { padding:10px 24px; background:linear-gradient(135deg,#0c3000,#185000); color:#88ff88; border:1px solid #4caf50; border-radius:8px; cursor:pointer; font-family:'Cinzel',serif; font-weight:700; transition:all .2s; }
-.ins-no  { padding:10px 24px; background:transparent; color:var(--dim); border:1px solid var(--dim); border-radius:8px; cursor:pointer; font-family:'Cinzel',serif; font-weight:700; transition:all .2s; }
-.ins-yes:hover { background:linear-gradient(135deg,#185000,#287a00); transform:translateY(-1px); }
-.ins-no:hover  { border-color:var(--red); color:var(--red); }
+@keyframes ssOrb{
+  from{transform:scale(1) rotate(-6deg);filter:drop-shadow(0 0 22px var(--purple))}
+  to{transform:scale(1.15) rotate(6deg);filter:drop-shadow(0 0 55px var(--orange))}
+}
+.ss-title{
+  font-size:clamp(2rem,5.5vw,3.5rem);font-weight:900;
+  color:var(--purple);margin-top:18px;letter-spacing:.1em;
+  animation:ssGlow .7s ease-in-out infinite alternate;
+}
+@keyframes ssGlow{
+  from{text-shadow:0 0 24px var(--purple),0 0 48px var(--purple)}
+  to{text-shadow:0 0 48px var(--orange),0 0 96px var(--purple)}
+}
+.ss-sub{
+  font-size:.95rem;color:var(--bone);opacity:.7;
+  margin-top:14px;text-align:center;
+  font-family:system-ui;max-width:300px;
+}
 
-/* ============================
-   CRACKED SCREEN
-   ============================ */
-#crack {
-  position: fixed; inset: 0; z-index: 300;
-  pointer-events: none; opacity: 0; transition: opacity .15s;
+/* ─── CRACKED SCREEN ──────────────────────────── */
+#crack{
+  position:fixed;inset:0;z-index:300;
+  pointer-events:none;opacity:0;transition:opacity .12s;
 }
-#crack.on { opacity: 1; }
-#crack svg { width: 100%; height: 100%; position: absolute; inset: 0; }
-.crack-vig {
-  position: absolute; inset: 0;
-  background: radial-gradient(ellipse at center, transparent 22%, rgba(200,0,40,.5) 100%);
+#crack.on{opacity:1}
+#crack svg{width:100%;height:100%;position:absolute;inset:0}
+.cv{
+  position:absolute;inset:0;
+  background:radial-gradient(ellipse at center,transparent 20%,rgba(200,0,40,.55) 100%);
 }
-.crack-warn {
-  position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
-  font-family: 'Cinzel', serif; font-size: clamp(1rem,3.5vw,2rem); font-weight: 900;
-  color: var(--red); text-align: center; text-shadow: 0 0 22px var(--red);
-  animation: wFlash .14s linear infinite;
+.cw{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  font-family:'Cinzel',serif;font-size:clamp(1rem,3.5vw,2rem);font-weight:900;
+  color:var(--red);text-align:center;text-shadow:0 0 24px var(--red);
+  animation:wFlash .13s linear infinite;
 }
-@keyframes wFlash { 0%,100%{opacity:1} 50%{opacity:.15} }
+@keyframes wFlash{0%,100%{opacity:1}50%{opacity:.1}}
 
-/* ============================
-   GAME OVER
-   ============================ */
-#gameOverScreen {
-  background: radial-gradient(ellipse at 50% 40%, #1a0000, var(--black) 68%);
-  gap: 12px;
+/* ─── GAME OVER ────────────────────────────────── */
+#gameOverScreen{
+  background:
+    radial-gradient(ellipse at 50% 38%,#1e0000 0%,var(--ink) 65%);
+  gap:14px;
 }
-.go-ghost { font-size: 4.5rem; animation: goFloat 2.2s ease-in-out infinite; }
-@keyframes goFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-22px)} }
-.go-title { font-size: 2.5rem; font-weight: 900; color: var(--red); letter-spacing: .05em; }
-.go-sub   { font-size: .95rem; color: var(--dim); font-family: system-ui, sans-serif; }
-.go-chips { font-size: 1.3rem; color: var(--gold); }
+.go-ghost{font-size:5rem;animation:goFl 2.5s ease-in-out infinite}
+@keyframes goFl{0%,100%{transform:translateY(0)}50%{transform:translateY(-24px)}}
+.go-h{font-size:2.5rem;font-weight:900;color:var(--red);letter-spacing:.06em}
+.go-sub{font-size:.95rem;color:var(--muted);font-family:system-ui}
+.go-chips{font-size:1.3rem;color:var(--gold)}
 
-/* ============================
-   RESPONSIVE
-   ============================ */
-@media (max-height: 640px) {
-  :root { --cw: 56px; --ch: 82px; }
-  .dealer-spr { font-size: 2.2rem; }
-  .controls { padding: 8px 16px; gap: 6px; }
-  .opponents-row { padding: 8px 16px 2px; }
-  .player-zone { padding: 4px 16px 10px; }
+/* ─── RESPONSIVE ───────────────────────────────── */
+@media(max-height:660px){
+  .table{max-height:440px;border-radius:160px}
+  .table::before{border-radius:130px}
+  #resultOverlay,#insModal{border-radius:157px}
+  .dealer-sprite{font-size:2.3rem}
+  .card{width:60px;height:88px}
+  .card .cc{font-size:1.4rem}
+  .ncard{width:40px;height:60px}
+  .controls{padding:10px 20px 12px;gap:0}
+  .bet-num{font-size:1.8rem}
+  .chip{width:40px;height:40px}
 }
-@media (max-width: 480px) {
-  :root { --cw: 58px; --ch: 86px; }
-  .abtn { min-width: 56px; padding: 8px 10px; font-size: .8rem; }
-  .chip { width: 38px; height: 38px; }
+@media(max-width:520px){
+  .card{width:60px;height:88px}
+  .card .cc{font-size:1.4rem}
+  .abtn{min-width:62px;padding:9px 12px;font-size:.8rem}
+  .chip{width:40px;height:40px}
+  .table{border-radius:140px}
+  #resultOverlay,#insModal{border-radius:137px}
+  .table::before{border-radius:110px}
 }
 </style>
 </head>
 <body>
 
-<!-- ================================================================
+<!-- ═══════════════════════════════════════════════
      TITLE SCREEN
-     ================================================================ -->
+     ═══════════════════════════════════════════════ -->
 <div class="screen" id="titleScreen">
-  <div class="ghost-float g1">👻</div>
-  <div class="ghost-float g2">💀</div>
-  <div class="ghost-float g3">🦇</div>
-  <div class="ghost-float g4">👁</div>
-  <div class="ghost-float g5">🕷</div>
-  <div class="title-skull">💀</div>
-  <div class="title-main">GHOULISH GAMBLING</div>
-  <div class="title-rule"></div>
-  <div class="title-sub">Blackjack with a Spooky Twist</div>
-  <button class="btn-primary" onclick="startGame()">🃏 &nbsp;Deal Me In</button>
-  <div class="title-hints">[H] Hit &nbsp;·&nbsp; [S] Stand &nbsp;·&nbsp; [D] Double &nbsp;·&nbsp; [P] Peek</div>
+  <span class="gf">👻</span>
+  <span class="gf">💀</span>
+  <span class="gf">🦇</span>
+  <span class="gf">👁</span>
+  <span class="gf">🕷</span>
+  <span class="gf">🕯</span>
+  <div class="t-skull">💀</div>
+  <div class="t-main">GHOULISH GAMBLING</div>
+  <div class="t-sub">Blackjack with a Spooky Twist</div>
+  <div class="t-divider"></div>
+  <button class="btn-enter" onclick="startGame()">🃏 &nbsp;Deal Me In</button>
+  <div class="t-keys">[H] Hit &nbsp;·&nbsp; [S] Stand &nbsp;·&nbsp; [D] Double &nbsp;·&nbsp; [P] Peek &nbsp;·&nbsp; [Enter] Next Round</div>
 </div>
 
-<!-- ================================================================
+<!-- ═══════════════════════════════════════════════
      GAME SCREEN
-     ================================================================ -->
-<div class="screen hidden" id="gameScreen">
+     ═══════════════════════════════════════════════ -->
+<div class="screen gone" id="gameScreen" style="flex-direction:column;justify-content:stretch">
 
   <!-- HUD -->
   <div class="hud">
-    <div class="hud-brand">💀 GHOULISH</div>
+    <div class="hud-logo">💀 Ghoulish Gambling</div>
     <div class="hud-stats">
-      <div class="hud-stat">
-        <div class="hud-lbl">Chips</div>
-        <div class="hud-val g" id="hudChips">1000</div>
+      <div class="hud-item">
+        <div class="hud-cap">Chips</div>
+        <div class="hud-num gold" id="hudChips">1000</div>
       </div>
-      <div class="hud-stat">
-        <div class="hud-lbl">Bet</div>
-        <div class="hud-val gr" id="hudBet">—</div>
+      <div class="hud-item">
+        <div class="hud-cap">Bet</div>
+        <div class="hud-num grn" id="hudBet">—</div>
       </div>
-      <div class="hud-stat">
-        <div class="hud-lbl">Round</div>
-        <div class="hud-val" id="hudRound">1</div>
+      <div class="hud-item">
+        <div class="hud-cap">Round</div>
+        <div class="hud-num" id="hudRound">1</div>
       </div>
-      <div class="hud-stat">
-        <div class="hud-lbl">Strikes</div>
-        <div class="strikes" id="hudStrikes">
-          <div class="s-dot"></div>
-          <div class="s-dot"></div>
-          <div class="s-dot"></div>
+      <div class="hud-item">
+        <div class="hud-cap">Strikes</div>
+        <div class="hud-strikes" id="hudStrikes">
+          <div class="sk"></div><div class="sk"></div><div class="sk"></div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- TABLE -->
-  <div class="table" id="table">
+  <!-- TABLE WRAPPER -->
+  <div class="table-wrap">
+    <div class="table" id="table">
 
-    <div class="swap-banner" id="swapBanner">⚠️ SOUL SWAPPED — YOU ARE THE DEALER</div>
+      <div class="swap-banner" id="swapBanner">⚠️ SOUL SWAPPED — YOU ARE THE DEALER</div>
 
-    <!-- Insurance modal -->
-    <div id="insModal">
-      <div class="ins-box">
-        <h3>🃏 Insurance?</h3>
-        <p>Dealer shows an Ace. Bet half your wager as insurance against dealer Blackjack?</p>
-        <div class="ins-btns">
-          <button class="ins-yes" onclick="takeInsurance(true)">Take Insurance</button>
-          <button class="ins-no"  onclick="takeInsurance(false)">No Thanks</button>
+      <!-- Insurance modal (inside table so it stays within the oval) -->
+      <div id="insModal">
+        <div class="ins-box">
+          <h3>🃏 Insurance?</h3>
+          <p>Dealer shows an Ace — buy insurance for half your bet to guard against dealer Blackjack?</p>
+          <div class="ins-btns">
+            <button class="btn-ins-y" onclick="takeInsurance(true)">Take Insurance</button>
+            <button class="btn-ins-n" onclick="takeInsurance(false)">No Thanks</button>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- Peek bubble -->
-    <div id="peekBubble"></div>
+      <!-- Peek bubble -->
+      <div id="peekBubble"></div>
 
-    <!-- Opponents -->
-    <div class="opponents-row">
-      <div class="npc-zone" id="npc1">
-        <div class="npc-ava">👻</div>
-        <div class="hand" id="npc1Hand"></div>
-        <div class="npc-name">Spectre</div>
+      <!-- ── UPPER HALF ── -->
+      <div class="upper">
+        <div class="npc-zone" id="npc1">
+          <div class="npc-avatar">👻</div>
+          <div class="hand" id="npc1Hand"></div>
+          <div class="npc-name">Spectre</div>
+        </div>
+
+        <div class="dealer-zone">
+          <div class="dealer-cap">Dealer</div>
+          <div class="dealer-sprite" id="dealerSpr">💀</div>
+          <div class="hand" id="dealerHand"></div>
+          <div class="dealer-total" id="dealerTotal"></div>
+        </div>
+
+        <div class="npc-zone" id="npc2">
+          <div class="npc-avatar">🦇</div>
+          <div class="hand" id="npc2Hand"></div>
+          <div class="npc-name">Batilda</div>
+        </div>
       </div>
 
-      <div class="dealer-zone">
-        <div class="zone-lbl">Dealer</div>
-        <div class="dealer-spr" id="dealerSpr">💀</div>
-        <div class="hand" id="dealerHand"></div>
-        <div class="dealer-total" id="dealerTotal"></div>
+      <div class="felt-sep"></div>
+
+      <!-- ── LOWER HALF ── -->
+      <div class="lower">
+        <div class="player-cap" id="playerCap">Your Hand</div>
+        <div class="hand" id="playerHand"></div>
+        <div class="player-total" id="playerTotal"></div>
       </div>
 
-      <div class="npc-zone" id="npc2">
-        <div class="npc-ava">🦇</div>
-        <div class="hand" id="npc2Hand"></div>
-        <div class="npc-name">Batilda</div>
+      <!-- Result overlay -->
+      <div id="resultOverlay">
+        <div class="rbox" id="rbox">
+          <div class="r-ico" id="rIco">🃏</div>
+          <div class="r-lbl" id="rLbl">WIN</div>
+          <div class="r-chips" id="rChips"></div>
+        </div>
       </div>
-    </div>
 
-    <div class="felt-divider"></div>
+    </div><!-- /table -->
+  </div><!-- /table-wrap -->
 
-    <!-- Player -->
-    <div class="player-zone">
-      <div class="player-zone-lbl" id="playerLbl">Your Hand</div>
-      <div class="hand" id="playerHand"></div>
-      <div class="player-total" id="playerTotal"></div>
-    </div>
-
-    <!-- Result overlay -->
-    <div id="resultOverlay">
-      <div class="result-box" id="resultBox">
-        <div class="r-icon" id="rIcon">🃏</div>
-        <div class="r-text" id="rText">WIN</div>
-        <div class="r-chips" id="rChips"></div>
-      </div>
-    </div>
-
-  </div><!-- /table -->
-
-  <!-- CONTROLS FOOTER -->
+  <!-- CONTROLS -->
   <div class="controls">
 
-    <!-- BET PHASE -->
-    <div class="bet-phase" id="betControls">
-      <div class="bet-top">
-        <div>
-          <div class="bet-label">Current Bet</div>
-          <div class="bet-amount" id="betAmt">$50</div>
+    <!-- BET -->
+    <div class="bet-phase" id="betCtrl">
+      <div class="bet-row1">
+        <div class="bet-info">
+          <div class="bet-cap">Current Bet</div>
+          <div class="bet-num" id="betNum">$50</div>
         </div>
-        <div class="chips-row">
+        <div class="chips-wrap">
           <div class="chip c10"  onclick="addChip(10)">10</div>
           <div class="chip c25"  onclick="addChip(25)">25</div>
           <div class="chip c50"  onclick="addChip(50)">50</div>
@@ -643,15 +809,16 @@ body {
           <div class="chip c500" onclick="addChip(500)">500</div>
         </div>
       </div>
-      <div class="bet-bottom">
-        <button class="btn-clear" onclick="clearBet()">Clear</button>
-        <button class="btn-deal-big" id="btnDeal" onclick="dealHand()">Deal ▶</button>
+      <div class="bet-row2">
+        <button class="btn-sm" onclick="clearBet()">Clear</button>
+        <button class="btn-sm btn-max" onclick="maxBet()">Max Bet</button>
+        <button class="btn-deal" id="btnDeal" onclick="dealHand()">Deal ▶</button>
       </div>
     </div>
 
-    <!-- ACTION PHASE -->
-    <div class="action-phase" id="actionControls" style="display:none">
-      <div class="action-info" id="actionInfo">Bet: <span id="actionBet">$50</span></div>
+    <!-- ACTIONS -->
+    <div class="action-phase" id="actCtrl" style="display:none">
+      <div class="action-binfo">Bet this round: <em id="actBet">$50</em></div>
       <div class="action-btns">
         <button class="abtn abtn-hit"    id="btnHit"    onclick="playerHit()">Hit<span class="kh">[H]</span></button>
         <button class="abtn abtn-stand"  id="btnStand"  onclick="playerStand()">Stand<span class="kh">[S]</span></button>
@@ -662,13 +829,13 @@ body {
     </div>
 
     <!-- DEALER PLAYING -->
-    <div class="dealer-phase" id="dealerControls" style="display:none">
-      <div class="spin"></div>
-      <span>Dealer is playing...</span>
+    <div class="dealer-phase" id="dealCtrl" style="display:none">
+      <div class="spinner"></div>
+      <span>Dealer is playing…</span>
     </div>
 
     <!-- NEXT ROUND -->
-    <div class="next-phase" id="nextControls" style="display:none">
+    <div class="next-phase" id="nextCtrl" style="display:none">
       <button class="btn-next" onclick="nextRound()">Next Round ▶</button>
     </div>
 
@@ -676,548 +843,492 @@ body {
 
 </div><!-- /gameScreen -->
 
-<!-- ================================================================
+<!-- ═══════════════════════════════════════════════
      GAME OVER
-     ================================================================ -->
-<div class="screen hidden" id="gameOverScreen">
+     ═══════════════════════════════════════════════ -->
+<div class="screen gone" id="gameOverScreen">
   <div class="go-ghost">👻</div>
-  <div class="go-title">GAME OVER</div>
-  <div class="go-sub">Your soul now belongs to the house...</div>
+  <div class="go-h">GAME OVER</div>
+  <div class="go-sub">Your soul now belongs to the house…</div>
   <div class="go-chips" id="goChips"></div>
-  <button class="btn-primary" onclick="resetGame()" style="margin-top:10px">↺ Play Again</button>
+  <button class="btn-enter" onclick="resetGame()" style="margin-top:12px">↺ Play Again</button>
 </div>
 
-<!-- ================================================================
+<!-- ═══════════════════════════════════════════════
      SOUL SWAP OVERLAY
-     ================================================================ -->
+     ═══════════════════════════════════════════════ -->
 <div id="soulSwap">
-  <div class="soul-orb">🌀</div>
-  <div class="soul-title">SOUL SWAP!</div>
-  <div class="soul-sub" id="soulSub"></div>
+  <div class="ss-orb">🌀</div>
+  <div class="ss-title">SOUL SWAP!</div>
+  <div class="ss-sub" id="soulSub"></div>
 </div>
 
-<!-- ================================================================
+<!-- ═══════════════════════════════════════════════
      CRACKED SCREEN
-     ================================================================ -->
+     ═══════════════════════════════════════════════ -->
 <div id="crack">
   <svg viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
-    <g stroke="rgba(255,255,255,.82)" stroke-width="2.5" fill="none" stroke-linecap="round">
-      <path d="M500,300 L420,180 L378,98"/>
-      <path d="M500,300 L562,158 L602,78"/>
-      <path d="M500,300 L652,222 L792,154"/>
-      <path d="M500,300 L682,342 L832,380"/>
-      <path d="M500,300 L622,422 L728,522"/>
-      <path d="M500,300 L478,456 L458,564"/>
-      <path d="M500,300 L358,402 L238,488"/>
-      <path d="M500,300 L298,362 L152,344"/>
-      <path d="M500,300 L338,242 L212,182"/>
-      <path d="M420,180 L394,146 L346,126" stroke-width="1.5"/>
-      <path d="M562,158 L594,136 L574,96"  stroke-width="1.5"/>
-      <path d="M652,222 L704,200 L734,230" stroke-width="1.5"/>
-      <path d="M478,456 L438,474 L400,452" stroke-width="1.5"/>
-      <path d="M358,402 L328,434 L306,464" stroke-width="1.5"/>
-      <path d="M338,242 L308,212 L278,242" stroke-width="1"/>
-      <path d="M622,422 L662,442 L690,480" stroke-width="1"/>
+    <g stroke="rgba(255,255,255,.85)" stroke-width="2.5" fill="none" stroke-linecap="round">
+      <path d="M500,300 L418,178 L376,95"/>
+      <path d="M500,300 L564,156 L604,76"/>
+      <path d="M500,300 L655,218 L794,150"/>
+      <path d="M500,300 L685,345 L835,382"/>
+      <path d="M500,300 L625,425 L730,526"/>
+      <path d="M500,300 L476,458 L456,566"/>
+      <path d="M500,300 L355,405 L234,490"/>
+      <path d="M500,300 L295,364 L150,346"/>
+      <path d="M500,300 L336,244 L210,184"/>
+      <path d="M418,178 L392,144 L344,122" stroke-width="1.5"/>
+      <path d="M564,156 L596,134 L576,92"  stroke-width="1.5"/>
+      <path d="M655,218 L706,196 L736,226" stroke-width="1.5"/>
+      <path d="M476,458 L436,476 L398,454" stroke-width="1.5"/>
+      <path d="M355,405 L325,436 L304,467" stroke-width="1.5"/>
+      <path d="M336,244 L306,214 L276,244" stroke-width="1"/>
+      <path d="M625,425 L665,445 L692,483" stroke-width="1"/>
     </g>
-    <circle cx="500" cy="300" r="18" fill="rgba(255,255,255,.14)" stroke="rgba(255,255,255,.72)" stroke-width="2"/>
-    <circle cx="500" cy="300" r="7"  fill="rgba(255,255,255,.42)"/>
+    <circle cx="500" cy="300" r="20" fill="rgba(255,255,255,.12)" stroke="rgba(255,255,255,.75)" stroke-width="2"/>
+    <circle cx="500" cy="300" r="8"  fill="rgba(255,255,255,.4)"/>
   </svg>
-  <div class="crack-vig"></div>
-  <div class="crack-warn">⚠️ CAUGHT CHEATING ⚠️<br><span style="font-size:.52em;letter-spacing:.1em">The skeleton is NOT pleased</span></div>
+  <div class="cv"></div>
+  <div class="cw">⚠️ CAUGHT CHEATING ⚠️<br><span style="font-size:.5em;letter-spacing:.12em">The skeleton is NOT pleased</span></div>
 </div>
 
 <script>
 'use strict';
 
-// ================================================================
+// ═══════════════════════════════════════════════
 // CARD ENGINE
-// ================================================================
+// ═══════════════════════════════════════════════
 const SUITS  = ['♠','♥','♦','♣'];
-const VALUES = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+const VALS   = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
 const RED    = new Set(['♥','♦']);
 
-function createDeck() {
-  const d = [];
-  for (const s of SUITS) for (const v of VALUES) d.push({ suit: s, value: v });
-  return d;
-}
-function shuffle(a) {
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-function cardValue(v) {
-  if (v === 'A') return 11;
-  if ('KQJ'.includes(v)) return 10;
-  return parseInt(v);
-}
-function total(hand) {
-  let t = 0, aces = 0;
-  for (const c of hand) {
-    if (c.hidden) continue;
-    t += cardValue(c.value);
-    if (c.value === 'A') aces++;
-  }
-  while (t > 21 && aces--) t -= 10;
+function deck()  { return SUITS.flatMap(s=>VALS.map(v=>({s,v}))); }
+function shuf(a) { for(let i=a.length-1;i>0;i--){const j=0|Math.random()*(i+1);[a[i],a[j]]=[a[j],a[i]]}return a; }
+function cv(v)   { return v==='A'?11:'KQJ'.includes(v)?10:+v; }
+function tot(h)  {
+  let t=0,a=0;
+  for(const c of h){ if(c.hid)continue; t+=cv(c.v); if(c.v==='A')a++; }
+  while(t>21&&a-->0)t-=10;
   return t;
 }
 
-// ================================================================
+// ═══════════════════════════════════════════════
 // WEB AUDIO
-// ================================================================
-let audioCtx;
-function ctx() { return audioCtx || (audioCtx = new (window.AudioContext||window.webkitAudioContext)()); }
-function tone(freq, type, dur, vol = 0.13) {
-  try {
-    const c = ctx(), o = c.createOscillator(), g = c.createGain();
-    o.connect(g); g.connect(c.destination);
-    o.type = type; o.frequency.setValueAtTime(freq, c.currentTime);
-    g.gain.setValueAtTime(vol, c.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + dur);
-    o.start(); o.stop(c.currentTime + dur);
-  } catch(e) {}
+// ═══════════════════════════════════════════════
+let AC;
+function ac(){ return AC||(AC=new(window.AudioContext||window.webkitAudioContext)()); }
+function tn(f,tp,d,v=.12){
+  try{
+    const c=ac(),o=c.createOscillator(),g=c.createGain();
+    o.connect(g);g.connect(c.destination);
+    o.type=tp;o.frequency.setValueAtTime(f,c.currentTime);
+    g.gain.setValueAtTime(v,c.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001,c.currentTime+d);
+    o.start();o.stop(c.currentTime+d);
+  }catch(e){}
 }
-const sfxDeal   = () => { tone(440,'triangle',.09,.09); setTimeout(()=>tone(550,'triangle',.07,.07),55); };
-const sfxWin    = () => [600,700,860,1020].forEach((f,i)=>setTimeout(()=>tone(f,'sine',.18,.13),i*85));
-const sfxLose   = () => [280,240,200,150].forEach((f,i)=>setTimeout(()=>tone(f,'sawtooth',.22,.14),i*95));
-const sfxSwap   = () => [200,320,440,320,200,440,660].forEach((f,i)=>setTimeout(()=>tone(f,'triangle',.28,.17),i*90));
-const sfxCaught = () => { for(let i=0;i<14;i++) setTimeout(()=>{ tone(70+Math.random()*50,'sawtooth',.14,.28); tone(180+Math.random()*90,'square',.14,.22); },i*55); };
+const sfxDeal=()=>{tn(440,'triangle',.09,.09);setTimeout(()=>tn(550,'triangle',.07,.07),55)};
+const sfxWin =()=>[600,720,880,1080].forEach((f,i)=>setTimeout(()=>tn(f,'sine',.18,.13),i*80));
+const sfxLose=()=>[270,230,190,145].forEach((f,i)=>setTimeout(()=>tn(f,'sawtooth',.2,.13),i*90));
+const sfxSwap=()=>[200,320,450,320,200,450,680].forEach((f,i)=>setTimeout(()=>tn(f,'triangle',.28,.17),i*88));
+const sfxCaught=()=>{for(let i=0;i<14;i++)setTimeout(()=>{tn(65+Math.random()*55,'sawtooth',.14,.28);tn(170+Math.random()*100,'square',.14,.22);},i*52)};
 
-// ================================================================
+// ═══════════════════════════════════════════════
 // STATE
-// ================================================================
-const G = {
-  deck: [], chips: 1000, bet: 50, round: 1,
-  strikes: 0, maxStrikes: 3,
-  phase: 'bet', // bet | player | dealer | over
-  soulSwapped: false,
-  roundsUntilSwap: rndSwap(),
-  insurance: 0, insuranceTaken: false,
-  playerHand: [], dealerHand: [],
-  npc1Hand: [], npc2Hand: [],
-  splitHands: null, splitIndex: 0,
+// ═══════════════════════════════════════════════
+const G={
+  pile:[],chips:1000,bet:50,round:1,
+  strikes:0,maxS:3,
+  phase:'bet',
+  swapped:false,
+  swapIn:rand36(),
+  ins:0,insTaken:false,
+  pH:[],dH:[],n1:[],n2:[],
+  split:null,sIdx:0,
 };
-function rndSwap() { return Math.floor(Math.random()*4)+3; }
-function draw(hidden=false) {
-  if (G.deck.length < 15) G.deck = shuffle([...createDeck(),...createDeck()]);
-  return { ...G.deck.pop(), hidden };
+function rand36(){ return Math.floor(Math.random()*4)+3; }
+function draw(hid=false){
+  if(G.pile.length<15) G.pile=shuf([...deck(),...deck()]);
+  return {...G.pile.pop(),hid};
 }
-function initDeck() { G.deck = shuffle([...createDeck(),...createDeck()]); }
+function initPile(){ G.pile=shuf([...deck(),...deck()]); }
 
-// ================================================================
+// ═══════════════════════════════════════════════
 // RENDER
-// ================================================================
-function renderCard(c, small=false) {
-  const sm = small ? ' ncard' : '';
-  if (c.hidden) return `<div class="card back${sm}"></div>`;
-  const cls = RED.has(c.suit) ? 'red' : 'black';
-  return `<div class="card ${cls}${sm}" style="animation:cDeal .26s cubic-bezier(.34,1.56,.64,1) both">
-    <div class="c-corner"><span class="c-val">${c.value}</span><span class="c-suit">${c.suit}</span></div>
-    <div class="c-mid">${c.suit}</div>
-    <div class="c-corner bot"><span class="c-val">${c.value}</span><span class="c-suit">${c.suit}</span></div>
+// ═══════════════════════════════════════════════
+function renderCard(c,sm=false){
+  const sc=sm?' ncard':'';
+  if(c.hid) return `<div class="card cback${sc}"></div>`;
+  const cl=RED.has(c.s)?'cred':'cblk';
+  return `<div class="card ${cl}${sc}" style="animation:cDeal .3s cubic-bezier(.34,1.56,.64,1) both">
+    <div class="ci"><span class="ci-v">${c.v}</span><span class="ci-s">${c.s}</span></div>
+    <div class="cc">${c.s}</div>
+    <div class="ci flip"><span class="ci-v">${c.v}</span><span class="ci-s">${c.s}</span></div>
   </div>`;
 }
 
-function updateUI() {
+function $$(id){ return document.getElementById(id); }
+
+function updateUI(){
   // HUD
-  $('hudChips').textContent = G.chips;
-  $('hudBet').textContent   = G.phase === 'bet' ? '—' : '$'+G.bet;
-  $('hudRound').textContent = G.round;
-  document.querySelectorAll('.s-dot').forEach((d,i)=>d.classList.toggle('lit', i<G.strikes));
+  $$('hudChips').textContent = G.chips;
+  $$('hudBet').textContent   = G.phase==='bet'?'—':'$'+G.bet;
+  $$('hudRound').textContent = G.round;
+  document.querySelectorAll('.sk').forEach((d,i)=>d.classList.toggle('lit',i<G.strikes));
 
-  // Dealer
-  $('dealerHand').innerHTML = G.dealerHand.map(c=>renderCard(c)).join('');
-  const visHand  = G.dealerHand.filter(c=>!c.hidden);
-  const dtEl     = $('dealerTotal');
-  if (G.phase==='dealer'||G.phase==='over') {
-    dtEl.textContent = 'Total: '+total(G.dealerHand);
-  } else {
-    dtEl.textContent = visHand.length ? 'Showing: '+total(visHand) : '';
-  }
+  // Dealer hand
+  $$('dealerHand').innerHTML = G.dH.map(c=>renderCard(c)).join('');
+  const vis=G.dH.filter(c=>!c.hid);
+  $$('dealerTotal').textContent =
+    (G.phase==='dealer'||G.phase==='over') ? 'Total: '+tot(G.dH)
+    : vis.length ? 'Showing: '+tot(vis) : '';
 
-  // Player
-  const hands = G.splitHands || [G.playerHand];
-  $('playerHand').innerHTML = hands.map((h,i)=>{
-    const cls = (G.splitHands && i===G.splitIndex) ? ' split-active' : '';
-    return `<div class="${cls}" style="display:flex;gap:7px">${h.map(c=>renderCard(c)).join('')}</div>`;
+  // Player hand(s)
+  const hands=G.split||[G.pH];
+  $$('playerHand').innerHTML=hands.map((h,i)=>{
+    const cls=(G.split&&i===G.sIdx)?' splitActive':'';
+    return `<div class="${cls}" style="display:flex;gap:8px">${h.map(c=>renderCard(c)).join('')}</div>`;
   }).join('');
-  const cur   = G.splitHands ? G.splitHands[G.splitIndex] : G.playerHand;
-  const pt    = total(cur);
-  const ptEl  = $('playerTotal');
-  if (G.phase==='bet') { ptEl.textContent=''; ptEl.className='player-total'; }
-  else { ptEl.textContent = pt>21 ? '💀 BUST — '+pt : 'Total: '+pt; ptEl.className='player-total'+(pt>21?' bust':''); }
+  const cur  = G.split?G.split[G.sIdx]:G.pH;
+  const pt   = tot(cur);
+  const ptEl = $$('playerTotal');
+  if(G.phase==='bet'){ ptEl.textContent=''; ptEl.className='player-total'; }
+  else{ ptEl.textContent=pt>21?'💀 BUST — '+pt:'Total: '+pt; ptEl.className='player-total'+(pt>21?' bust':''); }
 
-  // NPCs — use c (not npc1Hand[0])
-  $('npc1Hand').innerHTML = G.npc1Hand.map(c=>
-    G.phase==='over' ? renderCard({...c,hidden:false},true) : `<div class="card back ncard"></div>`
-  ).join('');
-  $('npc2Hand').innerHTML = G.npc2Hand.map(c=>
-    G.phase==='over' ? renderCard({...c,hidden:false},true) : `<div class="card back ncard"></div>`
-  ).join('');
+  // NPCs — correct: use c not n1[0]
+  $$('npc1Hand').innerHTML=G.n1.map(c=>G.phase==='over'?renderCard({...c,hid:false},true):'<div class="card cback ncard"></div>').join('');
+  $$('npc2Hand').innerHTML=G.n2.map(c=>G.phase==='over'?renderCard({...c,hid:false},true):'<div class="card cback ncard"></div>').join('');
 
-  // Swap banner + label
-  $('swapBanner').classList.toggle('on', G.soulSwapped);
-  $('playerLbl').textContent = G.soulSwapped ? 'Your Hand (as Dealer)' : 'Your Hand';
+  // Swap
+  $$('swapBanner').classList.toggle('on',G.swapped);
+  $$('playerCap').textContent=G.swapped?'Your Hand (as Dealer)':'Your Hand';
 
   // Bet display
-  $('betAmt').textContent    = '$'+G.bet;
-  const btnDeal = $('btnDeal');
-  if (btnDeal) btnDeal.disabled = G.chips<10 || G.bet>G.chips || G.bet<10;
+  $$('betNum').textContent='$'+G.bet;
+  const deal=$$('btnDeal');
+  if(deal) deal.disabled=G.chips<10||G.bet>G.chips||G.bet<10;
 
-  // Action button states
-  if (G.phase==='player') {
-    $('actionBet').textContent = '$'+G.bet;
-    const h   = G.splitHands ? G.splitHands[G.splitIndex] : G.playerHand;
-    const raw = G.playerHand;
-    const canSplit = !G.splitHands && raw.length===2 && cardValue(raw[0].value)===cardValue(raw[1].value) && G.chips>=G.bet;
-    $('btnSplit').disabled  = !canSplit;
-    $('btnDouble').disabled = h.length!==2 || G.chips<G.bet;
+  // Action buttons
+  if(G.phase==='player'){
+    $$('actBet').textContent='$'+G.bet;
+    const h=G.split?G.split[G.sIdx]:G.pH;
+    const raw=G.pH;
+    const canSplit=!G.split&&raw.length===2&&cv(raw[0].v)===cv(raw[1].v)&&G.chips>=G.bet;
+    $$('btnSplit').disabled =!canSplit;
+    $$('btnDouble').disabled=h.length!==2||G.chips<G.bet;
   }
 }
 
-function $(id) { return document.getElementById(id); }
-
-// ================================================================
-// PHASE MANAGER
-// ================================================================
-function showPhase(p) {
-  $('betControls').style.display    = p==='bet'    ? ''     : 'none';
-  $('actionControls').style.display = p==='player' ? ''     : 'none';
-  $('dealerControls').style.display = p==='dealer' ? ''     : 'none';
-  $('nextControls').style.display   = p==='over'   ? ''     : 'none';
+// ═══════════════════════════════════════════════
+// PHASE SWITCHER
+// ═══════════════════════════════════════════════
+function phase(p){
+  $$('betCtrl').style.display  = p==='bet'    ?'':'none';
+  $$('actCtrl').style.display  = p==='player' ?'':'none';
+  $$('dealCtrl').style.display = p==='dealer' ?'':'none';
+  $$('nextCtrl').style.display = p==='over'   ?'':'none';
 }
 
-// ================================================================
+// ═══════════════════════════════════════════════
 // SCREENS
-// ================================================================
-function startGame() {
-  initDeck();
-  $('titleScreen').classList.add('hidden');
-  $('gameScreen').classList.remove('hidden');
-  G.phase = 'bet'; showPhase('bet'); updateUI();
+// ═══════════════════════════════════════════════
+function startGame(){
+  initPile();
+  $$('titleScreen').classList.add('gone');
+  $$('gameScreen').classList.remove('gone');
+  G.phase='bet'; phase('bet'); updateUI();
 }
 
-// ================================================================
-// BET
-// ================================================================
-function addChip(v) { G.bet = Math.min(G.bet+v, G.chips, 500); updateUI(); }
-function clearBet()  { G.bet = Math.min(10, G.chips); updateUI(); }
+// ═══════════════════════════════════════════════
+// BETTING
+// ═══════════════════════════════════════════════
+function addChip(v){ G.bet=Math.min(G.bet+v,G.chips,500); updateUI(); }
+function clearBet(){ G.bet=Math.min(10,G.chips); updateUI(); }
+function maxBet()  { G.bet=Math.min(500,G.chips); updateUI(); }
 
-// ================================================================
+// ═══════════════════════════════════════════════
 // DEAL — staggered animation
-// ================================================================
-function dealHand() {
-  if (G.bet<10 || G.bet>G.chips) return;
-  G.chips      -= G.bet;
-  G.playerHand  = []; G.dealerHand = [];
-  G.npc1Hand    = [draw(), draw()];
-  G.npc2Hand    = [draw(), draw()];
-  G.splitHands  = null; G.splitIndex = 0;
-  G.insuranceTaken = false; G.insurance = 0;
-  G.phase = 'player'; showPhase('player'); updateUI();
+// ═══════════════════════════════════════════════
+function dealHand(){
+  if(G.bet<10||G.bet>G.chips) return;
+  G.chips-=G.bet;
+  G.pH=[]; G.dH=[];
+  G.n1=[draw(),draw()];
+  G.n2=[draw(),draw()];
+  G.split=null; G.sIdx=0;
+  G.insTaken=false; G.ins=0;
+  G.phase='player'; phase('player'); updateUI();
 
-  // Deal 4 cards: Player, Dealer, Player, Dealer(hidden) — 180 ms apart
+  // Staggered deal: P D P D(hidden)
   [
-    ()=>{ G.playerHand.push(draw());       sfxDeal(); updateUI(); },
-    ()=>{ G.dealerHand.push(draw());        sfxDeal(); updateUI(); },
-    ()=>{ G.playerHand.push(draw());        sfxDeal(); updateUI(); },
-    ()=>{ G.dealerHand.push(draw(true));    sfxDeal(); updateUI(); },
-  ].forEach((fn,i)=>setTimeout(fn, i*180));
+    ()=>{ G.pH.push(draw());     sfxDeal(); updateUI(); },
+    ()=>{ G.dH.push(draw());      sfxDeal(); updateUI(); },
+    ()=>{ G.pH.push(draw());      sfxDeal(); updateUI(); },
+    ()=>{ G.dH.push(draw(true));  sfxDeal(); updateUI(); },
+  ].forEach((fn,i)=>setTimeout(fn,i*190));
 
-  setTimeout(afterDeal, 4*180+100);
+  setTimeout(afterDeal, 4*190+120);
 }
 
-function afterDeal() {
+function afterDeal(){
   npcReact();
-  if (G.dealerHand[0]?.value==='A') showIns();
+  if(G.dH[0]?.v==='A') showIns();
   else checkBJ();
 }
 
-function checkBJ() {
-  if (total(G.playerHand)===21 && G.playerHand.length===2) {
-    G.dealerHand.forEach(c=>c.hidden=false);
-    updateUI();
-    endRound(total(G.dealerHand)===21 ? 'push' : 'blackjack');
+function checkBJ(){
+  if(tot(G.pH)===21&&G.pH.length===2){
+    G.dH.forEach(c=>c.hid=false); updateUI();
+    endRound(tot(G.dH)===21?'push':'blackjack');
   }
 }
 
-// ================================================================
+// ═══════════════════════════════════════════════
 // INSURANCE
-// ================================================================
-function showIns() { $('insModal').classList.add('show'); }
-function takeInsurance(yes) {
-  $('insModal').classList.remove('show');
-  if (yes) {
-    const ins = Math.floor(G.bet/2);
-    G.insurance = ins; G.chips -= ins; G.insuranceTaken = true; updateUI();
+// ═══════════════════════════════════════════════
+function showIns(){ $$('insModal').classList.add('show'); }
+function takeInsurance(yes){
+  $$('insModal').classList.remove('show');
+  if(yes){
+    G.ins=Math.floor(G.bet/2);
+    G.chips-=G.ins; G.insTaken=true; updateUI();
   }
   checkBJ();
 }
 
-// ================================================================
+// ═══════════════════════════════════════════════
 // PLAYER ACTIONS
-// ================================================================
-function playerHit() {
-  if (G.phase!=='player') return;
-  const h = G.splitHands ? G.splitHands[G.splitIndex] : G.playerHand;
+// ═══════════════════════════════════════════════
+function playerHit(){
+  if(G.phase!=='player') return;
+  const h=G.split?G.split[G.sIdx]:G.pH;
   h.push(draw()); sfxDeal(); updateUI();
-  const t = total(h);
-  if (t>21) {
-    if (G.splitHands && G.splitIndex<G.splitHands.length-1) {
-      setTimeout(()=>{ G.splitIndex++; updateUI(); }, 300);
-    } else setTimeout(()=>endRound('bust'), 450);
-  } else if (t===21) playerStand();
+  const t=tot(h);
+  if(t>21){
+    if(G.split&&G.sIdx<G.split.length-1){ setTimeout(()=>{G.sIdx++;updateUI();},300); }
+    else setTimeout(()=>endRound('bust'),460);
+  } else if(t===21) playerStand();
 }
 
-function playerStand() {
-  if (G.phase!=='player') return;
-  if (G.splitHands && G.splitIndex<G.splitHands.length-1) {
-    G.splitIndex++; updateUI(); return;
-  }
-  G.phase = 'dealer'; showPhase('dealer'); updateUI();
-  setTimeout(dealerPlay, 600);
+function playerStand(){
+  if(G.phase!=='player') return;
+  if(G.split&&G.sIdx<G.split.length-1){ G.sIdx++;updateUI();return; }
+  G.phase='dealer'; phase('dealer'); updateUI();
+  setTimeout(dealerPlay,620);
 }
 
-function playerDouble() {
-  if (G.phase!=='player'||G.chips<G.bet) return;
-  G.chips -= G.bet; G.bet *= 2; updateUI();
-  const h = G.splitHands ? G.splitHands[G.splitIndex] : G.playerHand;
+function playerDouble(){
+  if(G.phase!=='player'||G.chips<G.bet) return;
+  G.chips-=G.bet; G.bet*=2; updateUI();
+  const h=G.split?G.split[G.sIdx]:G.pH;
   h.push(draw()); sfxDeal(); updateUI();
-  setTimeout(()=>{ if(total(h)<=21) playerStand(); else endRound('bust'); }, 420);
+  setTimeout(()=>{ if(tot(h)<=21)playerStand();else endRound('bust'); },440);
 }
 
-function playerSplit() {
-  if (G.phase!=='player'||G.chips<G.bet||G.splitHands) return;
-  G.chips -= G.bet;
-  G.splitHands = [[G.playerHand[0],draw()],[G.playerHand[1],draw()]];
-  G.splitIndex = 0; sfxDeal(); updateUI();
+function playerSplit(){
+  if(G.phase!=='player'||G.chips<G.bet||G.split) return;
+  G.chips-=G.bet;
+  G.split=[[G.pH[0],draw()],[G.pH[1],draw()]];
+  G.sIdx=0; sfxDeal(); updateUI();
 }
 
-// ================================================================
+// ═══════════════════════════════════════════════
 // DEALER PLAY
-// ================================================================
-function dealerPlay() {
-  G.dealerHand.forEach(c=>c.hidden=false); updateUI();
-  function step() {
-    if (total(G.dealerHand)<17) {
-      setTimeout(()=>{ G.dealerHand.push(draw()); sfxDeal(); updateUI(); step(); }, 660);
-    } else setTimeout(resolveRound, 400);
-  }
-  step();
+// ═══════════════════════════════════════════════
+function dealerPlay(){
+  G.dH.forEach(c=>c.hid=false); updateUI();
+  (function step(){
+    if(tot(G.dH)<17){
+      setTimeout(()=>{G.dH.push(draw());sfxDeal();updateUI();step();},680);
+    } else setTimeout(resolve,420);
+  })();
 }
 
-function resolveRound() {
-  const dt    = total(G.dealerHand);
-  const hands = G.splitHands || [G.playerHand];
-  let netGain = 0, lastResult = 'lose';
-
+function resolve(){
+  const dt=tot(G.dH);
+  const hands=G.split||[G.pH];
+  let net=0,last='lose';
   hands.forEach(h=>{
-    const pt      = total(h);
-    const handBet = G.bet / (G.splitHands ? G.splitHands.length : 1);
-    if (pt>21) { /* bust — nothing */ }
-    else if (dt>21||pt>dt) { netGain+=handBet*2; lastResult='win'; }
-    else if (pt===dt)      { netGain+=handBet;   lastResult='push'; }
-    else                   {                      lastResult='lose'; }
+    const pt=tot(h);
+    const hb=G.bet/(G.split?G.split.length:1);
+    if(pt>21){/* bust */}
+    else if(dt>21||pt>dt){ net+=hb*2;last='win'; }
+    else if(pt===dt)     { net+=hb;   last='push';}
+    else                 {             last='lose';}
   });
-
-  if (G.insuranceTaken && total(G.dealerHand)===21 && G.dealerHand.length===2)
-    netGain += G.insurance*3;
-
-  G.chips += netGain; updateUI();
-  endRound(lastResult);
+  if(G.insTaken&&tot(G.dH)===21&&G.dH.length===2) net+=G.ins*3;
+  G.chips+=net; updateUI();
+  endRound(last);
 }
 
-// ================================================================
+// ═══════════════════════════════════════════════
 // END ROUND
-// ================================================================
-function endRound(result) {
-  G.phase = 'over'; showPhase('over');
-
-  let icon, text, cls, delta=0;
-  if (result==='blackjack') {
-    // Bet already deducted; return 2.5× (original + 1.5× bonus)
-    G.chips += Math.floor(G.bet*2.5);
-    delta = Math.floor(G.bet*1.5);
-    icon='🃏'; text='BLACKJACK!'; cls='bj'; sfxWin();
-  } else if (result==='win') {
-    // resolveRound already added 2× handBet — net profit = G.bet
-    delta = G.bet;
-    icon='💰'; text='YOU WIN!'; cls='win'; sfxWin();
-  } else if (result==='push') {
-    // resolveRound already returned the bet — net = 0
-    delta = 0;
-    icon='🤝'; text='PUSH'; cls='push';
-  } else if (result==='bust') {
-    delta = -G.bet; icon='💀'; text='BUST!'; cls='lose'; sfxLose();
+// ═══════════════════════════════════════════════
+function endRound(r){
+  G.phase='over'; phase('over');
+  let ico,lbl,cls,delta=0;
+  if(r==='blackjack'){
+    G.chips+=Math.floor(G.bet*2.5);
+    delta=Math.floor(G.bet*1.5);
+    ico='🃏';lbl='BLACKJACK!';cls='bj';sfxWin();
+  } else if(r==='win'){
+    delta=G.bet; ico='💰';lbl='YOU WIN!';cls='win';sfxWin();
+  } else if(r==='push'){
+    delta=0; ico='🤝';lbl='PUSH';cls='push';
+  } else if(r==='bust'){
+    delta=-G.bet; ico='💀';lbl='BUST!';cls='lose';sfxLose();
   } else {
-    delta = -G.bet; icon='☠️'; text='DEALER WINS'; cls='lose'; sfxLose();
+    delta=-G.bet; ico='☠️';lbl='DEALER WINS';cls='lose';sfxLose();
   }
-
   updateUI();
-  showResult(icon, text, cls, delta);
+  showResult(ico,lbl,cls,delta);
 
   // Soul swap countdown
-  G.roundsUntilSwap--;
-  if (G.soulSwapped) G.soulSwapped=false;
-  if (G.roundsUntilSwap<=0) {
-    G.roundsUntilSwap = rndSwap();
-    setTimeout(triggerSoulSwap, 2200);
-  }
+  G.swapIn--;
+  if(G.swapped) G.swapped=false;
+  if(G.swapIn<=0){ G.swapIn=rand36(); setTimeout(doSoulSwap,2400); }
 
-  // Game over?
-  if (G.chips<=0) {
+  // Game over
+  if(G.chips<=0){
     setTimeout(()=>{
       hideResult();
-      $('gameScreen').classList.add('hidden');
-      $('gameOverScreen').classList.remove('hidden');
-      $('goChips').textContent = 'Final chips: 0';
-    }, 3400);
+      $$('gameScreen').classList.add('gone');
+      $$('gameOverScreen').classList.remove('gone');
+      $$('goChips').textContent='Final chips: 0';
+    },3600);
   }
 }
 
-function showResult(icon, text, cls, delta) {
-  $('rIcon').textContent = icon;
-  $('rText').textContent = text;
-  $('rText').className   = 'r-text '+cls;
-  $('resultBox').className = 'result-box '+cls;
-  const chEl = $('rChips');
-  if (delta>0) chEl.innerHTML  = `+${delta} chips &nbsp;·&nbsp; Total: <span class="pos">${G.chips}</span>`;
-  else if (delta<0) chEl.innerHTML = `${delta} chips &nbsp;·&nbsp; Total: <span class="neg">${G.chips}</span>`;
-  else chEl.innerHTML = `Bet returned &nbsp;·&nbsp; Total: <span class="pos">${G.chips}</span>`;
-  $('resultOverlay').classList.add('show');
+function showResult(ico,lbl,cls,delta){
+  $$('rIco').textContent=ico;
+  $$('rLbl').textContent=lbl;
+  $$('rLbl').className='r-lbl '+cls;
+  $$('rbox').className='rbox '+cls;
+  const ce=$$('rChips');
+  if(delta>0)      ce.innerHTML=`+${delta} chips &nbsp;·&nbsp; You have <span class="pos">${G.chips}</span>`;
+  else if(delta<0) ce.innerHTML=`${delta} chips &nbsp;·&nbsp; You have <span class="neg">${G.chips}</span>`;
+  else             ce.innerHTML=`Bet returned &nbsp;·&nbsp; You have <span class="pos">${G.chips}</span>`;
+  $$('resultOverlay').classList.add('show');
 }
-function hideResult() { $('resultOverlay').classList.remove('show'); }
+function hideResult(){ $$('resultOverlay').classList.remove('show'); }
 
-// ================================================================
+// ═══════════════════════════════════════════════
 // NEXT ROUND
-// ================================================================
-function nextRound() {
+// ═══════════════════════════════════════════════
+function nextRound(){
   hideResult();
   G.round++; G.phase='bet';
-  G.playerHand=[]; G.dealerHand=[]; G.npc1Hand=[]; G.npc2Hand=[];
-  G.splitHands=null; G.splitIndex=0;
-  G.bet = Math.min(G.bet, G.chips);
-  if (G.bet<10) G.bet = Math.min(10, G.chips);
-  showPhase('bet'); updateUI();
+  G.pH=[]; G.dH=[]; G.n1=[]; G.n2=[];
+  G.split=null; G.sIdx=0;
+  G.bet=Math.min(G.bet,G.chips);
+  if(G.bet<10) G.bet=Math.min(10,G.chips);
+  phase('bet'); updateUI();
 }
 
-// ================================================================
+// ═══════════════════════════════════════════════
 // SOUL SWAP
-// ================================================================
-function triggerSoulSwap() {
+// ═══════════════════════════════════════════════
+function doSoulSwap(){
   sfxSwap();
-  G.soulSwapped = !G.soulSwapped;
-  $('soulSub').textContent = G.soulSwapped
-    ? 'You are now the DEALER. Hit ≤16, Stand ≥17.'
-    : 'Souls returned. You are yourself again.';
-  $('soulSwap').classList.add('on');
-  setTimeout(()=>$('soulSwap').classList.remove('on'), 3000);
+  G.swapped=!G.swapped;
+  $$('soulSub').textContent=G.swapped
+    ?'You are now the DEALER. Hit ≤16, Stand ≥17.'
+    :'Souls returned. You are yourself again.';
+  $$('soulSwap').classList.add('on');
+  setTimeout(()=>$$('soulSwap').classList.remove('on'),3200);
 }
 
-// ================================================================
-// CHEAT / PEEK
-// ================================================================
-const CATCH_CHANCE = 0.40;
-
-function attemptPeek() {
-  if (G.phase!=='player') return;
-  Math.random()<CATCH_CHANCE ? triggerCaught() : revealPeek();
+// ═══════════════════════════════════════════════
+// PEEK / CHEAT
+// ═══════════════════════════════════════════════
+function attemptPeek(){
+  if(G.phase!=='player') return;
+  Math.random()<.40 ? triggerCaught() : revealPeek();
 }
-
-function revealPeek() {
-  const hole = G.dealerHand.find(c=>c.hidden);
-  if (!hole) return;
-  hole.hidden = false; updateUI();
-  const pb = $('peekBubble');
-  pb.innerHTML = `👁 &nbsp;Hole card: <strong>${hole.value}${hole.suit}</strong>`;
+function revealPeek(){
+  const hole=G.dH.find(c=>c.hid);
+  if(!hole) return;
+  hole.hid=false; updateUI();
+  const pb=$$('peekBubble');
+  pb.innerHTML=`👁 &nbsp;Hole card: <strong>${hole.v}${hole.s}</strong>`;
   pb.classList.add('show');
-  setTimeout(()=>{ hole.hidden=true; pb.classList.remove('show'); updateUI(); }, 3000);
+  setTimeout(()=>{ hole.hid=true; pb.classList.remove('show'); updateUI(); },3000);
 }
-
-function triggerCaught() {
+function triggerCaught(){
   G.strikes++; sfxCaught();
-  const spr = $('dealerSpr');
+  const spr=$$('dealerSpr');
   spr.classList.add('charging');
-  setTimeout(()=>spr.classList.remove('charging'), 760);
-
+  setTimeout(()=>spr.classList.remove('charging'),780);
   showCrack();
-  const penalty = Math.floor(G.chips*0.20);
-  G.chips = Math.max(0, G.chips-penalty); updateUI();
-
-  // Swap to next-controls briefly to show penalty message -- keep action controls
-  // (We just show crack + update HUD; don't break the turn)
-
-  if (G.strikes>=G.maxStrikes) {
+  const pen=Math.floor(G.chips*.20);
+  G.chips=Math.max(0,G.chips-pen); updateUI();
+  if(G.strikes>=G.maxS){
     setTimeout(()=>{
-      $('crack').classList.remove('on');
-      $('gameScreen').classList.add('hidden');
-      $('gameOverScreen').classList.remove('hidden');
-      $('goChips').textContent = '☠️ Banned for cheating!';
-    }, 2900);
+      $$('crack').classList.remove('on');
+      $$('gameScreen').classList.add('gone');
+      $$('gameOverScreen').classList.remove('gone');
+      $$('goChips').textContent='☠️ Banned for cheating!';
+    },2900);
   }
 }
-
-function showCrack() {
-  $('crack').classList.add('on');
-  setTimeout(()=>$('crack').classList.remove('on'), 4000);
+function showCrack(){
+  $$('crack').classList.add('on');
+  setTimeout(()=>$$('crack').classList.remove('on'),4200);
 }
 
-// ================================================================
+// ═══════════════════════════════════════════════
 // NPC REACTIONS
-// ================================================================
-const EMOTES = ['😱','🤔','👀','😅','😂','💀','🙀','🫣','😮','🤭','😬'];
-function npcReact() {
+// ═══════════════════════════════════════════════
+const EMOTES=['😱','🤔','👀','😅','😂','💀','🙀','🫣','😮','🤭','😬','👻'];
+function npcReact(){
   ['npc1','npc2'].forEach(id=>{
-    if (Math.random()<0.55) {
-      const el = $(id);
+    if(Math.random()<.55){
+      const el=$$(id);
       el.querySelector('.npc-react')?.remove();
-      const r = document.createElement('div');
-      r.className = 'npc-react';
-      r.textContent = EMOTES[Math.floor(Math.random()*EMOTES.length)];
+      const r=document.createElement('div');
+      r.className='npc-react';
+      r.textContent=EMOTES[0|Math.random()*EMOTES.length];
       el.appendChild(r);
-      setTimeout(()=>r.remove(), 1600);
+      setTimeout(()=>r.remove(),1700);
     }
   });
 }
 
-// ================================================================
-// KEYBOARD SHORTCUTS
-// ================================================================
-document.addEventListener('keydown', e=>{
-  if (G.phase==='over'   && e.key==='Enter') { nextRound(); return; }
-  if (G.phase!=='player') return;
-  switch(e.key.toLowerCase()) {
-    case 'h': playerHit(); break;
-    case 's': playerStand(); break;
-    case 'd': if(!$('btnDouble').disabled) playerDouble(); break;
-    case 'x': if(!$('btnSplit').disabled)  playerSplit();  break;
-    case 'p': attemptPeek(); break;
+// ═══════════════════════════════════════════════
+// KEYBOARD
+// ═══════════════════════════════════════════════
+document.addEventListener('keydown',e=>{
+  if(G.phase==='over'&&e.key==='Enter'){nextRound();return;}
+  if(G.phase!=='player') return;
+  switch(e.key.toLowerCase()){
+    case 'h':playerHit();break;
+    case 's':playerStand();break;
+    case 'd':if(!$$('btnDouble').disabled)playerDouble();break;
+    case 'x':if(!$$('btnSplit').disabled)playerSplit();break;
+    case 'p':attemptPeek();break;
   }
 });
 
-// ================================================================
+// ═══════════════════════════════════════════════
 // RESET
-// ================================================================
-function resetGame() {
-  Object.assign(G, {
-    deck:[], chips:1000, bet:50, round:1, strikes:0,
-    phase:'bet', soulSwapped:false, roundsUntilSwap:rndSwap(),
-    insurance:0, insuranceTaken:false,
-    playerHand:[], dealerHand:[], npc1Hand:[], npc2Hand:[],
-    splitHands:null, splitIndex:0,
+// ═══════════════════════════════════════════════
+function resetGame(){
+  Object.assign(G,{
+    pile:[],chips:1000,bet:50,round:1,strikes:0,
+    phase:'bet',swapped:false,swapIn:rand36(),
+    ins:0,insTaken:false,
+    pH:[],dH:[],n1:[],n2:[],split:null,sIdx:0,
   });
-  initDeck();
-  $('gameOverScreen').classList.add('hidden');
-  $('gameScreen').classList.remove('hidden');
-  $('crack').classList.remove('on');
+  initPile();
+  $$('gameOverScreen').classList.add('gone');
+  $$('gameScreen').classList.remove('gone');
+  $$('crack').classList.remove('on');
   hideResult();
-  showPhase('bet'); updateUI();
+  phase('bet'); updateUI();
 }
 
-// Init
-initDeck();
+initPile();
 </script>
 </body>
 </html>
