@@ -477,6 +477,8 @@ body{
 .btn-sm:hover{border-color:var(--red);color:var(--red)}
 .btn-max{border-color:var(--gold);color:var(--gold)}
 .btn-max:hover{border-color:var(--gold2);color:var(--gold2);background:rgba(200,168,74,.08)}
+.btn-allin{border-color:var(--red);color:var(--red);font-weight:700;letter-spacing:.06em}
+.btn-allin:hover{border-color:#ff6080;color:#ff6080;background:rgba(255,32,64,.12);transform:scale(1.05);box-shadow:0 0 18px rgba(255,32,64,.35)}
 .btn-deal{
   padding:13px 52px;
   font-family:'Cinzel',serif;font-size:1rem;font-weight:700;
@@ -652,6 +654,40 @@ body{
 .go-h{font-size:2.5rem;font-weight:900;color:var(--red);letter-spacing:.06em}
 .go-sub{font-size:.95rem;color:var(--muted);font-family:system-ui}
 .go-chips{font-size:1.3rem;color:var(--gold)}
+.go-buttons{display:flex;flex-direction:column;align-items:center;gap:14px;margin-top:4px}
+.btn-soul{
+  padding:14px 40px;
+  font-family:'Cinzel',serif;font-size:1rem;font-weight:700;
+  background:linear-gradient(135deg,#3d0000,#7a0000);
+  color:#ff4060;border:2px solid #cc0030;border-radius:999px;
+  cursor:pointer;letter-spacing:.14em;text-transform:uppercase;
+  box-shadow:0 0 30px rgba(200,0,40,.5),0 6px 20px var(--shadow);
+  transition:all .25s;
+}
+.btn-soul:hover{transform:translateY(-2px) scale(1.04);box-shadow:0 0 50px rgba(255,0,60,.7),0 8px 28px var(--shadow)}
+
+/* ─── SOUL DEAL OVERLAY ───────────────────────── */
+#soulDeal{
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 40%,#3d0050 0%,#1a0010 55%,var(--ink) 100%);
+  z-index:500;flex-direction:column;gap:22px;
+}
+.sd-skull{font-size:6rem;animation:sdPulse 1.1s ease-in-out infinite}
+@keyframes sdPulse{
+  0%,100%{transform:scale(1);filter:drop-shadow(0 0 28px var(--red))}
+  50%{transform:scale(1.18);filter:drop-shadow(0 0 72px #ff0040)}
+}
+.sd-title{
+  font-family:'Cinzel Decorative',serif;
+  font-size:clamp(1.5rem,4vw,2.6rem);font-weight:700;
+  color:var(--red);letter-spacing:.06em;text-align:center;
+  text-shadow:0 0 30px var(--red),0 0 70px rgba(255,0,64,.4);
+  animation:sdFlick .18s linear infinite alternate;
+}
+@keyframes sdFlick{0%{opacity:1}100%{opacity:.88}}
+.sd-flavor{font-size:1rem;color:var(--bone);opacity:.75;font-family:system-ui;text-align:center;max-width:380px;line-height:1.6}
+.sd-chips{font-size:2.6rem;font-weight:700;color:var(--green);text-shadow:0 0 24px var(--green)}
+.sd-warning{font-size:.78rem;color:var(--red);opacity:.6;font-family:system-ui;letter-spacing:.06em;text-transform:uppercase}
 
 /* ─── RESPONSIVE ───────────────────────────────── */
 @media(max-height:660px){
@@ -812,6 +848,7 @@ body{
       <div class="bet-row2">
         <button class="btn-sm" onclick="clearBet()">Clear</button>
         <button class="btn-sm btn-max" onclick="maxBet()">Max Bet</button>
+        <button class="btn-sm btn-allin" onclick="allIn()">🔥 ALL IN</button>
         <button class="btn-deal" id="btnDeal" onclick="dealHand()">Deal ▶</button>
       </div>
     </div>
@@ -847,11 +884,25 @@ body{
      GAME OVER
      ═══════════════════════════════════════════════ -->
 <div class="screen gone" id="gameOverScreen">
-  <div class="go-ghost">👻</div>
-  <div class="go-h">GAME OVER</div>
-  <div class="go-sub">Your soul now belongs to the house…</div>
+  <div class="go-ghost" id="goGhost">👻</div>
+  <div class="go-h" id="goTitle">GAME OVER</div>
+  <div class="go-sub" id="goSub">Your soul now belongs to the house…</div>
   <div class="go-chips" id="goChips"></div>
-  <button class="btn-enter" onclick="resetGame()" style="margin-top:12px">↺ Play Again</button>
+  <div class="go-buttons">
+    <button class="btn-soul" id="btnSellSoul" onclick="sellSoul()">🔥 Sell Your Soul</button>
+    <button class="btn-enter" onclick="resetGame()">↺ Play Again</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SOUL DEAL OVERLAY
+     ═══════════════════════════════════════════════ -->
+<div class="screen gone" id="soulDeal">
+  <div class="sd-skull">💀</div>
+  <div class="sd-title">DEAL WITH THE HOUSE</div>
+  <div class="sd-flavor" id="sdFlavor"></div>
+  <div class="sd-chips" id="sdChips"></div>
+  <div class="sd-warning" id="sdWarning"></div>
 </div>
 
 <!-- ═══════════════════════════════════════════════
@@ -946,6 +997,7 @@ const G={
   ins:0,insTaken:false,
   pH:[],dH:[],n1:[],n2:[],
   split:null,sIdx:0,
+  soulSold:0,
 };
 function rand36(){ return Math.floor(Math.random()*4)+3; }
 function draw(hid=false){
@@ -1046,6 +1098,7 @@ function startGame(){
 function addChip(v){ G.bet=Math.min(G.bet+v,G.chips,500); updateUI(); }
 function clearBet(){ G.bet=Math.min(10,G.chips); updateUI(); }
 function maxBet()  { G.bet=Math.min(500,G.chips); updateUI(); }
+function allIn()   { G.bet=G.chips; updateUI(); sfxWin(); }
 
 // ═══════════════════════════════════════════════
 // DEAL — staggered animation
@@ -1194,8 +1247,15 @@ function endRound(r){
     setTimeout(()=>{
       hideResult();
       $$('gameScreen').classList.add('gone');
-      $$('gameOverScreen').classList.remove('gone');
+      const go=$$('gameOverScreen');
+      go.classList.remove('gone');
+      const sold=G.soulSold;
+      const subs=['Your soul now belongs to the house…','What remains of you lingers in the shadows…','Even the scraps of your essence are ours…','There is nothing left to take.'];
+      $$('goSub').textContent=subs[Math.min(sold,subs.length-1)];
       $$('goChips').textContent='Final chips: 0';
+      const btn=$$('btnSellSoul');
+      btn.style.display=sold<3?'':'none';
+      if(sold>0) $$('goGhost').textContent='💀';
     },3600);
   }
 }
@@ -1269,6 +1329,9 @@ function triggerCaught(){
       $$('gameScreen').classList.add('gone');
       $$('gameOverScreen').classList.remove('gone');
       $$('goChips').textContent='☠️ Banned for cheating!';
+      $$('goSub').textContent='The house does not forget.';
+      $$('goGhost').textContent='💀';
+      $$('btnSellSoul').style.display=G.soulSold<3?'':'none';
     },2900);
   }
 }
@@ -1311,6 +1374,44 @@ document.addEventListener('keydown',e=>{
 });
 
 // ═══════════════════════════════════════════════
+// SELL YOUR SOUL
+// ═══════════════════════════════════════════════
+const SOUL_DEALS=[
+  {chips:666, flavor:'The house accepts your soul. Spend these wisely — you won\'t get many more chances.',                warning:'First soul sold'},
+  {chips:333, flavor:'A fragment remains. The dealer eyes what\'s left of you with quiet hunger.',                        warning:'Second soul sold'},
+  {chips:100, flavor:'A mere sliver of essence… barely worth the paperwork. These are your last chips.',                  warning:'Final soul sold — no more deals'},
+];
+function sellSoul(){
+  const idx=G.soulSold;
+  if(idx>=SOUL_DEALS.length) return;
+  const deal=SOUL_DEALS[idx];
+  G.soulSold++;
+  G.chips=deal.chips;
+  G.bet=Math.min(50,G.chips);
+  G.strikes=0;
+
+  $$('sdFlavor').textContent=deal.flavor;
+  $$('sdChips').textContent=`+${deal.chips} chips`;
+  $$('sdWarning').textContent=deal.warning;
+
+  $$('gameOverScreen').classList.add('gone');
+  $$('soulDeal').classList.remove('gone');
+
+  // Eerie soul-selling audio
+  for(let i=0;i<12;i++) setTimeout(()=>tn(30+Math.random()*90,'sawtooth',.2,.38),i*65);
+  [111,222,333,222,111].forEach((f,i)=>setTimeout(()=>tn(f,'sine',.28,.5),250+i*400));
+
+  setTimeout(()=>{
+    $$('soulDeal').classList.add('gone');
+    $$('gameScreen').classList.remove('gone');
+    $$('crack').classList.remove('on');
+    hideResult();
+    initPile();
+    phase('bet'); updateUI();
+  },3800);
+}
+
+// ═══════════════════════════════════════════════
 // RESET
 // ═══════════════════════════════════════════════
 function resetGame(){
@@ -1319,6 +1420,7 @@ function resetGame(){
     phase:'bet',swapped:false,swapIn:rand36(),
     ins:0,insTaken:false,
     pH:[],dH:[],n1:[],n2:[],split:null,sIdx:0,
+    soulSold:0,
   });
   initPile();
   $$('gameOverScreen').classList.add('gone');
