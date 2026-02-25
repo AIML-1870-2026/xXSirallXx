@@ -436,12 +436,20 @@ body{
 .bet-row1{display:flex;align-items:center;gap:20px;flex-wrap:wrap;justify-content:center}
 .bet-info{text-align:center}
 .bet-cap{font-size:.6rem;text-transform:uppercase;letter-spacing:.15em;color:var(--muted);font-family:system-ui}
-.bet-num{
+.bet-num-wrap{display:flex;align-items:baseline;gap:4px}
+.bet-dollar{font-size:1.4rem;font-weight:900;color:var(--gold);font-family:'Cinzel',serif;opacity:.7}
+.bet-input{
   font-size:2.2rem;font-weight:900;color:var(--gold);
   font-family:'Cinzel',serif;
   text-shadow:0 0 20px rgba(200,168,74,.4);
-  line-height:1;
+  line-height:1;background:transparent;border:none;
+  border-bottom:2px solid transparent;outline:none;
+  width:100px;text-align:center;
+  -moz-appearance:textfield;transition:border-color .2s;
 }
+.bet-input::-webkit-outer-spin-button,
+.bet-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.bet-input:focus{border-bottom-color:var(--gold)}
 .chips-wrap{display:flex;gap:9px;flex-wrap:wrap;justify-content:center}
 .chip{
   width:46px;height:46px;border-radius:50%;
@@ -455,6 +463,8 @@ body{
 .chip::after{content:'';position:absolute;inset:3px;border-radius:50%;border:1px dashed;opacity:.4}
 .chip:hover{transform:translateY(-3px) scale(1.15)}
 .chip:active{transform:scale(.95)}
+.chip.c5{background:#0f0f1c;border-color:#777;color:#bbb}
+.chip.c5::after{border-color:#777}
 .chip.c10{background:#18182a;border-color:#888;color:#ccc}
 .chip.c10::after{border-color:#888}
 .chip.c25{background:#0d2200;border-color:#4caf50;color:#70da74}
@@ -466,6 +476,17 @@ body{
 .chip.c500{background:#281600;border-color:var(--gold);color:var(--gold)}
 .chip.c500::after{border-color:var(--gold)}
 
+.nudge-row{display:flex;gap:7px;align-items:center;justify-content:center}
+.nudge{
+  padding:5px 11px;background:transparent;
+  border:1px solid rgba(201,168,74,.25);border-radius:6px;
+  color:rgba(201,168,74,.7);cursor:pointer;
+  font-size:.72rem;font-family:'Cinzel',serif;
+  transition:all .18s;
+}
+.nudge:hover{border-color:var(--gold);color:var(--gold);background:rgba(201,168,74,.07)}
+.nudge.neg{border-color:rgba(255,130,130,.2);color:rgba(255,130,130,.6)}
+.nudge.neg:hover{border-color:var(--red);color:var(--red);background:rgba(255,32,64,.07)}
 .bet-row2{display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:center}
 .btn-sm{
   padding:8px 20px;background:transparent;
@@ -835,14 +856,29 @@ body{
       <div class="bet-row1">
         <div class="bet-info">
           <div class="bet-cap">Current Bet</div>
-          <div class="bet-num" id="betNum">$50</div>
+          <div class="bet-num-wrap">
+            <span class="bet-dollar">$</span>
+            <input type="number" class="bet-input" id="betInput" min="5" step="1" value="50"
+              oninput="setBetDirect(this.value)" onblur="clampBetInput()">
+          </div>
         </div>
-        <div class="chips-wrap">
-          <div class="chip c10"  onclick="addChip(10)">10</div>
-          <div class="chip c25"  onclick="addChip(25)">25</div>
-          <div class="chip c50"  onclick="addChip(50)">50</div>
-          <div class="chip c100" onclick="addChip(100)">100</div>
-          <div class="chip c500" onclick="addChip(500)">500</div>
+        <div style="display:flex;flex-direction:column;gap:8px;align-items:center">
+          <div class="chips-wrap">
+            <div class="chip c5"   onclick="addChip(5)">5</div>
+            <div class="chip c10"  onclick="addChip(10)">10</div>
+            <div class="chip c25"  onclick="addChip(25)">25</div>
+            <div class="chip c50"  onclick="addChip(50)">50</div>
+            <div class="chip c100" onclick="addChip(100)">100</div>
+            <div class="chip c500" onclick="addChip(500)">500</div>
+          </div>
+          <div class="nudge-row">
+            <button class="nudge neg" onclick="addChip(-25)">−25</button>
+            <button class="nudge neg" onclick="addChip(-10)">−10</button>
+            <button class="nudge neg" onclick="addChip(-5)">−5</button>
+            <button class="nudge"     onclick="addChip(5)">+5</button>
+            <button class="nudge"     onclick="addChip(10)">+10</button>
+            <button class="nudge"     onclick="addChip(25)">+25</button>
+          </div>
         </div>
       </div>
       <div class="bet-row2">
@@ -1057,9 +1093,10 @@ function updateUI(){
   $$('playerCap').textContent=G.swapped?'Your Hand (as Dealer)':'Your Hand';
 
   // Bet display
-  $$('betNum').textContent='$'+G.bet;
+  const bi=$$('betInput');
+  if(bi&&document.activeElement!==bi) bi.value=G.bet;
   const deal=$$('btnDeal');
-  if(deal) deal.disabled=G.chips<10||G.bet>G.chips||G.bet<10;
+  if(deal) deal.disabled=G.chips<5||G.bet>G.chips||G.bet<5;
 
   // Action buttons
   if(G.phase==='player'){
@@ -1095,10 +1132,23 @@ function startGame(){
 // ═══════════════════════════════════════════════
 // BETTING
 // ═══════════════════════════════════════════════
-function addChip(v){ G.bet=Math.min(G.bet+v,G.chips,500); updateUI(); }
-function clearBet(){ G.bet=Math.min(10,G.chips); updateUI(); }
+function addChip(v){ G.bet=Math.max(5,Math.min(G.bet+v,G.chips)); updateUI(); }
+function clearBet(){ G.bet=Math.min(5,G.chips); updateUI(); }
 function maxBet()  { G.bet=Math.min(500,G.chips); updateUI(); }
 function allIn()   { G.bet=G.chips; updateUI(); sfxWin(); }
+function setBetDirect(v){
+  const n=parseInt(v,10);
+  if(isNaN(n)) return;
+  G.bet=Math.max(5,Math.min(n,G.chips));
+  // update UI but keep focus on input (don't reset input mid-type)
+  $$('hudBet').textContent=G.phase==='bet'?'$'+G.bet:'$'+G.bet;
+  const deal=$$('btnDeal');
+  if(deal) deal.disabled=G.chips<5||G.bet>G.chips||G.bet<5;
+}
+function clampBetInput(){
+  G.bet=Math.max(5,Math.min(G.bet,G.chips));
+  updateUI();
+}
 
 // ═══════════════════════════════════════════════
 // DEAL — staggered animation
@@ -1282,7 +1332,7 @@ function nextRound(){
   G.pH=[]; G.dH=[]; G.n1=[]; G.n2=[];
   G.split=null; G.sIdx=0;
   G.bet=Math.min(G.bet,G.chips);
-  if(G.bet<10) G.bet=Math.min(10,G.chips);
+  if(G.bet<5) G.bet=Math.min(5,G.chips);
   phase('bet'); updateUI();
 }
 
