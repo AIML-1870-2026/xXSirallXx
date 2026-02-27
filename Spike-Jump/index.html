@@ -115,11 +115,11 @@ canvas{display:block}
 <!-- ElevenLabs key modal -->
 <div id="elModal" style="display:none;position:fixed;inset:0;z-index:99;background:rgba(0,0,0,.82);align-items:center;justify-content:center">
   <div style="background:#0e0e1a;border:1px solid #333;border-radius:10px;padding:28px 32px;max-width:440px;width:90%;font-family:'Orbitron',monospace;text-align:center">
-    <div style="font-size:15px;color:#ffaa00;font-weight:700;margin-bottom:8px">CECIL'S REAL VOICE</div>
+    <div style="font-size:15px;color:#ffaa00;font-weight:700;margin-bottom:8px">UPGRADE CECIL'S VOICE</div>
     <div style="font-size:11px;color:#aaa;line-height:1.7;margin-bottom:16px">
-      Uses <strong style="color:#fff">ElevenLabs</strong> TTS — voice: <em>Clyde</em> (gruff American male).<br>
-      Get a free key at <span style="color:#00ffcc">elevenlabs.io</span> &rarr; Profile &rarr; API Keys.<br>
-      Your key is stored only in this browser's localStorage. Never sent anywhere except ElevenLabs.
+      Cecil already speaks via <strong style="color:#fff">StreamElements / Amazon Polly</strong> automatically.<br>
+      Add an <strong style="color:#fff">ElevenLabs</strong> key to upgrade to voice <em>Clyde</em> — gruff American male, closer to Walton Goggins.<br>
+      Free key at <span style="color:#00ffcc">elevenlabs.io</span> &rarr; Profile &rarr; API Keys. Stored only in this browser.
     </div>
     <input id="elInput" type="password" placeholder="Paste your ElevenLabs API key…"
       style="width:100%;padding:9px 12px;border-radius:5px;border:1px solid #444;background:#111;color:#fff;font-family:'Orbitron',monospace;font-size:11px;margin-bottom:12px;outline:none">
@@ -182,86 +182,121 @@ function sfxBossStart(){
     src.buffer=buf;ng.gain.value=.38;src.connect(ng);ng.connect(ctx.destination);src.start();}catch(e){}}
 function sfxBossClear(){[440,550,660,880,1100].forEach((f,i)=>tn(f,'sine',.18,.25,i*.1));}
 
-// ── CECIL NARRATION ───────────────────────────────────────────────────
-// ElevenLabs voice: Clyde — gruff, American war-veteran male (closest to Walton Goggins)
-// Voice ID can be overridden; Clyde is the default.
-const EL_VOICE='2EiwWnXFnvU5JabPnv8n'; // Clyde
-const EL_URL=`https://api.elevenlabs.io/v1/text-to-speech/${EL_VOICE}`;
+// ── CECIL NARRATION ─────────────────────────────────────────────────
+// Tier 1 (auto):   StreamElements TTS — "Matthew" (Amazon Polly US male, no key)
+// Tier 2 (opt-in): ElevenLabs "Clyde" — gruff American war-veteran, closest to Walton Goggins
+// Tier 3 (last):   Web Speech API fallback
+const SE_BASE='https://api.streamelements.com/kappa/v2/speech';
+const EL_VOICE_ID='2EiwWnXFnvU5JabPnv8n'; // ElevenLabs: Clyde
 const EL_KEY_LS='cecilELKey';
-const EL_CACHE_LS='cecilELCache';
+const CACHE_LS='cecilAudioCache';
 let elKey=localStorage.getItem(EL_KEY_LS)||null;
-let elCache={};try{elCache=JSON.parse(localStorage.getItem(EL_CACHE_LS)||'{}')}catch(e){}
-let cecilBusy=false;
-let cTimer=null;
+let audioCache={};try{audioCache=JSON.parse(localStorage.getItem(CACHE_LS)||'{}')}catch(e){}
+let cecilBusy=false,cTimer=null;
 
-async function cecilPlayEL(text){
-  if(!elKey)return false;
+// Decode base64 string → play via Web Audio at given playback rate
+async function b64Play(b64,rate=1){
   initAC();if(!AC)return false;
   try{
-    // Check cache first
-    let b64=elCache[text];
-    if(!b64){
-      const r=await fetch(EL_URL,{method:'POST',
-        headers:{'xi-api-key':elKey,'Content-Type':'application/json','Accept':'audio/mpeg'},
-        body:JSON.stringify({text,model_id:'eleven_multilingual_v2',
-          voice_settings:{stability:0.72,similarity_boost:0.80,style:0.25,use_speaker_boost:true}})});
-      if(!r.ok){if(r.status===401||r.status===403)elKey=null;return false;}
-      const buf=await r.arrayBuffer();
-      // Cache as base64 so it survives page reload
-      const bytes=new Uint8Array(buf);let s='';bytes.forEach(b=>s+=String.fromCharCode(b));
-      b64=btoa(s);
-      elCache[text]=b64;
-      try{localStorage.setItem(EL_CACHE_LS,JSON.stringify(elCache));}catch(e){}
-    }
-    // Decode base64 → ArrayBuffer
-    const raw=atob(b64);const ab=new ArrayBuffer(raw.length);const u8=new Uint8Array(ab);
+    const raw=atob(b64),ab=new ArrayBuffer(raw.length),u8=new Uint8Array(ab);
     for(let i=0;i<raw.length;i++)u8[i]=raw.charCodeAt(i);
     const decoded=await AC.decodeAudioData(ab);
-    const src=AC.createBufferSource();
-    src.buffer=decoded;src.connect(AC.destination);
-    src.start();
-    return true;
+    return new Promise(res=>{
+      let done=false;const fin=()=>{if(!done){done=true;res(true);}};
+      const src=AC.createBufferSource();
+      src.buffer=decoded;src.playbackRate.value=rate;
+      src.connect(AC.destination);src.onended=fin;
+      setTimeout(fin,(decoded.duration/rate+1)*1000);
+      src.start();
+    });
   }catch(e){return false;}
 }
 
+// ArrayBuffer → base64 string (cached in audioCache + localStorage)
+async function cacheAudio(key,buf){
+  const bytes=new Uint8Array(buf),c=[];
+  for(let i=0;i<bytes.length;i++)c.push(String.fromCharCode(bytes[i]));
+  const b64=btoa(c.join(''));
+  audioCache[key]=b64;
+  try{localStorage.setItem(CACHE_LS,JSON.stringify(audioCache));}catch(e){}
+  return b64;
+}
+
+// Tier 2: ElevenLabs (requires API key)
+async function cecilPlayEL(text){
+  if(!elKey)return false;
+  initAC();if(!AC)return false;
+  const ck='el:'+text;
+  if(audioCache[ck])return b64Play(audioCache[ck]);
+  try{
+    const r=await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${EL_VOICE_ID}`,{
+      method:'POST',
+      headers:{'xi-api-key':elKey,'Content-Type':'application/json','Accept':'audio/mpeg'},
+      body:JSON.stringify({text,model_id:'eleven_multilingual_v2',
+        voice_settings:{stability:0.72,similarity_boost:0.80,style:0.25,use_speaker_boost:true}})});
+    if(!r.ok){if(r.status===401||r.status===403)elKey=null;return false;}
+    const buf=await r.arrayBuffer();
+    const b64=await cacheAudio(ck,buf);
+    return b64Play(b64);
+  }catch(e){return false;}
+}
+
+// Tier 1: StreamElements (no key, free, Amazon Polly "Matthew" US male)
+async function cecilPlaySE(text){
+  const ck='se:'+text;
+  if(audioCache[ck])return b64Play(audioCache[ck],0.91);
+  const url=`${SE_BASE}?voice=Matthew&text=${encodeURIComponent(text)}`;
+  try{
+    const r=await fetch(url);
+    if(!r.ok)throw new Error();
+    const buf=await r.arrayBuffer();
+    const b64=await cacheAudio(ck,buf);
+    return b64Play(b64,0.91); // 0.91 playback rate: slightly deeper
+  }catch(e){
+    // CORS blocked — fall back to Audio element (cannot cache, but still plays)
+    return new Promise(resolve=>{
+      const a=new Audio(url);a.volume=0.95;
+      a.onended=()=>resolve(true);a.onerror=()=>resolve(false);
+      a.play().catch(()=>resolve(false));
+    });
+  }
+}
+
+// Tier 3: Web Speech API (male-voice priority)
+function cecilPlayWSA(text,force){
+  if(!window.speechSynthesis){cecilBusy=false;return;}
+  try{
+    if(force)window.speechSynthesis.cancel();
+    const utt=new SpeechSynthesisUtterance(text);
+    utt.pitch=0.50;utt.rate=0.82;utt.volume=0.97;
+    const vv=window.speechSynthesis.getVoices();
+    const us=vv.filter(v=>v.lang==='en-US'),en=vv.filter(v=>v.lang.startsWith('en'));
+    const mRx=/\b(aaron|alex|fred|reed|rocko|samson|bruce|ralph|gordon|mark|peter|paul|william|george|henry|edward|charles|richard|robert|john|michael|andrew|christopher|matthew|joseph|thomas|david|james)\b/i;
+    const v=us.find(v=>/google us english male/i.test(v.name))||us.find(v=>mRx.test(v.name))
+      ||us.find(v=>/male/i.test(v.name))||en.find(v=>mRx.test(v.name))
+      ||en.find(v=>/male/i.test(v.name))||en.find(v=>/google uk english male/i.test(v.name))||null;
+    if(v)utt.voice=v;
+    utt.onend=()=>{cecilBusy=false;};
+    window.speechSynthesis.speak(utt);
+  }catch(e){cecilBusy=false;}
+}
+
 function cecilSay(text,delay=0,force=false){
-  // Visual caption — always shown regardless of audio
   clearTimeout(cTimer);
   setTimeout(()=>{
     const el=document.getElementById('cecilHud');
     el.textContent='\u{1F4AC} '+text;el.classList.add('vis');
     cTimer=setTimeout(()=>el.classList.remove('vis'),Math.max(3200,text.length*75));
   },delay*1000);
-  // Audio
   setTimeout(async()=>{
     if(cecilBusy&&!force)return;
+    if(force)try{window.speechSynthesis&&window.speechSynthesis.cancel();}catch(e){}
     cecilBusy=true;
-    // Try ElevenLabs first
-    const ok=await cecilPlayEL(text);
-    if(!ok){
-      // Fallback: Web Speech API with strict male-voice priority
-      if(!window.speechSynthesis){cecilBusy=false;return;}
-      try{
-        if(force)window.speechSynthesis.cancel();
-        else if(window.speechSynthesis.speaking){cecilBusy=false;return;}
-        const utt=new SpeechSynthesisUtterance(text);
-        utt.pitch=0.50;utt.rate=0.82;utt.volume=0.97;
-        const vv=window.speechSynthesis.getVoices();
-        const us=vv.filter(v=>v.lang==='en-US');
-        const en=vv.filter(v=>v.lang.startsWith('en'));
-        const mRx=/\b(aaron|alex|fred|reed|rocko|samson|bruce|ralph|gordon|mark|peter|paul|william|george|henry|edward|charles|richard|robert|john|michael|andrew|christopher|matthew|joseph|thomas|david|james)\b/i;
-        const v=us.find(v=>/google us english male/i.test(v.name))
-          ||us.find(v=>mRx.test(v.name))||us.find(v=>/male/i.test(v.name))
-          ||en.find(v=>mRx.test(v.name))||en.find(v=>/male/i.test(v.name))
-          ||en.find(v=>/google uk english male/i.test(v.name))||null;
-        if(v)utt.voice=v;
-        utt.onend=()=>{cecilBusy=false;};
-        window.speechSynthesis.speak(utt);
-        return;
-      }catch(e){}
-    }
-    // small cooldown before next line can fire
-    setTimeout(()=>{cecilBusy=false;},1800);
+    let ok=false;
+    if(elKey)ok=await cecilPlayEL(text);    // Tier 2: ElevenLabs
+    if(!ok)ok=await cecilPlaySE(text);      // Tier 1: StreamElements
+    if(!ok){cecilPlayWSA(text,force);return;} // Tier 3: browser TTS
+    cecilBusy=false;
   },delay*1000+80);
 }
 function cecilSilence(){
@@ -274,12 +309,12 @@ function cecilSilence(){
 function updateElBtn(){
   const b=document.getElementById('elBtn');if(!b)return;
   b.classList.toggle('active',!!elKey);
-  b.textContent=elKey?'🎙 Cecil: ON':'🎙 Cecil Voice';
+  b.textContent=elKey?'🎙 Cecil: ElevenLabs':'🎙 Cecil: Auto';
 }
 function openElModal(){
   const m=document.getElementById('elModal');m.style.display='flex';
   const inp=document.getElementById('elInput');inp.value=elKey||'';
-  document.getElementById('elStatus').textContent=elKey?'Key loaded. Cecil uses ElevenLabs.':'No key set — using browser TTS fallback.';
+  document.getElementById('elStatus').textContent=elKey?'ElevenLabs active (Clyde).':'Auto mode: StreamElements / Amazon Polly (Matthew).';
   inp.focus();
 }
 function closeElModal(){document.getElementById('elModal').style.display='none';}
