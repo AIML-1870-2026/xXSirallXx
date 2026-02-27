@@ -101,7 +101,7 @@ canvas{display:block}
       You run on solid ground. Spikes scroll toward you from the right.<br>
       <strong>SPACE</strong> / <strong>W</strong> / <strong>&uarr;</strong> &mdash; Jump (release early = shorter jump)<br>
       <strong>&larr; &rarr;</strong> or <strong>A&nbsp;D</strong> &mdash; Move left &amp; right<br><br>
-      After <strong style="color:#00ffcc">2 minutes</strong> — double jump unlocked.<br><br>
+      After <strong style="color:#00ffcc">2 minutes</strong> — double jump unlocked. Survive long enough to earn it.<br><br>
       Every <strong class="ib">60 seconds</strong>, Boss Mode hits — three waves:<br>
       <span class="ib">Spike Corridor</span> &rarr; <span class="ib">Piston Hell</span> &rarr; <span class="ib">Void Rain</span><br>
       Clear all three &rarr; <strong style="color:#ffaa00">+500 bonus</strong> and bragging rights.<br>
@@ -412,39 +412,32 @@ function addSpks(pl,n,side='top'){
 // GROUND RUNNER: flat continuous ground, spikes scroll toward player
 function spawnSeg(){
   const d=difficulty;
-  // Gap: rare at first, more common as difficulty rises
-  // Gaps are jumpable (player jumps over the hole in the floor)
-  const hasGap=Math.random()<0.06+d*0.26;
-  const gapW=hasGap?Math.round(22+Math.random()*(32+d*68)):0;
+  // Gap: no gaps until d>0.12 (~29s), then gradually widen
+  const hasGap=d>0.12&&Math.random()<(d-0.12)*0.3;
+  const gapW=hasGap?Math.round(28+Math.random()*Math.min(60,d*70)):0;
   const x=nextPlatX+gapW;
-  const w=Math.max(80,Math.round(300-d*140+(Math.random()-.5)*80));
+  // Platforms start wide, get shorter with difficulty
+  const w=Math.max(120,Math.round(420-d*240+(Math.random()-.5)*80));
   const pl=mkPlat(x,GND,w,'solid');
-  // Floor spikes — the main obstacle. More spikes as difficulty rises
-  const maxSpk=Math.floor(w/16);
-  const nSpk=Math.floor(Math.random()*Math.min(maxSpk,Math.round(d*5)));
+  // Floor spikes — no spikes until d>0.15 (~36s), gradual ramp
+  const maxSpk=Math.floor((w-16)/16);
+  const nSpk=d>0.15?Math.floor(Math.random()*Math.min(maxSpk,Math.ceil(d*4))):0;
   if(nSpk>0)addSpks(pl,nSpk,'top');
   platforms.push(pl);nextPlatX=x+w;
-  // Ceiling spikes (fixed, pointing down)
-  if(d>0.08&&Math.random()<0.14+d*0.18){
-    const nC=1+Math.floor(d*2);
-    for(let i=0;i<nC;i++){
-      const csx=x+14+Math.random()*Math.max(0,w-28);
-      const csy=GND-135-Math.random()*90;
-      if(csy>14)spikes.push({wx:csx,y:csy,w:14,h:14,vy:0,fixed:true,dir:'down',rain:false});
-    }
-  }
-  // Moving spike (vertical bounce in the air)
-  if(d>0.3&&Math.random()<0.16){
-    spikes.push({wx:x+Math.random()*w,y:GND-105-Math.random()*55,w:14,h:14,
-      vy:(Math.random()<.5?1:-1)*(1.2+Math.random()*1.4),minY:GND-220,maxY:GND-50,rain:false,fixed:false});
+  // Moving spike (vertical bounce) — only at high difficulty
+  if(d>0.45&&Math.random()<0.12){
+    spikes.push({wx:x+20+Math.random()*Math.max(0,w-40),
+      y:GND-105-Math.random()*70,w:14,h:14,
+      vy:(Math.random()<.5?1:-1)*(1.4+Math.random()*1.2),
+      minY:GND-230,maxY:GND-55,rain:false,fixed:false});
   }
 }
 
 function initPlats(){
   platforms=[];spikes=[];nextPlatX=0;
-  // Long clear starting ground — 750px with no spikes so player can orient
-  platforms.push(mkPlat(0,GND,750,'solid'));
-  nextPlatX=750;
+  // Long clear starting ground — 1000px with no spikes so player can orient
+  platforms.push(mkPlat(0,GND,1000,'solid'));
+  nextPlatX=1000;
   for(let i=0;i<22;i++)spawnSeg();
 }
 
@@ -615,16 +608,17 @@ function checkLand(prevY){
     const sx=pl.x-scrollX;
     if(P.x+PW<=sx||P.x>=sx+pl.w)continue;
     if(prevY+PH<=pl.y&&P.y+PH>=pl.y&&P.vy>=0){
-      P.y=pl.y-PH;P.vy=0;P.onGround=true;P.coyote=8;
+      P.y=pl.y-PH;P.vy=0;P.onGround=true;P.coyote=12;
       P.jumpsLeft=gameTime>120?1:0;
       if(!P.justLanded){sfxLand();emit(P.x+PW/2,P.y+PH,6,{angle:Math.PI*.6,spread:1.1,col:'#aaa',r:2,life:.22,grav:.05,up:.5,speed:2.5});}
       P.justLanded=true;return;}}P.justLanded=false;}
 function checkSpikeDeath(){
   if(P.shield>0||P.dead)return false;
-  const px=P.x+2,py=P.y+2,pw=PW-4,ph=PH-4;
+  // 3px shrink on player, 3px shrink on spike — more forgiving hitboxes
+  const px=P.x+3,py=P.y+3,pw=PW-6,ph=PH-6;
   for(const pl of platforms){const sx=pl.x-scrollX;
-    for(const s of pl.spks){const sx2=sx+(s.wx-pl.x);if(rOvlp(px,py,pw,ph,sx2+2,s.y+2,s.w-4,s.h-4))return true;}}
-  for(const s of spikes){const sx=s.wx-scrollX;if(rOvlp(px,py,pw,ph,sx+2,s.y+2,s.w-4,s.h-4))return true;}
+    for(const s of pl.spks){const sx2=sx+(s.wx-pl.x);if(rOvlp(px,py,pw,ph,sx2+3,s.y+3,s.w-6,s.h-6))return true;}}
+  for(const s of spikes){const sx=s.wx-scrollX;if(rOvlp(px,py,pw,ph,sx+3,s.y+3,s.w-6,s.h-6))return true;}
   // Death zone: fall through floor gap or fly off ceiling
   if(P.y+PH>H-2||P.y<-10)return true;
   return false;}
@@ -675,8 +669,8 @@ function update(ts){
   const dt=Math.min((ts-lastT)/1000,.05);lastT=ts;
   if(!P.dead){
     gameTime+=dt;score=Math.floor(gameTime*10)+eventBonus;
-    difficulty=Math.min(1,gameTime/180);
-    if(!bossMode)scrollSpd=Math.min(4+difficulty*4,scrollSpd+dt*.04);
+    difficulty=Math.min(1,gameTime/240); // full difficulty at 4 min, not 3
+    if(!bossMode)scrollSpd=Math.min(3.5+difficulty*5,scrollSpd+dt*.035);
     palPhase+=dt/42;
     if(!bossMode&&gameTime>=nextBossAt)startBoss();
     if(bossMode){bossPhaseTimer-=dt;
@@ -747,7 +741,13 @@ function render(){
   if(flashA>0&&flashC){CTX.save();CTX.globalAlpha=Math.min(1,flashA);CTX.fillStyle=flashC;CTX.fillRect(0,0,W,H);CTX.restore();}
   if(bossMode){CTX.save();CTX.globalAlpha=.1+.07*Math.sin(frame*.14);CTX.fillStyle='#ff0000';CTX.fillRect(0,0,W,H);CTX.restore();}}
 
-function loop(ts){update(ts);render();requestAnimationFrame(loop);}
+let lastRender=0;
+function loop(ts){
+  requestAnimationFrame(loop);
+  if(ts-lastRender<15)return; // ~66fps cap — fixes physics at 120Hz/144Hz
+  lastRender=ts;
+  update(ts);render();
+}
 
 // ── INPUT ─────────────────────────────────────────────────────────────
 const keys={};let jpDown=false,tLdown=false,tRdown=false;
@@ -785,10 +785,10 @@ function startGame(){
   cecilSilence();
   gstate='playing';score=0;eventBonus=0;gameTime=0;bossCount=0;
   bossMode=false;bossPhase=0;nextBossAt=60;
-  scrollX=0;scrollSpd=4;difficulty=0;palPhase=0;
+  scrollX=0;scrollSpd=3.5;difficulty=0;palPhase=0;
   lightnings=[];ltTimer=3;flashA=0;curRun=[];grazeTimer=0;M={};
   P={x:160,y:GND-PH,vx:0,vy:0,onGround:true,coyote:0,jBuf:0,jumpsLeft:0,
-     shield:2.5,dead:false,deadTimer:0,justLanded:false,visorP:0};
+     shield:4,dead:false,deadTimer:0,justLanded:false,visorP:0};
   pFrags=[];pTrail=[];
   initPlats();
   document.getElementById('ts').style.display='none';
