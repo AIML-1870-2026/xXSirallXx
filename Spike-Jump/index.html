@@ -174,12 +174,19 @@ function cecilSay(text,delay=0,force=false){
       if(force)window.speechSynthesis.cancel();
       else if(window.speechSynthesis.speaking)return;
       const utt=new SpeechSynthesisUtterance(text);
-      utt.pitch=0.75;utt.rate=0.87;utt.volume=0.95;
-      // Lazy voice selection — try each time so voices are available
+      // Cecil Steadman (Invincible) — Walton Goggins: deep, Southern US, cold and measured
+      utt.pitch=0.50;utt.rate=0.82;utt.volume=0.97;
       const vv=window.speechSynthesis.getVoices();
-      const v=vv.find(v=>v.lang.startsWith('en')&&/daniel|david|alex|james|google uk english male/i.test(v.name))
-        ||vv.find(v=>v.lang==='en-US'&&/google/i.test(v.name))
-        ||vv.find(v=>v.lang.startsWith('en-'))
+      // Priority: US English male > any English male > last resort any English
+      const us=vv.filter(v=>v.lang==='en-US');
+      const en=vv.filter(v=>v.lang.startsWith('en'));
+      const maleRx=/\b(aaron|alex|fred|reed|rocko|samson|bruce|ralph|gordon|mark|peter|paul|william|george|henry|edward|charles|richard|robert|john|michael|andrew|christopher|matthew|joseph|thomas|david|james)\b/i;
+      const v=us.find(v=>/google us english male/i.test(v.name))
+        ||us.find(v=>maleRx.test(v.name))
+        ||us.find(v=>/male/i.test(v.name))
+        ||en.find(v=>maleRx.test(v.name))
+        ||en.find(v=>/male/i.test(v.name))
+        ||en.find(v=>/google uk english male/i.test(v.name))
         ||null;
       if(v)utt.voice=v;
       window.speechSynthesis.speak(utt);
@@ -316,7 +323,7 @@ function startBoss(){
   nextPlatX+=180;
   spawnBossPhase(0);
   sfxBossStart();
-  cecilSay("Boss Mode. Don't embarrass yourself.",0,true);
+  cecilSay("Welcome to the hard part. Try to keep up.",0,true);
   document.getElementById('btxt').innerHTML='BOSS MODE: I\'M CLAUDING IT&nbsp;&mdash;<br>clauding it like a GAMER';
   const bo=document.getElementById('bovl');bo.style.display='flex';
   setTimeout(()=>{bo.style.display='none';},2600);
@@ -335,7 +342,7 @@ function spawnBossPhase(ph){
       spikes.push({wx:gx+14,y:70,w:14,h:22,vy:0,fixed:true,dir:'down',rain:false});
     }
     platforms.push(pl);nextPlatX=bx+700;
-    cecilSay("Spike Corridor. Jump the clusters. Watch the ceiling.",1.8);
+    cecilSay("Spike corridor. I'd tell you it gets easier. I'd be lying.",1.8);
   }else if(ph===1){
     // Piston Hell: alternating floor-spike and ceiling-spike platforms
     for(let i=0;i<9;i++){
@@ -351,7 +358,7 @@ function spawnBossPhase(ph){
       }
       platforms.push(pl);nextPlatX=px+80;
     }
-    cecilSay("Jump the floor spikes. Duck the ceiling ones.",0.5);
+    cecilSay("Floor spikes. Ceiling spikes. Pick your poison.",0.5);
   }else if(ph===2){
     // Void Rain: gapped platforms + falling rain spikes
     let vx=bx;
@@ -363,7 +370,7 @@ function spawnBossPhase(ph){
     for(let i=0;i<9;i++)
       spikes.push({wx:bx+Math.random()*780,y:-30,w:14,h:16,
         vy:1.5+Math.random()*2,minY:-50,maxY:H+30,rain:true,fixed:false});
-    cecilSay("Void Rain. Jump the gaps. Watch above.",0.5);
+    cecilSay("Gaps below. Spikes above. Solutions are your problem.",0.5);
   }
 }
 
@@ -372,7 +379,7 @@ function endBoss(){
   scrollSpd=Math.max(4+difficulty*4,scrollSpd/1.45);
   nextBossAt=gameTime+60;eventBonus+=500;sfxBossClear();
   flashC='#ffdd00';flashA=.4;
-  cecilSay("You made it through. I'll admit, I didn't expect that.",0.4);
+  cecilSay("You survived. I'll update your file accordingly.",0.4);
 }
 
 // ── LIGHTNING ────────────────────────────────────────────────────────
@@ -502,10 +509,10 @@ function killPlayer(){
   emit(cx,cy,65,{speed:5,col:'#ff4040',r:3,life:.65,grav:.07});emit(cx,cy,22,{speed:3,col:'#fff',r:2,life:.3,grav:.05});
   flashC='#fff';flashA=.9;setTimeout(()=>{flashC='#ff0020';flashA=.45;},100);
   let msg;
-  if(gameTime<10)msg="Pathetic.";
-  else if(gameTime<30)msg="You had potential. Apparently not enough.";
-  else if(gameTime<60)msg="You were close. Now do it again.";
-  else msg="Not bad. Now do better.";
+  if(gameTime<10)msg="Pathetic. And I mean that literally.";
+  else if(gameTime<30)msg="You had potential. Past tense.";
+  else if(gameTime<60)msg="Closer than last time. Do it again.";
+  else msg="That was acceptable. I want better.";
   cecilSay(msg,0.5,true);
   if(curRun.length>30){ghosts.push([...curRun]);if(ghosts.length>3)ghosts.shift();
     try{localStorage.setItem('claudingit_g3',JSON.stringify(ghosts));}catch(e){}}
@@ -521,7 +528,7 @@ function showDead(){
   document.getElementById('hud').style.display='none';
   document.getElementById('bbar').style.display='none';
   document.getElementById('bovl').style.display='none';
-  if(nb)cecilSay("New record. Don't let it go to your head.",0.6,true);}
+  if(nb)cecilSay("New record. Don't get comfortable.",0.6,true);}
 function fmt(s){const m=Math.floor(s/60);return m+':'+(Math.floor(s)%60).toString().padStart(2,'0');}
 
 // ── UPDATE ────────────────────────────────────────────────────────────
@@ -541,11 +548,11 @@ function update(ts){
     ltTimer-=dt;if(ltTimer<=0){addLightning();ltTimer=bossMode?.35+Math.random()*.25:4+Math.random()*4;}
     if(Math.floor(gameTime*60)>curRun.length-1){curRun.push({x:P.x,y:P.y});if(curRun.length>3600)curRun.shift();}
     // Cecil milestones
-    if(!M.s10&&gameTime>10){M.s10=true;cecilSay("Still alive. Interesting.");}
-    if(!M.s30&&gameTime>30){M.s30=true;cecilSay("Thirty seconds. Better than I expected.");}
-    if(!M.bwarn&&!bossMode&&nextBossAt-gameTime<11&&nextBossAt-gameTime>9){M.bwarn=bossCount;cecilSay("Heads up. Boss wave in ten seconds.");}
-    if(M.bwarn!==undefined&&M.bwarn<bossCount&&!bossMode&&nextBossAt-gameTime<11&&nextBossAt-gameTime>9){M.bwarn=bossCount;cecilSay("Another boss wave incoming.");}
-    if(!M.dj&&gameTime>120){M.dj=true;cecilSay("Double jump unlocked. Try not to waste it.");}
+    if(!M.s10&&gameTime>10){M.s10=true;cecilSay("Ten seconds. Most recruits don't make it that far.");}
+    if(!M.s30&&gameTime>30){M.s30=true;cecilSay("Still standing. You've earned thirty seconds of my attention.");}
+    if(!M.bwarn&&!bossMode&&nextBossAt-gameTime<11&&nextBossAt-gameTime>9){M.bwarn=bossCount;cecilSay("Boss wave in ten seconds. Don't embarrass the agency.");}
+    if(M.bwarn!==undefined&&M.bwarn<bossCount&&!bossMode&&nextBossAt-gameTime<11&&nextBossAt-gameTime>9){M.bwarn=bossCount;cecilSay("Another boss wave. Try to keep up this time.");}
+    if(!M.dj&&gameTime>120){M.dj=true;cecilSay("Double jump activated. Use it wisely. I mean it.");}
     // HUD
     document.getElementById('hsc').textContent=score.toLocaleString();
     document.getElementById('htm').textContent=fmt(gameTime);
@@ -574,7 +581,7 @@ function update(ts){
     grazeTimer-=dt;
     if(grazeTimer<=0&&checkGraze()){eventBonus+=25;sfxGraze();grazeTimer=.28;
       emit(P.x+PW/2,P.y+PH/2,3,{col:'#ff00ff',r:2,life:.18,speed:3});
-      if(!M.graze){M.graze=true;cecilSay("Watch yourself. That was close.");}}
+      if(!M.graze){M.graze=true;cecilSay("Any closer and I'd be filling out paperwork.");}}
     if(checkSpikeDeath())killPlayer();
     if(bossMode){pTrail.push({x:P.x,y:P.y});if(pTrail.length>9)pTrail.shift();}else pTrail=[];
     if(flashA>0)flashA-=dt*3;
@@ -656,7 +663,7 @@ function startGame(){
   if('ontouchstart' in window||navigator.maxTouchPoints>0)
     document.getElementById('tctrl').style.display='block';
   // Speak immediately after user gesture (no delay avoids iOS block)
-  cecilSay("Let's see what you're capable of.",0);}
+  cecilSay("Show me what you've got. I don't have all day.",0);}
 
 // ── INIT ──────────────────────────────────────────────────────────────
 genBG();
