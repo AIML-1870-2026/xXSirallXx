@@ -194,25 +194,26 @@ let elKey=localStorage.getItem(EL_KEY_LS)||null;
 let audioCache={};try{audioCache=JSON.parse(localStorage.getItem(CACHE_LS)||'{}')}catch(e){}
 let cecilBusy=false,cTimer=null;
 
-// Cecil voice processing chain: EQ + harmonic warmth to approximate his cold gravelly delivery
+// Cecil voice processing chain: EQ + body shaping for smooth authoritative precision
+// Target: Walton Goggins as Cecil Stedman — silk over steel, mid-forward baritone, not gravelly
 function buildCecilChain(){
   if(!AC)return null;
   try{
-    // Low-shelf: +7dB at 130Hz — add chest/depth
-    const lo=AC.createBiquadFilter();lo.type='lowshelf';lo.frequency.value=130;lo.gain.value=7;
-    // Mid cut: -5dB at 750Hz — remove nasal box sound
-    const mid=AC.createBiquadFilter();mid.type='peaking';mid.frequency.value=750;mid.Q.value=1.1;mid.gain.value=-5;
-    // Presence: +3dB at 2800Hz — add clarity/edge
-    const pres=AC.createBiquadFilter();pres.type='peaking';pres.frequency.value=2800;pres.Q.value=1.4;pres.gain.value=3;
-    // High shelf: -6dB at 6500Hz — tame synthetic brightness
-    const hi=AC.createBiquadFilter();hi.type='highshelf';hi.frequency.value=6500;hi.gain.value=-6;
-    // Warmth distortion: subtle harmonic saturation for gravel texture
+    // Low-shelf: +2dB at 200Hz — warmth without mud (Cecil is mid-baritone, not bass)
+    const lo=AC.createBiquadFilter();lo.type='lowshelf';lo.frequency.value=200;lo.gain.value=2;
+    // Box cut: -3dB at 450Hz — remove hollow box resonance
+    const mid=AC.createBiquadFilter();mid.type='peaking';mid.frequency.value=450;mid.Q.value=1.3;mid.gain.value=-3;
+    // Presence: +5dB at 2200Hz — Cecil's precision, cutting articulation
+    const pres=AC.createBiquadFilter();pres.type='peaking';pres.frequency.value=2200;pres.Q.value=1.2;pres.gain.value=5;
+    // High shelf: -2dB at 7500Hz — take off digital brittleness, keep clarity
+    const hi=AC.createBiquadFilter();hi.type='highshelf';hi.frequency.value=7500;hi.gain.value=-2;
+    // Silk-over-steel body: very subtle saturation — adds presence without grit
     const sat=AC.createWaveShaper();
-    const n=512,c=new Float32Array(n);const k=18;
+    const n=512,c=new Float32Array(n);const k=5;
     for(let i=0;i<n;i++){const x=i*2/n-1;c[i]=(Math.PI+k)*x/(Math.PI+k*Math.abs(x));}
     sat.curve=c;sat.oversample='2x';
-    // Output gain (compensate for saturation level boost)
-    const out=AC.createGain();out.gain.value=0.82;
+    // Output gain
+    const out=AC.createGain();out.gain.value=0.80;
     lo.connect(mid);mid.connect(pres);pres.connect(hi);hi.connect(sat);sat.connect(out);out.connect(AC.destination);
     return lo; // return chain input
   }catch(e){return null;}
@@ -270,14 +271,14 @@ async function cecilPlayEL(text){
 // Tier 1: StreamElements (no key, free, Amazon Polly "Matthew" US male)
 async function cecilPlaySE(text){
   const ck='se:'+text;
-  if(audioCache[ck])return b64Play(audioCache[ck],0.87);
+  if(audioCache[ck])return b64Play(audioCache[ck],0.93);
   const url=`${SE_BASE}?voice=Joey&text=${encodeURIComponent(text)}`;
   try{
     const r=await fetch(url);
     if(!r.ok)throw new Error();
     const buf=await r.arrayBuffer();
     const b64=await cacheAudio(ck,buf);
-    return b64Play(b64,0.87); // 0.87: deeper, slower delivery
+    return b64Play(b64,0.93); // 0.93: measured without dragging
   }catch(e){
     // CORS blocked — fall back to Audio element (cannot cache, but still plays)
     return new Promise(resolve=>{
@@ -314,7 +315,7 @@ function mkUUID(){return'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c
 async function cecilPlayFY(text){
   const ck='fy3:'+text;
   // Cache hit → play immediately with processing
-  if(audioCache[ck])return b64Play(audioCache[ck],0.88);
+  if(audioCache[ck])return b64Play(audioCache[ck],0.93);
   // Not cached: fire background job, caller falls through to StreamElements
   (async()=>{
     try{
