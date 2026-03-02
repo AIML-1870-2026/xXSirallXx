@@ -484,9 +484,9 @@ function spawnSeg(){
   // Platforms start wide, get shorter with difficulty
   const w=Math.max(120,Math.round(420-d*240+(Math.random()-.5)*80));
   const pl=mkPlat(x,GND,w,'solid');
-  // Floor spikes — no spikes until d>0.15 (~36s), gradual ramp
+  // Floor spikes — start after ~8s, ramp to intense by 2min
   const maxSpk=Math.floor((w-16)/16);
-  const nSpk=d>0.15?Math.floor(Math.random()*Math.min(maxSpk,Math.ceil(d*4))):0;
+  const nSpk=d>0.033?Math.min(maxSpk,Math.floor(0.5+d*8+Math.random()*(1+d*3))):0;
   if(nSpk>0)addSpks(pl,nSpk,'top');
   platforms.push(pl);nextPlatX=x+w;
   // Moving spike (vertical bounce) — only at high difficulty
