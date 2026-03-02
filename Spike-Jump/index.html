@@ -307,6 +307,43 @@ function cecilPlayWSA(text,force){
   }catch(e){cecilBusy=false;}
 }
 
+// ── FAKEYOU TTS ───────────────────────────────────────────────────────
+// Solid Snake / David Hayter: deep, gravelly, cold, measured — closest free match to Cecil
+const FY_MODEL='weight_08me612gejmf6q1r27cavpjyn';
+function mkUUID(){return'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==='x'?r:(r&3|8)).toString(16);});}
+async function cecilPlayFY(text){
+  const ck='fy3:'+text;
+  // Cache hit → play immediately with processing
+  if(audioCache[ck])return b64Play(audioCache[ck],0.88);
+  // Not cached: fire background job, caller falls through to StreamElements
+  (async()=>{
+    try{
+      const jr=await fetch('https://api.fakeyou.com/tts/inference',{method:'POST',
+        headers:{'Content-Type':'application/json','Accept':'application/json'},
+        body:JSON.stringify({tts_model_token:FY_MODEL,uuid_idempotency_token:mkUUID(),inference_text:text})});
+      if(!jr.ok)return;
+      const{success,inference_job_token:jt}=await jr.json();
+      if(!success||!jt)return;
+      for(let i=0;i<35;i++){
+        await new Promise(r=>setTimeout(r,2000));
+        const p=await fetch(`https://api.fakeyou.com/tts/job/${jt}`);
+        if(!p.ok)continue;
+        const d=await p.json();
+        const st=d.state?.status;
+        if(st==='complete_success'&&d.state.maybe_public_bucket_wav_audio_path){
+          const wav=await fetch('https://storage.googleapis.com/vocodes-public'+d.state.maybe_public_bucket_wav_audio_path);
+          if(!wav.ok)return;
+          const buf=await wav.arrayBuffer();
+          await cacheAudio(ck,buf); // stores in audioCache + localStorage
+          break;
+        }
+        if(st==='dead'||st==='attempt_failed')break;
+      }
+    }catch(e){}
+  })();
+  return false; // not ready yet — play StreamElements now
+}
+
 function cecilSay(text,delay=0,force=false){
   clearTimeout(cTimer);
   setTimeout(()=>{
@@ -319,9 +356,10 @@ function cecilSay(text,delay=0,force=false){
     if(force)try{window.speechSynthesis&&window.speechSynthesis.cancel();}catch(e){}
     cecilBusy=true;
     let ok=false;
-    if(elKey)ok=await cecilPlayEL(text);    // Tier 2: ElevenLabs
-    if(!ok)ok=await cecilPlaySE(text);      // Tier 1: StreamElements
-    if(!ok){cecilPlayWSA(text,force);return;} // Tier 3: browser TTS
+    if(elKey)ok=await cecilPlayEL(text);      // ElevenLabs (opt-in, best quality)
+    if(!ok)ok=await cecilPlayFY(text);         // FakeYou cache (Solid Snake voice, instant if cached)
+    if(!ok)ok=await cecilPlaySE(text);         // StreamElements fallback (immediate)
+    if(!ok){cecilPlayWSA(text,force);return;}  // Web Speech API (last resort)
     cecilBusy=false;
   },delay*1000+80);
 }
@@ -750,7 +788,8 @@ function update(ts){
   }else{P.deadTimer+=dt;pFrags.forEach(f=>{f.x+=f.vx;f.y+=f.vy;f.vy+=.22;f.rot+=f.vr;});}
   scrollX+=scrollSpd;
   platforms.forEach(pl=>{if(pl.crumbling){pl.ctimer-=dt;if(pl.ctimer<=0){pl.type='gone';emit(pl.x-scrollX+pl.w/2,pl.y,8,{col:'#ff8800',r:3,life:.4,speed:2});}}});
-  platforms=platforms.filter(p=>p.x-scrollX>-280&&p.type!=='gone');
+  // Filter by RIGHT EDGE — keeps large boss platforms until they fully scroll off
+  platforms=platforms.filter(p=>p.x+p.w-scrollX>-20&&p.type!=='gone');
   spikes.forEach(s=>{if(s.fixed)return;s.y+=s.vy;
     if(s.rain){if(s.y>s.maxY){s.y=s.minY;s.wx=scrollX+Math.random()*W;}}
     else if(s.y<s.minY||s.y>s.maxY)s.vy*=-1;});
