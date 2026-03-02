@@ -189,12 +189,36 @@ function sfxBossClear(){[440,550,660,880,1100].forEach((f,i)=>tn(f,'sine',.18,.2
 const SE_BASE='https://api.streamelements.com/kappa/v2/speech';
 const EL_VOICE_ID='2EiwWnXFnvU5JabPnv8n'; // ElevenLabs: Clyde
 const EL_KEY_LS='cecilELKey';
-const CACHE_LS='cecilAudioCache';
+const CACHE_LS='cecilAudioCache2'; // bumped: voice changed Matthew→Joey
 let elKey=localStorage.getItem(EL_KEY_LS)||null;
 let audioCache={};try{audioCache=JSON.parse(localStorage.getItem(CACHE_LS)||'{}')}catch(e){}
 let cecilBusy=false,cTimer=null;
 
-// Decode base64 string → play via Web Audio at given playback rate
+// Cecil voice processing chain: EQ + harmonic warmth to approximate his cold gravelly delivery
+function buildCecilChain(){
+  if(!AC)return null;
+  try{
+    // Low-shelf: +7dB at 130Hz — add chest/depth
+    const lo=AC.createBiquadFilter();lo.type='lowshelf';lo.frequency.value=130;lo.gain.value=7;
+    // Mid cut: -5dB at 750Hz — remove nasal box sound
+    const mid=AC.createBiquadFilter();mid.type='peaking';mid.frequency.value=750;mid.Q.value=1.1;mid.gain.value=-5;
+    // Presence: +3dB at 2800Hz — add clarity/edge
+    const pres=AC.createBiquadFilter();pres.type='peaking';pres.frequency.value=2800;pres.Q.value=1.4;pres.gain.value=3;
+    // High shelf: -6dB at 6500Hz — tame synthetic brightness
+    const hi=AC.createBiquadFilter();hi.type='highshelf';hi.frequency.value=6500;hi.gain.value=-6;
+    // Warmth distortion: subtle harmonic saturation for gravel texture
+    const sat=AC.createWaveShaper();
+    const n=512,c=new Float32Array(n);const k=18;
+    for(let i=0;i<n;i++){const x=i*2/n-1;c[i]=(Math.PI+k)*x/(Math.PI+k*Math.abs(x));}
+    sat.curve=c;sat.oversample='2x';
+    // Output gain (compensate for saturation level boost)
+    const out=AC.createGain();out.gain.value=0.82;
+    lo.connect(mid);mid.connect(pres);pres.connect(hi);hi.connect(sat);sat.connect(out);out.connect(AC.destination);
+    return lo; // return chain input
+  }catch(e){return null;}
+}
+
+// Decode base64 string → play via Web Audio with Cecil voice processing
 async function b64Play(b64,rate=1){
   initAC();if(!AC)return false;
   try{
@@ -205,7 +229,9 @@ async function b64Play(b64,rate=1){
       let done=false;const fin=()=>{if(!done){done=true;res(true);}};
       const src=AC.createBufferSource();
       src.buffer=decoded;src.playbackRate.value=rate;
-      src.connect(AC.destination);src.onended=fin;
+      const chain=buildCecilChain();
+      src.connect(chain||AC.destination);
+      src.onended=fin;
       setTimeout(fin,(decoded.duration/rate+1)*1000);
       src.start();
     });
@@ -244,14 +270,14 @@ async function cecilPlayEL(text){
 // Tier 1: StreamElements (no key, free, Amazon Polly "Matthew" US male)
 async function cecilPlaySE(text){
   const ck='se:'+text;
-  if(audioCache[ck])return b64Play(audioCache[ck],0.91);
-  const url=`${SE_BASE}?voice=Matthew&text=${encodeURIComponent(text)}`;
+  if(audioCache[ck])return b64Play(audioCache[ck],0.87);
+  const url=`${SE_BASE}?voice=Joey&text=${encodeURIComponent(text)}`;
   try{
     const r=await fetch(url);
     if(!r.ok)throw new Error();
     const buf=await r.arrayBuffer();
     const b64=await cacheAudio(ck,buf);
-    return b64Play(b64,0.91); // 0.91 playback rate: slightly deeper
+    return b64Play(b64,0.87); // 0.87: deeper, slower delivery
   }catch(e){
     // CORS blocked — fall back to Audio element (cannot cache, but still plays)
     return new Promise(resolve=>{
@@ -268,7 +294,7 @@ function cecilPlayWSA(text,force){
   try{
     if(force)window.speechSynthesis.cancel();
     const utt=new SpeechSynthesisUtterance(text);
-    utt.pitch=0.50;utt.rate=0.82;utt.volume=0.97;
+    utt.pitch=0.60;utt.rate=0.78;utt.volume=0.97;
     const vv=window.speechSynthesis.getVoices();
     const us=vv.filter(v=>v.lang==='en-US'),en=vv.filter(v=>v.lang.startsWith('en'));
     const mRx=/\b(aaron|alex|fred|reed|rocko|samson|bruce|ralph|gordon|mark|peter|paul|william|george|henry|edward|charles|richard|robert|john|michael|andrew|christopher|matthew|joseph|thomas|david|james)\b/i;
@@ -357,6 +383,7 @@ let ghosts=[];try{ghosts=JSON.parse(localStorage.getItem('claudingit_g3')||'[]')
 let gstate='title';
 let score=0,eventBonus=0,gameTime=0,bossCount=0;
 let bossMode=false,bossPhase=0,bossPhaseTimer=0,nextBossAt=60;
+let bossPlatLen=4000; // computed dynamically at boss start
 let scrollX=0,scrollSpd=4,difficulty=0;
 let palPhase=0,flashC=null,flashA=0,frame=0;
 let lightnings=[],ltTimer=3;
@@ -451,6 +478,8 @@ function startBoss(){
   spikes=spikes.filter(s=>s.wx-scrollX<P.x+400);
   platforms.push(mkPlat(nextPlatX,GND,180,'solid')); // clear bridge into boss
   nextPlatX+=180;
+  // Each phase lasts 10s. Compute how many pixels scroll in that time at current speed.
+  bossPlatLen=Math.round(scrollSpd*60*10.5);
   spawnBossPhase(0);
   sfxBossStart();
   cecilSay("Welcome to the hard part. Try to keep up.",0,true);
@@ -461,45 +490,47 @@ function startBoss(){
 
 function spawnBossPhase(ph){
   const bx=nextPlatX;
+  const pLen=bossPlatLen; // guaranteed long enough for full phase duration
   if(ph===0){
-    // Spike Corridor: long floor with 5 clustered spike groups + ceiling hazard
-    const pl=mkPlat(bx,GND,680,'solid');
-    // 5 spike clusters, each 3-wide, evenly spaced
-    for(let grp=0;grp<5;grp++){
-      const gx=bx+60+grp*110;
+    // Spike Corridor: one long platform, spike clusters every ~180px after a clear lead-in
+    const pl=mkPlat(bx,GND,pLen,'solid');
+    const nGrp=Math.floor((pLen-120)/180);
+    for(let g=0;g<nGrp;g++){
+      const gx=bx+120+g*180;
       for(let s=0;s<3;s++)pl.spks.push({wx:gx+s*14,y:GND-12,w:12,h:12,side:'top'});
-      // Low ceiling spike above each cluster — limits jump height
-      spikes.push({wx:gx+14,y:70,w:14,h:22,vy:0,fixed:true,dir:'down',rain:false});
     }
-    platforms.push(pl);nextPlatX=bx+700;
+    platforms.push(pl);nextPlatX=bx+pLen;
     cecilSay("Spike corridor. I'd tell you it gets easier. I'd be lying.",1.8);
   }else if(ph===1){
-    // Piston Hell: alternating floor-spike and ceiling-spike platforms
-    for(let i=0;i<9;i++){
-      const px=bx+i*88;
-      const pl=mkPlat(px,GND,76,'solid');
+    // Piston Hell: alternating 100px cells — floor spikes vs ceiling spikes
+    const cellW=100;
+    const nCells=Math.floor(pLen/cellW);
+    for(let i=0;i<nCells;i++){
+      const px=bx+i*cellW;
+      const pl=mkPlat(px,GND,cellW-4,'solid');
       if(i%2===0){
-        // Floor spikes — jump over
-        addSpks(pl,2,'top');
+        addSpks(pl,2,'top'); // jump over
       }else{
-        // Low ceiling spike — stay low, don't jump
-        spikes.push({wx:px+20,y:GND-108,w:14,h:22,vy:0,fixed:true,dir:'down',rain:false});
-        spikes.push({wx:px+44,y:GND-108,w:14,h:22,vy:0,fixed:true,dir:'down',rain:false});
+        // Low ceiling spike — duck (don't jump)
+        spikes.push({wx:px+24,y:GND-112,w:14,h:24,vy:0,fixed:true,dir:'down',rain:false});
+        spikes.push({wx:px+56,y:GND-112,w:14,h:24,vy:0,fixed:true,dir:'down',rain:false});
       }
-      platforms.push(pl);nextPlatX=px+80;
+      platforms.push(pl);nextPlatX=px+cellW;
     }
     cecilSay("Floor spikes. Ceiling spikes. Pick your poison.",0.5);
   }else if(ph===2){
-    // Void Rain: gapped platforms + falling rain spikes
+    // Void Rain: gapped islands across full phase length + rain spikes
     let vx=bx;
-    for(let i=0;i<7;i++){
-      const pw=65+Math.random()*55;
+    while(vx<bx+pLen){
+      const pw=80+Math.random()*60;
       platforms.push(mkPlat(vx,GND,pw,'solid'));
-      vx+=pw+32+Math.random()*52;nextPlatX=vx;
+      vx+=pw+40+Math.random()*55;
     }
-    for(let i=0;i<9;i++)
-      spikes.push({wx:bx+Math.random()*780,y:-30,w:14,h:16,
-        vy:1.5+Math.random()*2,minY:-50,maxY:H+30,rain:true,fixed:false});
+    nextPlatX=vx;
+    const nRain=Math.floor(pLen/55);
+    for(let i=0;i<nRain;i++)
+      spikes.push({wx:bx+Math.random()*pLen,y:-30,w:14,h:16,
+        vy:1.8+Math.random()*1.8,minY:-50,maxY:H+30,rain:true,fixed:false});
     cecilSay("Gaps below. Spikes above. Solutions are your problem.",0.5);
   }
 }
