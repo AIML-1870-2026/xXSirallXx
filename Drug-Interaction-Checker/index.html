@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RxClash — Drug Interaction Checker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --accent:        #00e5ff;
+      --accent-dim:    rgba(0,229,255,.5);
+      --accent-bg:     rgba(0,229,255,.1);
+      --accent-border: rgba(0,229,255,.25);
+      --accent-hover:  rgba(0,229,255,.2);
+      --glow:          0 0 24px rgba(0,229,255,.5);
+    }
+    body.critical {
+      --accent:        #ff4444;
+      --accent-dim:    rgba(255,68,68,.5);
+      --accent-bg:     rgba(255,68,68,.1);
+      --accent-border: rgba(255,68,68,.3);
+      --accent-hover:  rgba(255,68,68,.2);
+      --glow:          0 0 24px rgba(255,68,68,.5);
+    }
+
+    body {
+      background: #000;
+      overflow: hidden;
+      font-family: 'Space Grotesk', sans-serif;
+      color: #e0f0ff;
+      user-select: none;
+    }
+
+    canvas { display: block; position: fixed; inset: 0; }
+    #bgCanvas  { z-index: 0; }
+    #netCanvas { z-index: 1; }
+
+    /* ── HEADER ── */
+    #header {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 24px;
+      background: linear-gradient(to bottom, rgba(0,0,0,.7) 0%, transparent 100%);
+      pointer-events: none;
+    }
+    .logo {
+      font-family: 'Space Mono', monospace;
+      font-size: 1.4rem; font-weight: 700;
+      color: var(--accent);
+      text-shadow: var(--glow);
+      pointer-events: all;
+      transition: color .4s, text-shadow .4s;
+      cursor: default;
+    }
+    .logo span { color: #e0f0ff; }
+
+    /* ── ALERT TOGGLE ── */
+    #alertWrap {
+      pointer-events: all;
+      display: flex; align-items: center; gap: 10px;
+      cursor: pointer;
+    }
+    #alertLabel {
+      font-family: 'Space Mono', monospace;
+      font-size: .68rem; font-weight: 700;
+      color: rgba(224,240,255,.5);
+      transition: color .4s;
+    }
+    body.critical #alertLabel { color: #ff4444; }
+    .track {
+      width: 42px; height: 22px; border-radius: 11px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.12);
+      position: relative; transition: background .4s, border-color .4s;
+    }
+    body.critical .track { background: rgba(255,68,68,.25); border-color: #ff4444; }
+    .knob {
+      position: absolute; top: 2px; left: 2px;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: rgba(224,240,255,.4);
+      transition: transform .3s, background .4s;
+    }
+    body.critical .knob { transform: translateX(20px); background: #ff4444; }
+
+    /* ── STATS ── */
+    #stats {
+      position: fixed; top: 72px; left: 20px; z-index: 10;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .stat {
+      background: rgba(0,0,0,.5);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 12px; padding: 10px 14px;
+      backdrop-filter: blur(12px);
+      min-width: 148px;
+    }
+    .stat .s-label { font-family: 'Space Mono', monospace; font-size: .62rem; color: rgba(224,240,255,.45); margin-bottom: 2px; }
+    .stat .s-val   { font-size: 1.25rem; font-weight: 700; color: var(--accent); transition: color .4s; }
+    .stat .s-sub   { font-size: .68rem; color: rgba(224,240,255,.4); margin-top: 1px; }
+
+    /* ── SEVERITY LEGEND ── */
+    #legend {
+      position: fixed; top: 72px; right: 20px; z-index: 10;
+      background: rgba(0,0,0,.5);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 12px; padding: 12px 16px;
+      backdrop-filter: blur(12px);
+      font-size: .72rem;
+    }
+    #legend .leg-title { font-family: 'Space Mono', monospace; font-size: .62rem; color: rgba(224,240,255,.45); margin-bottom: 8px; }
+    .leg-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+    .leg-row:last-child { margin-bottom: 0; }
+    .leg-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .leg-row span { color: rgba(224,240,255,.7); }
+
+    /* ── RESULTS PANEL ── */
+    #resultsPanel {
+      position: fixed; top: 258px; right: 20px; z-index: 10;
+      width: 300px;
+      max-height: calc(100vh - 348px);
+      overflow-y: auto;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    #resultsPanel::-webkit-scrollbar { width: 4px; }
+    #resultsPanel::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 2px; }
+
+    .icard {
+      background: rgba(0,0,0,.55);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 14px; padding: 12px 14px;
+      backdrop-filter: blur(12px);
+      transition: border-color .2s;
+      cursor: default;
+    }
+    .icard:hover { border-color: rgba(255,255,255,.2); }
+    .icard .ic-pair {
+      font-family: 'Space Mono', monospace;
+      font-size: .7rem; color: rgba(224,240,255,.5);
+      margin-bottom: 6px; line-height: 1.4;
+    }
+    .icard .ic-pair strong { color: #e0f0ff; }
+    .ic-badge {
+      display: inline-block;
+      font-family: 'Space Mono', monospace;
+      font-size: .6rem; font-weight: 700;
+      padding: 3px 8px; border-radius: 6px;
+      margin-bottom: 7px;
+      letter-spacing: .5px;
+    }
+    .badge-none     { background: rgba(224,240,255,.06); color: rgba(224,240,255,.35); border: 1px solid rgba(224,240,255,.12); }
+    .badge-minor    { background: rgba(0,230,118,.1);    color: #00e676;  border: 1px solid rgba(0,230,118,.3); }
+    .badge-moderate { background: rgba(255,214,0,.1);    color: #ffd600;  border: 1px solid rgba(255,214,0,.3); }
+    .badge-major    { background: rgba(255,109,0,.1);    color: #ff6d00;  border: 1px solid rgba(255,109,0,.3); }
+    .badge-contra   {
+      background: rgba(255,23,68,.12); color: #ff1744; border: 1px solid rgba(255,23,68,.4);
+      animation: pulseBorder 1.5s ease-in-out infinite;
+    }
+    @keyframes pulseBorder {
+      0%,100% { border-color: rgba(255,23,68,.4); }
+      50% { border-color: rgba(255,23,68,.9); box-shadow: 0 0 10px rgba(255,23,68,.3); }
+    }
+    .icard .ic-text {
+      font-size: .77rem; line-height: 1.65;
+      color: rgba(224,240,255,.6);
+    }
+    .icard .ic-text em { color: rgba(224,240,255,.35); font-style: normal; font-size: .72rem; }
+
+    /* ── CONTROLS ── */
+    #controls {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      z-index: 10;
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      max-width: 720px; width: calc(100% - 360px);
+    }
+
+    #drugRow {
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center;
+      background: rgba(0,0,0,.55);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 20px;
+      padding: 10px 16px;
+      backdrop-filter: blur(20px);
+      width: 100%;
+    }
+
+    #chips { display: contents; }
+
+    .drug-chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: var(--accent-bg);
+      border: 1px solid var(--accent-border);
+      border-radius: 20px;
+      padding: 4px 10px 4px 12px;
+      font-family: 'Space Mono', monospace;
+      font-size: .72rem; color: var(--accent);
+      transition: background .2s, border-color .4s, color .4s;
+      white-space: nowrap;
+    }
+    .chip-x {
+      cursor: pointer; opacity: .6;
+      font-size: .85rem; line-height: 1;
+      transition: opacity .15s;
+    }
+    .chip-x:hover { opacity: 1; }
+
+    #drugInputWrap { position: relative; }
+    #drugInput {
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 10px;
+      color: #e0f0ff; font-family: 'Space Mono', monospace;
+      font-size: .78rem; padding: 7px 11px; outline: none;
+      color-scheme: dark; width: 150px;
+      transition: border-color .2s;
+    }
+    #drugInput:focus { border-color: var(--accent); }
+    #drugInput::placeholder { color: rgba(224,240,255,.28); }
+
+    #autocomplete {
+      position: absolute; bottom: calc(100% + 6px); left: 0;
+      min-width: 210px;
+      background: rgba(4,10,28,.97);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 12px;
+      backdrop-filter: blur(20px);
+      overflow: hidden;
+      display: none; z-index: 30;
+      box-shadow: 0 8px 32px rgba(0,0,0,.6);
+    }
+    .ac-item {
+      padding: 9px 13px;
+      font-family: 'Space Mono', monospace;
+      font-size: .74rem; color: rgba(224,240,255,.65);
+      cursor: pointer;
+      transition: background .12s, color .12s;
+      border-bottom: 1px solid rgba(255,255,255,.05);
+    }
+    .ac-item:last-child { border-bottom: none; }
+    .ac-item:hover, .ac-item.active { background: var(--accent-bg); color: var(--accent); }
+
+    #checkBtn {
+      padding: 8px 22px; border-radius: 12px;
+      border: 1px solid var(--accent);
+      background: var(--accent-bg);
+      color: var(--accent); font-family: 'Space Grotesk', sans-serif;
+      font-size: .85rem; font-weight: 700; cursor: pointer;
+      transition: background .2s, box-shadow .2s, border-color .4s, color .4s;
+      white-space: nowrap;
+    }
+    #checkBtn:hover { background: var(--accent-hover); box-shadow: 0 0 16px var(--accent-dim); }
+    #checkBtn:active { transform: scale(.97); }
+
+    #discBtn {
+      padding: 8px 12px; border-radius: 12px;
+      border: 1px solid rgba(255,214,0,.25);
+      background: rgba(255,214,0,.04);
+      color: rgba(255,214,0,.55);
+      font-family: 'Space Mono', monospace; font-size: .75rem;
+      cursor: pointer;
+      transition: color .2s, border-color .2s, background .2s;
+    }
+    #discBtn:hover { color: #ffd600; border-color: rgba(255,214,0,.5); background: rgba(255,214,0,.08); }
+
+    #exampleRow {
+      display: flex; gap: 6px; flex-wrap: wrap; justify-content: center;
+    }
+    .ex-btn {
+      padding: 5px 13px; border-radius: 20px;
+      border: 1px solid rgba(255,255,255,.1);
+      background: rgba(255,255,255,.03);
+      color: rgba(224,240,255,.45);
+      font-family: 'Space Mono', monospace; font-size: .64rem;
+      cursor: pointer; transition: all .2s; white-space: nowrap;
+    }
+    .ex-btn:hover { border-color: var(--accent-border); color: var(--accent); background: var(--accent-bg); }
+
+    /* ── TOOLTIP ── */
+    #tooltip {
+      position: fixed; z-index: 25;
+      background: rgba(0,5,20,.88);
+      border: 1px solid var(--accent-border);
+      border-radius: 12px; padding: 10px 14px;
+      backdrop-filter: blur(16px);
+      font-size: .8rem; line-height: 1.65;
+      pointer-events: none;
+      opacity: 0; transition: opacity .15s, border-color .4s;
+      max-width: 230px;
+    }
+    #tooltip.show { opacity: 1; }
+    .tt-name { font-weight: 700; color: var(--accent); margin-bottom: 4px; font-size: .85rem; transition: color .4s; }
+    .tt-row  { color: rgba(224,240,255,.6); }
+    .tt-row span { color: #e0f0ff; font-weight: 600; }
+    .tt-snip { font-size: .72rem; color: rgba(224,240,255,.45); margin-top: 5px; line-height: 1.55; }
+
+    /* ── LOADING ── */
+    #loadMsg {
+      position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+      z-index: 10; text-align: center;
+      font-family: 'Space Mono', monospace; font-size: .85rem;
+      color: rgba(224,240,255,.5); display: none;
+      pointer-events: none;
+    }
+    #loadMsg.show { display: block; }
+    .spin {
+      width: 32px; height: 32px; border-radius: 50%;
+      border: 2px solid rgba(255,255,255,.1);
+      border-top-color: var(--accent);
+      animation: spin 1s linear infinite;
+      margin: 0 auto 12px; transition: border-top-color .4s;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── HINT ── */
+    #hint {
+      position: fixed; bottom: 140px; left: 50%; transform: translateX(-50%);
+      z-index: 8; pointer-events: none;
+      font-family: 'Space Mono', monospace; font-size: .64rem;
+      color: rgba(224,240,255,.28); white-space: nowrap;
+      animation: pulse 2.5s ease-in-out infinite;
+      transition: opacity .3s;
+    }
+    @keyframes pulse { 0%,100% { opacity: .28; } 50% { opacity: .55; } }
+
+    /* ── SF BANNER (critical active) ── */
+    #critBanner {
+      position: fixed; top: 72px; left: 50%; transform: translateX(-50%);
+      z-index: 10;
+      background: rgba(255,23,68,.08);
+      border: 1px solid rgba(255,68,68,.3);
+      border-radius: 12px; padding: 9px 18px;
+      font-family: 'Space Mono', monospace;
+      font-size: .75rem; text-align: center;
+      backdrop-filter: blur(12px); white-space: nowrap;
+      display: none;
+    }
+    body.critical #critBanner { display: block; }
+    #critBanner strong { color: #ff4444; }
+
+    /* ── DISCLAIMER MODAL ── */
+    #disclaimerModal {
+      position: fixed; inset: 0; z-index: 80;
+      background: rgba(0,0,0,.75);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity .3s; cursor: pointer;
+    }
+    #disclaimerModal.show { opacity: 1; pointer-events: all; }
+    #disclaimerCard {
+      background: rgba(6,15,35,.96);
+      border: 1px solid rgba(255,214,0,.22);
+      border-radius: 22px; padding: 34px 38px;
+      max-width: 480px; width: 90%;
+      cursor: default; pointer-events: all;
+    }
+    #disclaimerCard h2 {
+      font-family: 'Space Mono', monospace;
+      font-size: 1rem; color: #ffd600; margin-bottom: 14px;
+    }
+    #disclaimerCard p {
+      font-size: .88rem; line-height: 1.78;
+      color: rgba(224,240,255,.7); margin-bottom: 10px;
+    }
+    #disclaimerCard strong { color: #ffd600; }
+    .disc-close {
+      margin-top: 20px;
+      font-family: 'Space Mono', monospace;
+      font-size: .7rem; color: rgba(224,240,255,.35);
+      cursor: pointer; text-align: center; letter-spacing: 1px;
+    }
+    .disc-close:hover { color: rgba(224,240,255,.65); }
+
+    /* ── INTRO OVERLAY ── */
+    #introOverlay {
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(0,0,0,.82);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; animation: fadeIn .6s ease;
+    }
+    #introOverlay.hide { animation: fadeOut .5s ease forwards; pointer-events: none; }
+    #introCard {
+      background: rgba(6,15,35,.93);
+      border: 1px solid var(--accent-border);
+      border-radius: 24px; padding: 40px 44px;
+      max-width: 520px; width: 90%;
+      text-align: center;
+      box-shadow: 0 0 60px var(--accent-dim);
+      pointer-events: none;
+    }
+    .ic-logo {
+      font-family: 'Space Mono', monospace;
+      font-size: 2.4rem; font-weight: 700;
+      color: var(--accent); text-shadow: 0 0 30px var(--accent-dim);
+      margin-bottom: 6px; transition: color .4s, text-shadow .4s;
+    }
+    .ic-logo span { color: #e0f0ff; }
+    .ic-tagline {
+      font-family: 'Space Mono', monospace;
+      font-size: .72rem; color: rgba(0,229,255,.5);
+      letter-spacing: 2px; text-transform: uppercase;
+      margin-bottom: 24px;
+    }
+    .ic-body {
+      font-size: .95rem; line-height: 1.78;
+      color: rgba(224,240,255,.8); margin-bottom: 28px;
+    }
+    .ic-body strong { color: var(--accent); }
+    .ic-hint {
+      font-family: 'Space Mono', monospace;
+      font-size: .68rem; color: rgba(224,240,255,.35);
+      letter-spacing: 1px; animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes fadeIn  { from { opacity: 0; } to   { opacity: 1; } }
+    @keyframes fadeOut { from { opacity: 1; } to   { opacity: 0; } }
+
+    @media (max-width: 700px) {
+      #stats         { display: none; }
+      #legend        { display: none; }
+      #resultsPanel  { right: 10px; left: 10px; width: auto; top: auto; bottom: 175px; max-height: 180px; }
+      #controls      { width: calc(100% - 20px); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- CANVASES -->
+<canvas id="bgCanvas"></canvas>
+<canvas id="netCanvas"></canvas>
+
+<!-- HEADER -->
+<div id="header">
+  <div class="logo">Rx<span>CLASH</span></div>
+  <div id="alertWrap">
+    <span id="alertLabel">ALERT MODE</span>
+    <div class="track"><div class="knob"></div></div>
+  </div>
+</div>
+
+<!-- CRITICAL BANNER -->
+<div id="critBanner">
+  <strong>⚠ HIGH RISK COMBINATION DETECTED</strong> — consult a pharmacist or physician
+</div>
+
+<!-- STATS -->
+<div id="stats">
+  <div class="stat">
+    <div class="s-label">PAIRS CHECKED</div>
+    <div class="s-val" id="sPairs">—</div>
+  </div>
+  <div class="stat">
+    <div class="s-label">INTERACTIONS FOUND</div>
+    <div class="s-val" id="sFound">—</div>
+    <div class="s-sub" id="sFoundSub"></div>
+  </div>
+  <div class="stat">
+    <div class="s-label">RISK SCORE</div>
+    <div class="s-val" id="sRisk">—</div>
+    <div class="s-sub" id="sRiskLabel"></div>
+  </div>
+</div>
+
+<!-- SEVERITY LEGEND -->
+<div id="legend">
+  <div class="leg-title">SEVERITY</div>
+  <div class="leg-row"><div class="leg-dot" style="background:#ff1744"></div><span>Contraindicated</span></div>
+  <div class="leg-row"><div class="leg-dot" style="background:#ff6d00"></div><span>Major</span></div>
+  <div class="leg-row"><div class="leg-dot" style="background:#ffd600"></div><span>Moderate</span></div>
+  <div class="leg-row"><div class="leg-dot" style="background:#00e676"></div><span>Minor</span></div>
+  <div class="leg-row"><div class="leg-dot" style="background:rgba(224,240,255,.2)"></div><span>No data</span></div>
+</div>
+
+<!-- RESULTS PANEL -->
+<div id="resultsPanel"></div>
+
+<!-- TOOLTIP -->
+<div id="tooltip"></div>
+
+<!-- LOADING -->
+<div id="loadMsg"><div class="spin"></div>QUERYING FDA DATABASE…</div>
+
+<!-- HINT -->
+<div id="hint">TYPE A DRUG AND PRESS ENTER — ADD UP TO 5, THEN CLICK CHECK</div>
+
+<!-- DISCLAIMER MODAL -->
+<div id="disclaimerModal">
+  <div id="disclaimerCard" onclick="event.stopPropagation()">
+    <h2>⚠ DISCLAIMER</h2>
+    <p>Data sourced from FDA public databases (OpenFDA, RxNorm). FAERS adverse event reports are voluntarily submitted — co-occurrence is <em>not</em> causation.</p>
+    <p>This tool is for <strong>educational purposes only</strong>. It does not constitute medical advice. Always consult a licensed pharmacist or physician before making decisions about medications.</p>
+    <p>Interaction data may be incomplete. The absence of a warning does not mean a safe combination.</p>
+    <div class="disc-close" id="discClose">[ CLICK TO CLOSE ]</div>
+  </div>
+</div>
+
+<!-- INTRO OVERLAY -->
+<div id="introOverlay">
+  <div id="introCard">
+    <div class="ic-logo">Rx<span>CLASH</span></div>
+    <div class="ic-tagline">Know before you combine</div>
+    <div class="ic-body">
+      <strong>1.5 million</strong> emergency visits per year involve adverse drug events in the US.<br><br>
+      Enter up to <strong>5 medications</strong> — RxClash cross-references the FDA's public drug label database, maps interactions as a live network graph, and scores your overall polypharmacy risk.<br><br>
+      Powered by <strong>OpenFDA</strong> + <strong>RxNorm</strong>. No account required.
+    </div>
+    <div class="ic-hint">CLICK ANYWHERE TO BEGIN</div>
+  </div>
+</div>
+
+<!-- CONTROLS -->
+<div id="controls">
+  <div id="drugRow">
+    <span id="chips"></span>
+    <div id="drugInputWrap">
+      <input id="drugInput" type="text" placeholder="add a drug…" autocomplete="off" spellcheck="false" />
+      <div id="autocomplete"></div>
+    </div>
+    <button id="checkBtn">CHECK</button>
+    <button id="discBtn">⚠</button>
+  </div>
+  <div id="exampleRow">
+    <button class="ex-btn" data-drugs="ibuprofen,acetaminophen,pseudoephedrine">Common Cold Kit</button>
+    <button class="ex-btn" data-drugs="warfarin,aspirin,atorvastatin">Cardiac Cocktail</button>
+    <button class="ex-btn" data-drugs="sildenafil,nitroglycerin">Classic Concern</button>
+    <button class="ex-btn" data-drugs="simvastatin,clarithromycin">Statin + Antibiotic</button>
+  </div>
+</div>
+
+<script>
+// ── CONSTANTS ──────────────────────────────────────────────────────────────
+const RXNORM_APPROX = t =>
+  `https://rxnav.nlm.nih.gov/REST/approximateTerm.json?term=${encodeURIComponent(t)}&maxEntries=7`;
+const FDA_LABEL = n =>
+  `https://api.fda.gov/drug/label.json?search=openfda.generic_name:"${encodeURIComponent(n)}"&limit=3`;
+const FDA_LABEL_BRAND = n =>
+  `https://api.fda.gov/drug/label.json?search=openfda.brand_name:"${encodeURIComponent(n)}"&limit=3`;
+
+const SEV       = { NONE: 0, MINOR: 1, MODERATE: 2, MAJOR: 3, CONTRA: 4 };
+const SEV_COLOR = { 0:'rgba(224,240,255,.22)', 1:'#00e676', 2:'#ffd600', 3:'#ff6d00', 4:'#ff1744' };
+const SEV_LABEL = { 0:'NO DATA', 1:'MINOR', 2:'MODERATE', 3:'MAJOR', 4:'CONTRAINDICATED' };
+const SEV_CLASS = { 0:'badge-none', 1:'badge-minor', 2:'badge-moderate', 3:'badge-major', 4:'badge-contra' };
+const SEV_W     = { 0:0, 1:1, 2:2, 3:3, 4:4 };
+
+// ── STATE ──────────────────────────────────────────────────────────────────
+let drugs        = [];   // { name }
+let interactions = [];   // { a, b, sev, text }
+let labelCache   = {};   // name → interaction text (lowercase)
+let acCache      = {};   // term → [name, ...]
+let acTimer      = null;
+let acActive     = -1;
+let nodes        = [];   // { x, y, vx, vy, fx, fy, name }
+let edges        = [];   // { a, b, sev, text, na, nb }
+let hovNode      = null;
+let hovEdge      = null;
+
+// ── DOM ────────────────────────────────────────────────────────────────────
+const bgCanvas   = document.getElementById('bgCanvas');
+const netCanvas  = document.getElementById('netCanvas');
+const bgCtx      = bgCanvas.getContext('2d');
+const netCtx     = netCanvas.getContext('2d');
+const chipsEl    = document.getElementById('chips');
+const drugInput  = document.getElementById('drugInput');
+const acDrop     = document.getElementById('autocomplete');
+const loadMsg    = document.getElementById('loadMsg');
+const resultsEl  = document.getElementById('resultsPanel');
+const hintEl     = document.getElementById('hint');
+const tooltip    = document.getElementById('tooltip');
+const sPairs     = document.getElementById('sPairs');
+const sFound     = document.getElementById('sFound');
+const sFoundSub  = document.getElementById('sFoundSub');
+const sRisk      = document.getElementById('sRisk');
+const sRiskLabel = document.getElementById('sRiskLabel');
+
+// ── RESIZE ─────────────────────────────────────────────────────────────────
+function resize() {
+  bgCanvas.width  = netCanvas.width  = window.innerWidth;
+  bgCanvas.height = netCanvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', () => { resize(); initStars(); });
+
+// ── STARFIELD ──────────────────────────────────────────────────────────────
+let stars = [];
+function initStars() {
+  stars = [];
+  const n = Math.floor(bgCanvas.width * bgCanvas.height / 5500);
+  for (let i = 0; i < n; i++) stars.push({
+    x:  Math.random() * bgCanvas.width,
+    y:  Math.random() * bgCanvas.height,
+    r:  Math.random() * 1.2 + 0.15,
+    a:  Math.random(),
+    da: (Math.random() - 0.5) * 0.003,
+  });
+}
+initStars();
+
+function drawBg() {
+  bgCtx.fillStyle = '#000';
+  bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+  for (const s of stars) {
+    s.a += s.da;
+    if (s.a <= 0.04 || s.a >= 0.9) s.da *= -1;
+    bgCtx.beginPath();
+    bgCtx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    bgCtx.fillStyle = `rgba(160,200,255,${s.a * 0.45})`;
+    bgCtx.fill();
+  }
+}
+
+// ── FORCE GRAPH ────────────────────────────────────────────────────────────
+const REPEL     = 5000;
+const SPRING_L  = 150;
+const SPRING_K  = 0.035;
+const DAMP      = 0.82;
+const CENTER_K  = 0.007;
+
+function graphCenter() {
+  // Center graph in the space left of the results panel
+  return {
+    cx: netCanvas.width  * 0.38,
+    cy: netCanvas.height * 0.47,
+  };
+}
+
+function initGraph() {
+  const { cx, cy } = graphCenter();
+  const n = drugs.length;
+  nodes = drugs.map((d, i) => {
+    const angle = (i / n) * Math.PI * 2 - Math.PI / 2;
+    const r = n === 1 ? 0 : 110;
+    return { x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r,
+             vx: 0, vy: 0, fx: 0, fy: 0, name: d.name };
+  });
+  edges = interactions.map(ia => {
+    const ai = drugs.findIndex(d => d.name === ia.a);
+    const bi = drugs.findIndex(d => d.name === ia.b);
+    return { a: ai, b: bi, sev: ia.sev, text: ia.text, na: ia.a, nb: ia.b };
+  }).filter(e => e.a !== -1 && e.b !== -1);
+}
+
+function tickGraph() {
+  if (nodes.length < 2) return;
+  const { cx, cy } = graphCenter();
+
+  for (const n of nodes) { n.fx = 0; n.fy = 0; }
+
+  // Repulsion
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      const dx = nodes[j].x - nodes[i].x;
+      const dy = nodes[j].y - nodes[i].y;
+      const d2 = Math.max(dx*dx + dy*dy, 100);
+      const d  = Math.sqrt(d2);
+      const f  = REPEL / d2;
+      const fx = f * dx / d, fy = f * dy / d;
+      nodes[i].fx -= fx; nodes[i].fy -= fy;
+      nodes[j].fx += fx; nodes[j].fy += fy;
+    }
+  }
+
+  // Springs (edges)
+  for (const e of edges) {
+    const na = nodes[e.a], nb = nodes[e.b];
+    const dx = nb.x - na.x, dy = nb.y - na.y;
+    const d  = Math.sqrt(dx*dx + dy*dy) || 1;
+    const f  = SPRING_K * (d - SPRING_L);
+    const fx = f * dx / d, fy = f * dy / d;
+    na.fx += fx; na.fy += fy;
+    nb.fx -= fx; nb.fy -= fy;
+  }
+
+  // Center gravity
+  for (const n of nodes) {
+    n.fx += CENTER_K * (cx - n.x);
+    n.fy += CENTER_K * (cy - n.y);
+  }
+
+  // Integrate
+  const rPad = 340, lPad = 60, tPad = 90, bPad = 110;
+  for (const n of nodes) {
+    n.vx = (n.vx + n.fx) * DAMP;
+    n.vy = (n.vy + n.fy) * DAMP;
+    n.x  = Math.max(lPad, Math.min(netCanvas.width  - rPad, n.x + n.vx));
+    n.y  = Math.max(tPad, Math.min(netCanvas.height - bPad, n.y + n.vy));
+  }
+}
+
+function getAccent() {
+  return document.body.classList.contains('critical') ? '#ff4444' : '#00e5ff';
+}
+function getAccentDim() {
+  return document.body.classList.contains('critical') ? 'rgba(255,68,68,.45)' : 'rgba(0,229,255,.4)';
+}
+
+function drawGraph() {
+  netCtx.clearRect(0, 0, netCanvas.width, netCanvas.height);
+  if (!nodes.length) return;
+
+  const accent    = getAccent();
+  const accentDim = getAccentDim();
+
+  // Edges
+  netCtx.save();
+  for (const e of edges) {
+    const na = nodes[e.a], nb = nodes[e.b];
+    const isHovE = hovEdge === e;
+    const color  = SEV_COLOR[e.sev];
+
+    netCtx.beginPath();
+    netCtx.moveTo(na.x, na.y);
+    netCtx.lineTo(nb.x, nb.y);
+
+    if (e.sev === SEV.NONE) {
+      netCtx.setLineDash([5, 7]);
+      netCtx.strokeStyle = isHovE ? 'rgba(224,240,255,.3)' : 'rgba(224,240,255,.1)';
+      netCtx.lineWidth   = 1;
+      netCtx.shadowBlur  = 0;
+    } else {
+      netCtx.setLineDash([]);
+      netCtx.strokeStyle = color;
+      netCtx.lineWidth   = isHovE ? 3 : (e.sev >= SEV.MAJOR ? 2.5 : 1.8);
+      netCtx.shadowBlur  = isHovE ? 20 : (e.sev >= SEV.MAJOR ? 14 : 7);
+      netCtx.shadowColor = color;
+    }
+    netCtx.stroke();
+  }
+  netCtx.setLineDash([]);
+  netCtx.shadowBlur = 0;
+  netCtx.restore();
+
+  // Nodes
+  for (const n of nodes) {
+    const isHov = hovNode === n;
+    const nr    = isHov ? 23 : 19;
+
+    // Outer glow halo
+    const grad = netCtx.createRadialGradient(n.x, n.y, nr - 2, n.x, n.y, nr + 12);
+    grad.addColorStop(0, isHov ? accentDim.replace('.4', '.2') : 'rgba(0,229,255,.1)');
+    grad.addColorStop(1, 'transparent');
+    netCtx.beginPath();
+    netCtx.arc(n.x, n.y, nr + 12, 0, Math.PI * 2);
+    netCtx.fillStyle = grad;
+    netCtx.fill();
+
+    // Node body
+    netCtx.beginPath();
+    netCtx.arc(n.x, n.y, nr, 0, Math.PI * 2);
+    netCtx.fillStyle   = 'rgba(0,8,25,.88)';
+    netCtx.fill();
+    netCtx.strokeStyle = isHov ? accent : accentDim;
+    netCtx.lineWidth   = isHov ? 2.2 : 1.5;
+    netCtx.shadowBlur  = isHov ? 20 : 8;
+    netCtx.shadowColor = accent;
+    netCtx.stroke();
+    netCtx.shadowBlur  = 0;
+
+    // Label inside node (first letter)
+    netCtx.font         = `700 12px 'Space Mono', monospace`;
+    netCtx.textAlign    = 'center';
+    netCtx.textBaseline = 'middle';
+    netCtx.fillStyle    = isHov ? accent : 'rgba(224,240,255,.75)';
+    netCtx.fillText(n.name[0].toUpperCase(), n.x, n.y);
+
+    // Label below node
+    netCtx.font         = `600 10.5px 'Space Grotesk', sans-serif`;
+    netCtx.fillStyle    = isHov ? accent : 'rgba(224,240,255,.65)';
+    const label         = n.name.length > 13 ? n.name.slice(0, 12) + '…' : n.name;
+    netCtx.fillText(label, n.x, n.y + nr + 13);
+  }
+}
+
+// ── HOVER DETECTION ────────────────────────────────────────────────────────
+netCanvas.addEventListener('mousemove', e => {
+  const mx = e.clientX, my = e.clientY;
+
+  // Node hit test
+  let foundNode = null;
+  for (const n of nodes) {
+    const dx = n.x - mx, dy = n.y - my;
+    if (dx*dx + dy*dy < 26*26) { foundNode = n; break; }
+  }
+
+  // Edge hit test
+  let foundEdge = null;
+  if (!foundNode) {
+    for (const edge of edges) {
+      const na = nodes[edge.a], nb = nodes[edge.b];
+      const dx = nb.x - na.x, dy = nb.y - na.y;
+      const len2 = dx*dx + dy*dy || 1;
+      const t    = Math.max(0, Math.min(1, ((mx - na.x)*dx + (my - na.y)*dy) / len2));
+      const px   = na.x + t*dx - mx, py = na.y + t*dy - my;
+      if (px*px + py*py < 12*12) { foundEdge = edge; break; }
+    }
+  }
+
+  hovNode = foundNode;
+  hovEdge = foundEdge;
+
+  if (foundNode) {
+    // Count interactions for this node
+    const count = edges.filter(e => (e.a === nodes.indexOf(foundNode) || e.b === nodes.indexOf(foundNode)) && e.sev > SEV.NONE).length;
+    showTip(mx, my, `<div class="tt-name">${foundNode.name}</div>
+      <div class="tt-row">${count} interaction${count !== 1 ? 's' : ''} detected</div>`);
+  } else if (foundEdge) {
+    const col = SEV_COLOR[foundEdge.sev];
+    const snip = foundEdge.text
+      ? foundEdge.text.slice(0, 110) + (foundEdge.text.length > 110 ? '…' : '')
+      : 'No interaction data found in FDA label.';
+    showTip(mx, my, `
+      <div class="tt-name" style="color:${col}">${foundEdge.na} × ${foundEdge.nb}</div>
+      <div class="tt-row">${SEV_LABEL[foundEdge.sev]}</div>
+      <div class="tt-snip">${snip}</div>`);
+  } else {
+    hideTip();
+  }
+});
+netCanvas.addEventListener('mouseleave', hideTip);
+
+function showTip(x, y, html) {
+  tooltip.innerHTML = html;
+  tooltip.classList.add('show');
+  const tw = tooltip.offsetWidth, th = tooltip.offsetHeight;
+  let lx = x + 16, ly = y - th / 2;
+  if (lx + tw > window.innerWidth  - 12) lx = x - tw - 16;
+  if (ly < 8) ly = 8;
+  if (ly + th > window.innerHeight - 8) ly = window.innerHeight - th - 8;
+  tooltip.style.left = lx + 'px';
+  tooltip.style.top  = ly + 'px';
+}
+function hideTip() { tooltip.classList.remove('show'); }
+
+// ── CHIP MANAGEMENT ────────────────────────────────────────────────────────
+function renderChips() {
+  chipsEl.innerHTML = '';
+  for (const d of drugs) {
+    const chip = document.createElement('span');
+    chip.className = 'drug-chip';
+    chip.innerHTML = `${d.name} <span class="chip-x" data-name="${d.name}">×</span>`;
+    chipsEl.appendChild(chip);
+  }
+  hintEl.style.opacity = drugs.length ? '0' : '';
+  // Sync URL hash
+  if (drugs.length) history.replaceState(null, '', '#drugs=' + drugs.map(d=>d.name).join(','));
+  else history.replaceState(null, '', location.pathname);
+}
+
+chipsEl.addEventListener('click', e => {
+  if (!e.target.classList.contains('chip-x')) return;
+  const name = e.target.dataset.name;
+  drugs = drugs.filter(d => d.name !== name);
+  delete labelCache[name];
+  renderChips();
+  clearResults();
+});
+
+function addDrug(name) {
+  name = name.trim().toLowerCase();
+  if (!name || drugs.length >= 5 || drugs.find(d => d.name === name)) return;
+  drugs.push({ name });
+  renderChips();
+  drugInput.value = '';
+  closeAc();
+  clearResults();
+}
+
+// ── AUTOCOMPLETE ───────────────────────────────────────────────────────────
+async function fetchSuggestions(term) {
+  if (acCache[term]) return acCache[term];
+  try {
+    const res  = await fetch(RXNORM_APPROX(term));
+    const data = await res.json();
+    const cands = data.approximateGroup?.candidate || [];
+    const names = [...new Set(cands.map(c => c.name.toLowerCase()))].slice(0, 7);
+    acCache[term] = names;
+    return names;
+  } catch { return []; }
+}
+
+drugInput.addEventListener('input', () => {
+  clearTimeout(acTimer);
+  const v = drugInput.value.trim();
+  if (v.length < 2) { closeAc(); return; }
+  acTimer = setTimeout(async () => {
+    const sugg = await fetchSuggestions(v);
+    renderAc(sugg);
+  }, 280);
+});
+
+drugInput.addEventListener('keydown', e => {
+  const items = acDrop.querySelectorAll('.ac-item');
+  if (e.key === 'ArrowDown') {
+    acActive = Math.min(acActive + 1, items.length - 1);
+    highlightAc(items); e.preventDefault();
+  } else if (e.key === 'ArrowUp') {
+    acActive = Math.max(acActive - 1, -1);
+    highlightAc(items); e.preventDefault();
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (acActive >= 0 && items[acActive]) addDrug(items[acActive].textContent);
+    else if (drugInput.value.trim()) addDrug(drugInput.value);
+  } else if (e.key === 'Escape') closeAc();
+});
+
+function renderAc(sugg) {
+  acDrop.innerHTML = '';
+  if (!sugg.length) { closeAc(); return; }
+  sugg.forEach(s => {
+    const item = document.createElement('div');
+    item.className  = 'ac-item';
+    item.textContent = s;
+    item.addEventListener('mousedown', e => { e.preventDefault(); addDrug(s); });
+    acDrop.appendChild(item);
+  });
+  acActive = -1;
+  acDrop.style.display = 'block';
+}
+function highlightAc(items) {
+  items.forEach((it, i) => it.classList.toggle('active', i === acActive));
+  if (acActive >= 0 && items[acActive]) drugInput.value = items[acActive].textContent;
+}
+function closeAc() { acDrop.style.display = 'none'; acActive = -1; }
+document.addEventListener('click', e => {
+  if (!document.getElementById('drugInputWrap').contains(e.target)) closeAc();
+});
+
+// ── FDA LABEL FETCH ────────────────────────────────────────────────────────
+async function fetchLabel(name) {
+  if (labelCache[name] !== undefined) return labelCache[name];
+  try {
+    let res  = await fetch(FDA_LABEL(name));
+    let data = await res.json();
+    if (!data.results?.length) {
+      res  = await fetch(FDA_LABEL_BRAND(name));
+      data = await res.json();
+    }
+    const text = (data.results || [])
+      .flatMap(r => r.drug_interactions || [])
+      .join(' ')
+      .toLowerCase();
+    labelCache[name] = text;
+    return text;
+  } catch {
+    labelCache[name] = '';
+    return '';
+  }
+}
+
+// ── SEVERITY DETECTION ─────────────────────────────────────────────────────
+function detectSev(text) {
+  if (!text) return SEV.NONE;
+  if (/contraindicated|do not (use|give|administer)|must not|should not be (used|given)|never (use|take)/.test(text)) return SEV.CONTRA;
+  if (/life[- ]threaten|fatal|death|\bserious\b|severe\b|significant risk|avoid (this )?combination|avoid concomitant|not recommended/.test(text)) return SEV.MAJOR;
+  if (/caution|monitor|may (increase|decrease|affect|alter|enhance|reduce)|adjust (dose|dosage)|clinical(ly)? significant/.test(text)) return SEV.MODERATE;
+  if (/minor|slight|small|minimal|weak|marginal/.test(text)) return SEV.MINOR;
+  // Text found but no keyword match → assume moderate
+  return SEV.MODERATE;
+}
+
+function extractSnippet(text, otherDrug) {
+  const sentences = text.split(/(?<=[.!?])\s+/);
+  const hit = sentences.find(s => s.includes(otherDrug.toLowerCase()));
+  if (hit) return hit.trim().replace(/\s+/g, ' ');
+  return text.slice(0, 200).trim();
+}
+
+// ── CHECK INTERACTIONS ─────────────────────────────────────────────────────
+async function checkInteractions() {
+  if (drugs.length < 2) {
+    drugInput.placeholder = 'need at least 2 drugs!';
+    setTimeout(() => { drugInput.placeholder = 'add a drug…'; }, 2200);
+    drugInput.focus();
+    return;
+  }
+
+  clearResults();
+  loadMsg.classList.add('show');
+
+  await Promise.all(drugs.map(d => fetchLabel(d.name)));
+
+  interactions = [];
+  for (let i = 0; i < drugs.length; i++) {
+    for (let j = i + 1; j < drugs.length; j++) {
+      const a = drugs[i].name, b = drugs[j].name;
+      const labelA = labelCache[a] || '';
+      const labelB = labelCache[b] || '';
+
+      let sev = SEV.NONE, snippet = '';
+
+      if (labelA.includes(b)) {
+        snippet = extractSnippet(labelA, b);
+        sev     = detectSev(snippet);
+      } else if (labelB.includes(a)) {
+        snippet = extractSnippet(labelB, a);
+        sev     = detectSev(snippet);
+      }
+
+      interactions.push({ a, b, sev, text: snippet });
+    }
+  }
+
+  loadMsg.classList.remove('show');
+  renderResults();
+  updateStats();
+  initGraph();
+}
+
+// ── RENDER RESULTS ──────────────────────────────────────────────────────────
+function renderResults() {
+  resultsEl.innerHTML = '';
+  for (const ia of interactions) {
+    const card    = document.createElement('div');
+    card.className = 'icard';
+    const preview = ia.text
+      ? ia.text.slice(0, 150) + (ia.text.length > 150 ? '…' : '')
+      : 'No interaction found in FDA drug labels.';
+    card.innerHTML = `
+      <div class="ic-pair"><strong>${ia.a}</strong> × <strong>${ia.b}</strong></div>
+      <span class="ic-badge ${SEV_CLASS[ia.sev]}">${SEV_LABEL[ia.sev]}</span>
+      <div class="ic-text">${ia.text ? preview : `<em>${preview}</em>`}</div>`;
+    resultsEl.appendChild(card);
+  }
+}
+
+function clearResults() {
+  resultsEl.innerHTML = '';
+  interactions = [];
+  nodes = []; edges = [];
+  sPairs.textContent    = '—';
+  sFound.textContent    = '—';
+  sFoundSub.textContent = '';
+  sRisk.textContent     = '—';
+  sRiskLabel.textContent = '';
+  document.body.classList.remove('critical');
+}
+
+// ── UPDATE STATS ────────────────────────────────────────────────────────────
+function updateStats() {
+  const total    = interactions.length;
+  const found    = interactions.filter(i => i.sev > SEV.NONE).length;
+  const contra   = interactions.filter(i => i.sev === SEV.CONTRA).length;
+  const major    = interactions.filter(i => i.sev === SEV.MAJOR).length;
+
+  sPairs.textContent    = total;
+  sFound.textContent    = found;
+  sFoundSub.textContent = contra ? `⚠ ${contra} contraindicated`
+                        : major  ? `⚠ ${major} major`
+                        : found  ? 'interactions detected'
+                        :          'no interactions found';
+
+  const score = total
+    ? interactions.reduce((s, i) => s + SEV_W[i.sev], 0) / total
+    : 0;
+  sRisk.textContent = score.toFixed(1);
+
+  if      (score < 1)   { sRiskLabel.textContent = 'LOW RISK';  }
+  else if (score < 2)   { sRiskLabel.textContent = 'CAUTION';   }
+  else if (score < 3)   { sRiskLabel.textContent = 'HIGH RISK'; document.body.classList.add('critical'); }
+  else                  { sRiskLabel.textContent = 'DANGER';    document.body.classList.add('critical'); }
+}
+
+// ── QUICK EXAMPLES ──────────────────────────────────────────────────────────
+document.querySelectorAll('.ex-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    drugs = btn.dataset.drugs.split(',').map(n => ({ name: n.trim() }));
+    renderChips();
+    clearResults();
+    checkInteractions();
+  });
+});
+
+// ── EVENTS ─────────────────────────────────────────────────────────────────
+document.getElementById('checkBtn').addEventListener('click', checkInteractions);
+
+document.getElementById('alertWrap').addEventListener('click', () => {
+  document.body.classList.toggle('critical');
+});
+
+document.getElementById('discBtn').addEventListener('click', e => {
+  e.stopPropagation();
+  document.getElementById('disclaimerModal').classList.add('show');
+});
+document.getElementById('disclaimerModal').addEventListener('click', () => {
+  document.getElementById('disclaimerModal').classList.remove('show');
+});
+document.getElementById('discClose').addEventListener('click', () => {
+  document.getElementById('disclaimerModal').classList.remove('show');
+});
+
+// ── URL HASH STATE ──────────────────────────────────────────────────────────
+function loadFromHash() {
+  const params = new URLSearchParams(location.hash.slice(1));
+  const str    = params.get('drugs');
+  if (!str) return;
+  drugs = str.split(',').slice(0, 5)
+    .map(n => n.trim().toLowerCase())
+    .filter(Boolean)
+    .map(n => ({ name: n }));
+  if (drugs.length) { renderChips(); if (drugs.length >= 2) checkInteractions(); }
+}
+
+// ── INTRO ───────────────────────────────────────────────────────────────────
+const introOverlay = document.getElementById('introOverlay');
+introOverlay.addEventListener('click', () => {
+  introOverlay.classList.add('hide');
+  introOverlay.addEventListener('animationend', () => introOverlay.remove(), { once: true });
+  loadFromHash();
+});
+
+// ── RENDER LOOP ─────────────────────────────────────────────────────────────
+function animate() {
+  requestAnimationFrame(animate);
+  drawBg();
+  tickGraph();
+  drawGraph();
+}
+animate();
+</script>
+</body>
+</html>
