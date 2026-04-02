@@ -374,38 +374,126 @@
     /* ── INTRO OVERLAY ── */
     #introOverlay {
       position: fixed; inset: 0; z-index: 100;
-      background: rgba(0,0,0,.82);
+      background: rgba(0,0,0,.88);
       display: flex; align-items: center; justify-content: center;
       cursor: pointer; animation: fadeIn .6s ease;
     }
     #introOverlay.hide { animation: fadeOut .5s ease forwards; pointer-events: none; }
     #introCard {
-      background: rgba(6,15,35,.93);
+      background: rgba(6,15,35,.95);
       border: 1px solid var(--accent-border);
-      border-radius: 24px; padding: 40px 44px;
-      max-width: 520px; width: 90%;
+      border-radius: 24px; padding: 36px 44px 32px;
+      max-width: 560px; width: 92%;
       text-align: center;
-      box-shadow: 0 0 60px var(--accent-dim);
+      box-shadow: 0 0 80px var(--accent-dim);
       pointer-events: none;
     }
     .ic-logo {
       font-family: 'Space Mono', monospace;
       font-size: 2.4rem; font-weight: 700;
       color: var(--accent); text-shadow: 0 0 30px var(--accent-dim);
-      margin-bottom: 6px; transition: color .4s, text-shadow .4s;
+      margin-bottom: 4px; transition: color .4s, text-shadow .4s;
     }
     .ic-logo span { color: #e0f0ff; }
     .ic-tagline {
       font-family: 'Space Mono', monospace;
       font-size: .72rem; color: rgba(0,229,255,.5);
       letter-spacing: 2px; text-transform: uppercase;
-      margin-bottom: 24px;
+      margin-bottom: 22px;
     }
-    .ic-body {
-      font-size: .95rem; line-height: 1.78;
-      color: rgba(224,240,255,.8); margin-bottom: 28px;
+
+    /* SLOT MACHINE */
+    #slotMachine {
+      display: flex; flex-direction: column; align-items: center;
+      margin-bottom: 22px;
+      pointer-events: all;
     }
-    .ic-body strong { color: var(--accent); }
+    .slot-cabinet {
+      background: linear-gradient(160deg, #1a0a2e 0%, #0a0018 100%);
+      border: 2px solid rgba(255,68,68,.5);
+      border-radius: 18px;
+      padding: 18px 22px 14px;
+      box-shadow: 0 0 40px rgba(255,23,68,.2), inset 0 1px 0 rgba(255,255,255,.05);
+      position: relative;
+    }
+    .slot-title {
+      font-family: 'Space Mono', monospace;
+      font-size: .62rem; font-weight: 700;
+      color: rgba(255,180,180,.5); letter-spacing: 3px;
+      text-transform: uppercase; margin-bottom: 10px;
+    }
+    .slot-window {
+      display: flex; gap: 6px;
+      background: rgba(0,0,0,.7);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 10px; padding: 8px 10px;
+      margin-bottom: 12px;
+      position: relative; overflow: hidden;
+    }
+    /* scanline effect */
+    .slot-window::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,.08) 3px, rgba(0,0,0,.08) 4px);
+      pointer-events: none;
+    }
+    .reel {
+      width: 62px; height: 62px;
+      overflow: hidden; position: relative;
+      border-radius: 6px;
+      background: rgba(0,0,0,.4);
+    }
+    .reel-strip {
+      display: flex; flex-direction: column;
+      transition: none;
+    }
+    .reel-strip.spinning {
+      animation: reelSpin var(--dur, .12s) linear infinite;
+    }
+    .reel-cell {
+      width: 62px; height: 62px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem; flex-shrink: 0;
+      line-height: 1;
+    }
+    @keyframes reelSpin {
+      from { transform: translateY(0); }
+      to   { transform: translateY(-62px); }
+    }
+    .slot-result {
+      font-family: 'Space Mono', monospace;
+      font-size: .75rem; font-weight: 700;
+      letter-spacing: 1px; min-height: 20px;
+      transition: color .3s;
+    }
+    .result-bad  { color: #ff4444; animation: flashRed 1s ease-in-out 3; }
+    .result-warn { color: #ffd600; }
+    .result-ok   { color: #00e676; }
+    @keyframes flashRed {
+      0%,100% { opacity: 1; } 50% { opacity: .3; }
+    }
+    .slot-lever-btn {
+      margin-top: 10px;
+      padding: 7px 22px; border-radius: 20px;
+      border: 1px solid rgba(255,68,68,.5);
+      background: rgba(255,23,68,.12);
+      color: #ff6666; font-family: 'Space Mono', monospace;
+      font-size: .72rem; font-weight: 700; cursor: pointer;
+      transition: all .2s; letter-spacing: 1px;
+      pointer-events: all;
+    }
+    .slot-lever-btn:hover {
+      background: rgba(255,23,68,.25);
+      box-shadow: 0 0 14px rgba(255,23,68,.4);
+      color: #ff9999;
+    }
+    .slot-lever-btn:active { transform: scale(.96); }
+
+    .ic-sub {
+      font-size: .85rem; line-height: 1.72;
+      color: rgba(224,240,255,.65); margin-bottom: 24px;
+    }
+    .ic-sub strong { color: var(--accent); }
     .ic-hint {
       font-family: 'Space Mono', monospace;
       font-size: .68rem; color: rgba(224,240,255,.35);
@@ -498,11 +586,24 @@
 <div id="introOverlay">
   <div id="introCard">
     <div class="ic-logo">Rx<span>CLASH</span></div>
-    <div class="ic-tagline">Know before you combine</div>
-    <div class="ic-body">
-      <strong>1.5 million</strong> emergency visits per year involve adverse drug events in the US.<br><br>
-      Enter up to <strong>5 medications</strong> — RxClash cross-references the FDA's public drug label database, maps interactions as a live network graph, and scores your overall polypharmacy risk.<br><br>
-      Powered by <strong>OpenFDA</strong> + <strong>RxNorm</strong>. No account required.
+    <div class="ic-tagline">Don't gamble with your meds</div>
+
+    <div id="slotMachine">
+      <div class="slot-cabinet">
+        <div class="slot-title">⚠ WHAT HAPPENS WHEN YOU GUESS ⚠</div>
+        <div class="slot-window">
+          <div class="reel" id="reel0"><div class="reel-strip" id="strip0"></div></div>
+          <div class="reel" id="reel1"><div class="reel-strip" id="strip1"></div></div>
+          <div class="reel" id="reel2"><div class="reel-strip" id="strip2"></div></div>
+        </div>
+        <div class="slot-result" id="slotResult">PULL TO SEE YOUR FATE</div>
+      </div>
+      <button class="slot-lever-btn" id="slotBtn">🎰 PULL LEVER</button>
+    </div>
+
+    <div class="ic-sub">
+      <strong>1.5 million</strong> ER visits per year are caused by adverse drug combinations.
+      Enter up to <strong>5 drugs</strong> — RxClash checks the FDA database and maps every interaction in real time.
     </div>
     <div class="ic-hint">CLICK ANYWHERE TO BEGIN</div>
   </div>
@@ -1098,6 +1199,94 @@ function loadFromHash() {
     .map(n => ({ name: n }));
   if (drugs.length) { renderChips(); if (drugs.length >= 2) checkInteractions(); }
 }
+
+// ── SLOT MACHINE ─────────────────────────────────────────────────────────────
+const SLOT_ITEMS = ['💊','🧪','💉','🫀','🧠','⚗️','🩺','🔬'];
+
+// Bad outcome combos: [emoji, emoji, emoji] → { label, cls }
+const BAD_SPINS = [
+  { reels: ['💊','💊','💊'], label: '⚠ OVERDOSE — triple dose danger',        cls: 'result-bad'  },
+  { reels: ['💉','💊','💉'], label: '☠ HEMORRHAGE — blood thinner clash',      cls: 'result-bad'  },
+  { reels: ['🧠','💊','🧠'], label: '⚠ SEROTONIN SYNDROME — CNS overload',    cls: 'result-bad'  },
+  { reels: ['🫀','💊','🫀'], label: '⚠ CARDIAC ARRHYTHMIA — QT prolongation', cls: 'result-bad'  },
+  { reels: ['⚗️','💊','⚗️'], label: '⚠ LIVER FAILURE — metabolism overload',  cls: 'result-bad'  },
+];
+const WARN_SPINS = [
+  { reels: ['💊','🧪','💉'], label: '⚡ REDUCED EFFICACY — absorption blocked', cls: 'result-warn' },
+  { reels: ['🩺','💊','🧪'], label: '⚡ MONITOR CLOSELY — interaction possible', cls: 'result-warn' },
+];
+const SAFE_SPIN = { reels: ['✅','✅','✅'], label: '✓ NO INTERACTION DETECTED',  cls: 'result-ok'  };
+
+let slotSpinning = false;
+
+function buildReels() {
+  for (let r = 0; r < 3; r++) {
+    const strip = document.getElementById(`strip${r}`);
+    strip.innerHTML = '';
+    // 12 cells for infinite feel
+    for (let i = 0; i < 12; i++) {
+      const cell = document.createElement('div');
+      cell.className = 'reel-cell';
+      cell.textContent = SLOT_ITEMS[Math.floor(Math.random() * SLOT_ITEMS.length)];
+      strip.appendChild(cell);
+    }
+  }
+}
+buildReels();
+
+function spinSlot() {
+  if (slotSpinning) return;
+  slotSpinning = true;
+
+  const resultEl = document.getElementById('slotResult');
+  const btn      = document.getElementById('slotBtn');
+  resultEl.textContent = '';
+  resultEl.className   = 'slot-result';
+  btn.disabled = true;
+  btn.textContent = '⏳ SPINNING…';
+
+  // Pick outcome: 60% bad, 25% warn, 15% safe
+  const roll = Math.random();
+  const outcome = roll < 0.60
+    ? BAD_SPINS [Math.floor(Math.random() * BAD_SPINS.length)]
+    : roll < 0.85
+    ? WARN_SPINS[Math.floor(Math.random() * WARN_SPINS.length)]
+    : SAFE_SPIN;
+
+  // Speed sequence: fast → slow → stop per reel
+  const speeds    = [80, 120, 160]; // ms per frame
+  const stopDelays= [900, 1350, 1800]; // when each reel stops (ms)
+
+  for (let r = 0; r < 3; r++) {
+    const strip = document.getElementById(`strip${r}`);
+    strip.style.setProperty('--dur', speeds[r] + 'ms');
+    strip.classList.add('spinning');
+
+    // Fill final cell with outcome emoji before stopping
+    setTimeout(() => {
+      strip.classList.remove('spinning');
+      strip.style.transform = 'translateY(0)';
+      // Set all cells to the outcome emoji so the visible one is correct
+      strip.querySelectorAll('.reel-cell').forEach((c, i) => {
+        c.textContent = i === 0 ? outcome.reels[r] : SLOT_ITEMS[Math.floor(Math.random() * SLOT_ITEMS.length)];
+      });
+    }, stopDelays[r]);
+  }
+
+  // Show result after all reels stop
+  setTimeout(() => {
+    resultEl.textContent = outcome.label;
+    resultEl.className   = 'slot-result ' + outcome.cls;
+    btn.disabled = false;
+    btn.textContent = '🎰 PULL AGAIN';
+    slotSpinning = false;
+  }, stopDelays[2] + 200);
+}
+
+document.getElementById('slotBtn').addEventListener('click', e => {
+  e.stopPropagation(); // don't dismiss overlay
+  spinSlot();
+});
 
 // ── INTRO ───────────────────────────────────────────────────────────────────
 const introOverlay = document.getElementById('introOverlay');
