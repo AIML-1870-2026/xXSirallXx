@@ -1,0 +1,1635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NeoWatch 3D</title>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #000;
+      overflow: hidden;
+      font-family: 'Space Grotesk', sans-serif;
+      color: #e0f0ff;
+      user-select: none;
+    }
+
+    canvas { display: block; position: fixed; inset: 0; }
+
+    /* ── HEADER ── */
+    #header {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 24px;
+      background: linear-gradient(to bottom, rgba(0,0,0,.7) 0%, transparent 100%);
+      pointer-events: none;
+    }
+    .logo {
+      font-family: 'Space Mono', monospace;
+      font-size: 1.4rem; font-weight: 700;
+      color: #00e5ff;
+      text-shadow: 0 0 24px rgba(0,229,255,.5);
+      pointer-events: all;
+    }
+    .logo span { color: #e0f0ff; }
+
+    /* ── SF TOGGLE ── */
+    #sfWrap {
+      pointer-events: all;
+      display: flex; align-items: center; gap: 10px;
+      cursor: pointer;
+    }
+    #sfLabel {
+      font-family: 'Space Mono', monospace;
+      font-size: .68rem; font-weight: 700;
+      color: rgba(224,240,255,.5);
+      transition: color .4s;
+    }
+    body.sf #sfLabel { color: #ff4d6d; }
+    .track {
+      width: 42px; height: 22px; border-radius: 11px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.12);
+      position: relative; transition: background .4s, border-color .4s;
+    }
+    body.sf .track { background: rgba(255,77,109,.25); border-color: #ff4d6d; }
+    .knob {
+      position: absolute; top: 2px; left: 2px;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: rgba(224,240,255,.4);
+      transition: transform .3s, background .4s;
+    }
+    body.sf .knob { transform: translateX(20px); background: #ff4d6d; }
+
+    /* ── CONTROLS PANEL ── */
+    #controls {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+      z-index: 10;
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center;
+      background: rgba(0,0,0,.55);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 20px;
+      padding: 12px 20px;
+      backdrop-filter: blur(20px);
+    }
+    #controls label {
+      font-family: 'Space Mono', monospace;
+      font-size: .68rem; color: rgba(224,240,255,.5);
+    }
+    #controls input[type="date"] {
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 10px;
+      color: #e0f0ff; font-family: 'Space Mono', monospace;
+      font-size: .78rem; padding: 7px 11px; outline: none;
+      color-scheme: dark;
+      transition: border-color .2s;
+    }
+    #controls input[type="date"]:focus { border-color: #00e5ff; }
+    #scanBtn {
+      padding: 8px 20px; border-radius: 12px;
+      border: 1px solid #00e5ff;
+      background: rgba(0,229,255,.1);
+      color: #00e5ff; font-family: 'Space Grotesk', sans-serif;
+      font-size: .85rem; font-weight: 700; cursor: pointer;
+      transition: background .2s, box-shadow .2s;
+    }
+    #scanBtn:hover { background: rgba(0,229,255,.2); box-shadow: 0 0 16px rgba(0,229,255,.3); }
+    #scanBtn:active { transform: scale(.97); }
+    body.sf #scanBtn { border-color: #ff4d6d; color: #ff4d6d; background: rgba(255,77,109,.1); }
+    body.sf #scanBtn:hover { background: rgba(255,77,109,.2); }
+
+    /* ── STATS ── */
+    #stats {
+      position: fixed; top: 72px; left: 20px; z-index: 10;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .stat {
+      background: rgba(0,0,0,.5);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 12px; padding: 10px 14px;
+      backdrop-filter: blur(12px);
+      min-width: 140px;
+    }
+    .stat .s-label { font-family: 'Space Mono', monospace; font-size: .62rem; color: rgba(224,240,255,.45); margin-bottom: 2px; }
+    .stat .s-val { font-size: 1.25rem; font-weight: 700; color: #00e5ff; transition: color .5s; }
+    .stat .s-sub { font-size: .68rem; color: rgba(224,240,255,.4); margin-top: 1px; }
+    body.sf .stat .s-val { color: #ff4d6d; }
+
+    /* ── LEGEND ── */
+    #legend {
+      position: fixed; top: 72px; right: 20px; z-index: 10;
+      background: rgba(0,0,0,.5);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 12px; padding: 12px 16px;
+      backdrop-filter: blur(12px);
+      font-size: .72rem;
+    }
+    #legend .leg-title { font-family: 'Space Mono', monospace; font-size: .62rem; color: rgba(224,240,255,.45); margin-bottom: 8px; }
+    .leg-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .leg-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .leg-row span { color: rgba(224,240,255,.7); }
+    #ringLegend { margin-top: 10px; border-top: 1px solid rgba(255,255,255,.08); padding-top: 10px; }
+    .ring-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+    .ring-line { width: 18px; height: 2px; flex-shrink: 0; border-radius: 1px; }
+
+    /* ── TOOLTIP ── */
+    #tooltip {
+      position: fixed; z-index: 20;
+      background: rgba(0,5,20,.85);
+      border: 1px solid rgba(0,229,255,.3);
+      border-radius: 12px; padding: 10px 14px;
+      backdrop-filter: blur(16px);
+      font-size: .8rem; line-height: 1.7;
+      pointer-events: none;
+      opacity: 0; transition: opacity .15s;
+      max-width: 220px;
+    }
+    #tooltip.show { opacity: 1; }
+    #tooltip .tt-name { font-weight: 700; color: #00e5ff; margin-bottom: 4px; font-size: .85rem; }
+    body.sf #tooltip { border-color: rgba(255,77,109,.4); }
+    body.sf #tooltip .tt-name { color: #ff4d6d; }
+    .tt-row { color: rgba(224,240,255,.6); }
+    .tt-row span { color: #e0f0ff; font-weight: 600; }
+    .tt-hazard-yes { color: #ff4d6d; font-weight: 700; }
+    .tt-hazard-no { color: #00e676; font-weight: 700; }
+
+    /* ── SF BANNER ── */
+    #sfBanner {
+      position: fixed; top: 72px; left: 50%; transform: translateX(-50%);
+      z-index: 10;
+      background: rgba(255,23,68,.1);
+      border: 1px solid rgba(255,77,109,.35);
+      border-radius: 12px; padding: 9px 18px;
+      font-size: .78rem; text-align: center;
+      backdrop-filter: blur(12px);
+      display: none;
+      white-space: nowrap;
+    }
+    body.sf #sfBanner { display: block; }
+    #sfBanner strong { color: #ff4d6d; }
+
+    /* ── LOADING ── */
+    #loadMsg {
+      position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+      z-index: 10; text-align: center;
+      font-family: 'Space Mono', monospace; font-size: .85rem;
+      color: rgba(224,240,255,.5);
+      display: none;
+    }
+    #loadMsg.show { display: block; }
+    .spin {
+      width: 32px; height: 32px; border-radius: 50%;
+      border: 2px solid rgba(0,229,255,.15);
+      border-top-color: #00e5ff;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── HINT ── */
+    #hint {
+      position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
+      z-index: 10;
+      font-family: 'Space Mono', monospace; font-size: .65rem;
+      color: rgba(224,240,255,.3);
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    @media (max-width: 600px) {
+      #stats { display: none; }
+      #legend { display: none; }
+    }
+
+    /* ── INTRO OVERLAY ── */
+    #introOverlay {
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(0,0,0,.75);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      animation: fadeIn .6s ease;
+    }
+    #introOverlay.hide {
+      animation: fadeOut .5s ease forwards;
+      pointer-events: none;
+    }
+    #introCard {
+      background: rgba(6,15,35,.92);
+      border: 1px solid rgba(0,229,255,.25);
+      border-radius: 24px; padding: 40px 44px;
+      max-width: 520px; width: 90%;
+      text-align: center;
+      box-shadow: 0 0 60px rgba(0,229,255,.1);
+      pointer-events: none;
+    }
+    #introCard .ic-logo {
+      font-family: 'Space Mono', monospace;
+      font-size: 2rem; font-weight: 700;
+      color: #00e5ff;
+      text-shadow: 0 0 30px rgba(0,229,255,.5);
+      margin-bottom: 6px;
+    }
+    #introCard .ic-logo span { color: #e0f0ff; }
+    #introCard .ic-tagline {
+      font-family: 'Space Mono', monospace;
+      font-size: .72rem; color: rgba(0,229,255,.5);
+      letter-spacing: 2px; text-transform: uppercase;
+      margin-bottom: 24px;
+    }
+    #introCard .ic-body {
+      font-size: .95rem; line-height: 1.75;
+      color: rgba(224,240,255,.8);
+      margin-bottom: 28px;
+    }
+    #introCard .ic-body strong { color: #00e5ff; }
+    #introCard .ic-hint {
+      font-family: 'Space Mono', monospace;
+      font-size: .68rem; color: rgba(224,240,255,.35);
+      letter-spacing: 1px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity: .35; } 50% { opacity: .7; }
+    }
+
+    /* ── SF NUDGE TOAST ── */
+    #sfNudge {
+      position: fixed; bottom: 110px; left: 50%; transform: translateX(-50%) translateY(20px);
+      z-index: 50;
+      background: rgba(6,0,20,.88);
+      border: 1px solid rgba(255,77,109,.4);
+      border-radius: 16px; padding: 16px 22px;
+      max-width: 400px; width: 90%;
+      text-align: center;
+      font-size: .88rem; line-height: 1.65;
+      color: rgba(224,240,255,.8);
+      box-shadow: 0 0 40px rgba(255,77,109,.15);
+      opacity: 0; pointer-events: none;
+      transition: opacity .5s ease, transform .5s ease;
+    }
+    #sfNudge.show {
+      opacity: 1; transform: translateX(-50%) translateY(0);
+      pointer-events: all;
+    }
+    #sfNudge .sn-text strong { color: #ff4d6d; }
+    #sfNudge .sn-text strong.clickable {
+      cursor: pointer;
+      border-bottom: 2px solid rgba(255,77,109,.6);
+      padding-bottom: 1px;
+      transition: color .2s, border-color .2s, text-shadow .2s;
+    }
+    #sfNudge .sn-text strong.clickable:hover {
+      color: #ff8099;
+      border-bottom-color: #ff4d6d;
+      text-shadow: 0 0 14px rgba(255,77,109,.8);
+    }
+    #sfNudge .sn-close {
+      margin-top: 10px;
+      font-family: 'Space Mono', monospace;
+      font-size: .62rem; color: rgba(224,240,255,.3);
+      cursor: pointer;
+    }
+    #sfNudge .sn-close:hover { color: rgba(224,240,255,.6); }
+
+    /* ── DEATH TOLL OVERLAY ── */
+    #deathTollOverlay {
+      position: fixed; top: 115px; left: 50%; transform: translateX(-50%);
+      z-index: 15;
+      display: none;
+      flex-direction: column; align-items: center; gap: 6px;
+      pointer-events: none;
+    }
+    body.sf #deathTollOverlay { display: flex; }
+    #deathTollLabel {
+      font-family: 'Space Mono', monospace;
+      font-size: .6rem; letter-spacing: 3px; text-transform: uppercase;
+      color: rgba(255,77,109,.7);
+    }
+    #deathTollCount {
+      font-family: 'Space Mono', monospace;
+      font-size: 1.7rem; font-weight: 700;
+      color: #ff1744;
+      text-shadow: 0 0 20px rgba(255,23,68,.6), 0 0 40px rgba(255,23,68,.3);
+      min-width: 220px; text-align: center;
+    }
+
+    /* ── IMPACT FLASH TEXT ── */
+    #impactFlash {
+      position: fixed; top: 50%; right: -400px;
+      transform: translateY(-50%);
+      z-index: 30;
+      background: rgba(0,0,0,.82);
+      border-left: 3px solid #ff1744;
+      border-radius: 0 12px 12px 0;
+      padding: 14px 20px 14px 18px;
+      min-width: 260px;
+      pointer-events: none;
+      transition: right .35s cubic-bezier(.22,1,.36,1), opacity .4s;
+      opacity: 0;
+    }
+    #impactFlash.show {
+      right: 20px;
+      opacity: 1;
+    }
+    #ifName {
+      font-family: 'Space Mono', monospace;
+      font-size: .78rem; color: #e0f0ff; font-weight: 700;
+      margin-bottom: 4px;
+    }
+    #ifCategory {
+      font-family: 'Space Mono', monospace;
+      font-size: .68rem; font-weight: 700;
+      margin-bottom: 6px;
+    }
+    #ifEnergy {
+      font-size: .72rem; color: rgba(224,240,255,.55);
+    }
+
+    /* ── FINAL STATE OVERLAY ── */
+    #finalOverlay {
+      position: fixed; inset: 0; z-index: 80;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0);
+      pointer-events: none;
+      transition: background 2s ease;
+    }
+    #finalOverlay.show {
+      background: rgba(0,0,0,.65);
+      pointer-events: all;
+    }
+    #finalCard {
+      background: rgba(10,0,0,.92);
+      border: 1px solid rgba(255,23,68,.4);
+      border-radius: 24px; padding: 44px 52px;
+      max-width: 480px; width: 90%;
+      text-align: center;
+      box-shadow: 0 0 80px rgba(255,23,68,.2);
+      opacity: 0;
+      transform: scale(.92);
+      transition: opacity 1.5s ease 0.5s, transform 1.5s ease 0.5s;
+    }
+    #finalOverlay.show #finalCard {
+      opacity: 1; transform: scale(1);
+    }
+    #finalCard .fc-title {
+      font-family: 'Space Mono', monospace;
+      font-size: 1.3rem; font-weight: 700;
+      color: #ff1744;
+      text-shadow: 0 0 30px rgba(255,23,68,.6);
+      letter-spacing: 3px;
+      margin-bottom: 20px;
+    }
+    #finalCard .fc-casualties {
+      font-family: 'Space Mono', monospace;
+      font-size: 2.2rem; font-weight: 700;
+      color: #ff4d6d;
+      text-shadow: 0 0 20px rgba(255,77,109,.5);
+      margin-bottom: 8px;
+    }
+    #finalCard .fc-label {
+      font-family: 'Space Mono', monospace;
+      font-size: .62rem; color: rgba(224,240,255,.4);
+      letter-spacing: 2px; text-transform: uppercase;
+      margin-bottom: 22px;
+    }
+    #finalCard .fc-status {
+      font-family: 'Space Mono', monospace;
+      font-size: .95rem; font-weight: 700;
+      color: #ff6d00;
+      background: rgba(255,109,0,.1);
+      border: 1px solid rgba(255,109,0,.3);
+      border-radius: 10px; padding: 10px 18px;
+      letter-spacing: 1px;
+    }
+
+    @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+  </style>
+</head>
+<body>
+
+<!-- INTRO OVERLAY -->
+<div id="introOverlay">
+  <div id="introCard">
+    <div class="ic-logo">Neo<span>Watch</span></div>
+    <div class="ic-tagline">Real-time Near Earth Object Tracker</div>
+    <div class="ic-body">
+      Welcome to <strong>NeoWatch 3D</strong> — a live visualization of asteroids and comets
+      passing close to Earth, powered by <strong>NASA's NeoWs API</strong>.<br><br>
+      Drag to rotate the globe, scroll to zoom in, and hover any object to see its
+      speed, size, and distance. Switch on <strong>Sci-Fi Mode</strong> to simulate
+      what would happen if they all hit.
+    </div>
+    <div class="ic-hint">— CLICK ANYWHERE TO BEGIN —</div>
+  </div>
+</div>
+
+<!-- SF NUDGE -->
+<div id="sfNudge">
+  <div class="sn-text">
+    That's enough astronomy for now! Do you want to see something really cool?
+    Click the <strong class="clickable" id="sfNudgeActivate">Science Fiction Mode</strong> to see what I am talking about ☄️
+  </div>
+  <div class="sn-close" id="sfNudgeClose">dismiss</div>
+</div>
+
+<!-- HEADER -->
+<div id="header">
+  <div class="logo">Neo<span>Watch</span> <span style="font-size:.7rem;opacity:.5">3D</span></div>
+  <div id="sfWrap">
+    <div id="sfLabel">☢ SCI-FI MODE</div>
+    <div class="track"><div class="knob"></div></div>
+  </div>
+</div>
+
+<!-- SF BANNER -->
+<div id="sfBanner"><strong>SIMULATION:</strong> All objects on collision course with Earth</div>
+
+<!-- DEATH TOLL OVERLAY -->
+<div id="deathTollOverlay">
+  <div id="deathTollLabel">CASUALTIES</div>
+  <div id="deathTollCount">0</div>
+</div>
+
+<!-- IMPACT FLASH -->
+<div id="impactFlash">
+  <div id="ifName"></div>
+  <div id="ifCategory"></div>
+  <div id="ifEnergy"></div>
+</div>
+
+<!-- STATS -->
+<div id="stats">
+  <div class="stat">
+    <div class="s-label">TOTAL OBJECTS</div>
+    <div class="s-val" id="sTotal">—</div>
+    <div class="s-sub">in range</div>
+  </div>
+  <div class="stat">
+    <div class="s-label">HAZARDOUS</div>
+    <div class="s-val" id="sHazard">—</div>
+    <div class="s-sub">potentially hazardous</div>
+  </div>
+  <div class="stat">
+    <div class="s-label">CLOSEST</div>
+    <div class="s-val" id="sClosest">—</div>
+    <div class="s-sub" id="sClosestName"></div>
+  </div>
+</div>
+
+<!-- LEGEND -->
+<div id="legend">
+  <div class="leg-title">OBJECTS</div>
+  <div class="leg-row"><div class="leg-dot" style="background:#ff2244;box-shadow:0 0 6px #ff2244"></div><span>Potentially hazardous</span></div>
+  <div class="leg-row"><div class="leg-dot" style="background:#ffab40;box-shadow:0 0 6px #ffab40"></div><span>&lt; 1 lunar distance</span></div>
+  <div class="leg-row"><div class="leg-dot" style="background:#00e676;box-shadow:0 0 6px #00e676"></div><span>Safe approach</span></div>
+  <div id="ringLegend">
+    <div class="leg-title">DISTANCE RINGS</div>
+    <div class="ring-row"><div class="ring-line" style="background:#00e5ff"></div><span>1 Lunar Distance</span></div>
+    <div class="ring-row"><div class="ring-line" style="background:#ffab40"></div><span>5 Lunar Distances</span></div>
+    <div class="ring-row"><div class="ring-line" style="background:#ff4d6d"></div><span>10 Lunar Distances</span></div>
+  </div>
+</div>
+
+<!-- TOOLTIP -->
+<div id="tooltip">
+  <div class="tt-name" id="ttName"></div>
+  <div class="tt-row">Date: <span id="ttDate"></span></div>
+  <div class="tt-row">Miss dist: <span id="ttDist"></span></div>
+  <div class="tt-row">Velocity: <span id="ttVel"></span></div>
+  <div class="tt-row">Diameter: <span id="ttDiam"></span></div>
+  <div class="tt-row">Hazardous: <span id="ttHaz"></span></div>
+  <div id="ttImpact" style="display:none;margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,77,109,.2)">
+    <div style="color:#ff4d6d;font-weight:700;font-size:.72rem;margin-bottom:3px" id="ttCat"></div>
+    <div class="tt-row">Energy: <span id="ttEnergy"></span></div>
+    <div class="tt-row">Crater: <span id="ttCrater"></span></div>
+  </div>
+</div>
+
+<!-- FINAL STATE OVERLAY -->
+<div id="finalOverlay">
+  <div id="finalCard">
+    <div class="fc-title">SIMULATION COMPLETE</div>
+    <div class="fc-casualties" id="fcCasualties">0</div>
+    <div class="fc-label">Total Casualties</div>
+    <div class="fc-status">Earth Status: ☠ UNINHABITABLE</div>
+  </div>
+</div>
+
+<!-- CONTROLS -->
+<div id="controls">
+  <label>FROM</label>
+  <input type="date" id="startDate" />
+  <label>TO</label>
+  <input type="date" id="endDate" />
+  <button id="scanBtn">SCAN</button>
+</div>
+
+<!-- HINT -->
+<div id="hint">drag to rotate · scroll to zoom · hover objects for details</div>
+
+<!-- LOADING -->
+<div id="loadMsg"><div class="spin"></div>Scanning near-Earth space…</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ── CONSTANTS ──────────────────────────────────────────────────────────────
+const API_KEY  = 'jEDEdODVWE6KawtyKT39SKmqHtBZglVZmOu42OFZ';
+const BASE_URL = 'https://api.nasa.gov/neo/rest/v1/feed';
+const EARTH_R  = 2.2;
+
+// ── SCENE ─────────────────────────────────────────────────────────────────
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+document.body.prepend(renderer.domElement);
+
+const scene  = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 3000);
+camera.position.set(0, 35, 90);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.07;
+controls.minDistance   = 6;
+controls.maxDistance   = 400;
+controls.autoRotate    = true;
+controls.autoRotateSpeed = 0.4;
+
+window.addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// ── LIGHTS ────────────────────────────────────────────────────────────────
+scene.add(new THREE.AmbientLight(0x334466, 2));
+const sunLight = new THREE.DirectionalLight(0xffffff, 2.5);
+sunLight.position.set(120, 60, 80);
+scene.add(sunLight);
+
+// ── STARS ─────────────────────────────────────────────────────────────────
+(function buildStars() {
+  const verts = [];
+  for (let i = 0; i < 4000; i++) {
+    const theta = Math.random() * Math.PI * 2;
+    const phi   = Math.acos(2 * Math.random() - 1);
+    const r     = 600 + Math.random() * 400;
+    verts.push(r*Math.sin(phi)*Math.cos(theta), r*Math.sin(phi)*Math.sin(theta), r*Math.cos(phi));
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+  const mat = new THREE.PointsMaterial({ color: 0xffffff, size: 1.0, sizeAttenuation: true, transparent: true, opacity: 0.85 });
+  scene.add(new THREE.Points(geo, mat));
+})();
+
+// ── EARTH TEXTURE ─────────────────────────────────────────────────────────
+let earthCanvas, earthCtx, originalImageData;
+function makeEarthCanvas() {
+  const c = document.createElement('canvas');
+  c.width = 1024; c.height = 512;
+  earthCanvas = c;
+  const ctx = c.getContext('2d');
+  earthCtx = ctx;
+  // Ocean
+  const og = ctx.createLinearGradient(0, 0, 0, 512);
+  og.addColorStop(0,   '#1a3a5c');
+  og.addColorStop(0.5, '#1e4f7a');
+  og.addColorStop(1,   '#1a3a5c');
+  ctx.fillStyle = og; ctx.fillRect(0, 0, 1024, 512);
+  // Ice caps
+  ctx.fillStyle = '#c8dff0';
+  ctx.fillRect(0, 0, 1024, 28);
+  ctx.fillRect(0, 490, 1024, 22);
+  // Continents (simplified blobs)
+  const continents = [
+    { x:160, y:130, rx:55, ry:62, rot:-.2, c:'#2d7a4f' },  // N America
+    { x:185, y:220, rx:32, ry:52, rot: .15, c:'#3a7a50' }, // S America
+    { x:330, y:135, rx:38, ry:44, rot: 0,  c:'#3d6b45' }, // Europe
+    { x:340, y:220, rx:38, ry:58, rot:.08, c:'#4a8060' }, // Africa
+    { x:440, y:105, rx:28, ry:32, rot:-.1, c:'#3d6b45' }, // Middle East
+    { x:530, y:115, rx:72, ry:52, rot:-.15,c:'#2d6a42' }, // Asia
+    { x:490, y:175, rx:38, ry:30, rot:.1, c:'#4a8060' },  // SE Asia
+    { x:680, y:215, rx:38, ry:28, rot:.1, c:'#8b6e45' },  // Australia
+    { x:90,  y:105, rx:10, ry:8,  rot:0,  c:'#3d6b45' },  // Greenland partial
+  ];
+  for (const ct of continents) {
+    ctx.save();
+    ctx.translate(ct.x, ct.y);
+    ctx.rotate(ct.rot);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, ct.rx, ct.ry, 0, 0, Math.PI*2);
+    ctx.fillStyle = ct.c; ctx.fill();
+    ctx.restore();
+  }
+  // Subtle cloud wisps
+  ctx.globalAlpha = 0.12;
+  ctx.fillStyle = '#ffffff';
+  for (let i = 0; i < 18; i++) {
+    ctx.beginPath();
+    ctx.ellipse(Math.random()*1024, Math.random()*512, 60+Math.random()*80, 8+Math.random()*15, Math.random()*Math.PI, 0, Math.PI*2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  originalImageData = ctx.getImageData(0, 0, 1024, 512);
+  return c;
+}
+
+const earthGeo = new THREE.SphereGeometry(EARTH_R, 64, 64);
+const earthMat = new THREE.MeshPhongMaterial({
+  map: new THREE.CanvasTexture(makeEarthCanvas()),
+  specular: new THREE.Color(0x2255aa),
+  shininess: 25,
+});
+const earthMesh = new THREE.Mesh(earthGeo, earthMat);
+scene.add(earthMesh);
+
+// Atmosphere glow
+const atmMat = new THREE.MeshPhongMaterial({
+  color: 0x2266ff, transparent: true, opacity: 0.10, side: THREE.FrontSide,
+});
+scene.add(new THREE.Mesh(new THREE.SphereGeometry(EARTH_R * 1.07, 48, 48), atmMat));
+
+// Outer atmosphere rim
+const rimMat = new THREE.MeshPhongMaterial({
+  color: 0x44aaff, transparent: true, opacity: 0.05, side: THREE.BackSide,
+});
+scene.add(new THREE.Mesh(new THREE.SphereGeometry(EARTH_R * 1.18, 48, 48), rimMat));
+
+// ── DISTANCE RINGS ────────────────────────────────────────────────────────
+function makeRing(r, hexColor, opacity) {
+  const geo = new THREE.RingGeometry(r - 0.06, r + 0.06, 128);
+  const mat = new THREE.MeshBasicMaterial({ color: hexColor, transparent: true, opacity, side: THREE.DoubleSide });
+  const m = new THREE.Mesh(geo, mat);
+  m.rotation.x = -Math.PI / 2;
+  scene.add(m);
+}
+const R1 = distToRadius(1);
+const R5 = distToRadius(5);
+const R10 = distToRadius(10);
+makeRing(R1,  0x00e5ff, 0.35);
+makeRing(R5,  0xffab40, 0.28);
+makeRing(R10, 0xff4d6d, 0.22);
+
+function distToRadius(lu) {
+  // logarithmic: 1 LD → ~14 units, 5 → ~28, 10 → ~34
+  return EARTH_R + 12 * Math.log2(1 + lu);
+}
+
+// ── NEO MANAGEMENT ────────────────────────────────────────────────────────
+const neoGroup = new THREE.Group();
+scene.add(neoGroup);
+let neoMeshes   = [];
+let allNeos     = [];
+let sfMode      = false;
+
+// Seeded pseudo-random for stable NEO positions
+function seededRand(seed) {
+  const x = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+function placeNeos(neos) {
+  // Clear old
+  while (neoGroup.children.length) neoGroup.remove(neoGroup.children[0]);
+  neoMeshes = [];
+
+  const maxDiam = Math.max(...neos.map(n => n.diamMax), 1);
+
+  neos.forEach((neo, i) => {
+    const r     = distToRadius(neo.distLu);
+    const theta = seededRand(i * 3 + 1) * Math.PI * 2;
+    const phi   = (seededRand(i * 3 + 2) - 0.5) * Math.PI * 0.55;
+
+    const x = r * Math.cos(phi) * Math.cos(theta);
+    const y = r * Math.sin(phi);
+    const z = r * Math.cos(phi) * Math.sin(theta);
+
+    const diamAvg = (neo.diamMin + neo.diamMax) / 2;
+    const size    = 0.12 + (diamAvg / maxDiam) * 0.9;
+
+    const color = neo.hazardous ? 0xff2244 : neo.distLu < 1 ? 0xffab40 : 0x00e676;
+    const emissiveIntensity = neo.hazardous ? 0.7 : 0.45;
+
+    const geo = new THREE.SphereGeometry(size, 10, 10);
+    const mat = new THREE.MeshPhongMaterial({
+      color,
+      emissive: color,
+      emissiveIntensity,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(x, y, z);
+    mesh.userData = {
+      neo,
+      origPos: new THREE.Vector3(x, y, z),
+      sfOffset: seededRand(i * 3 + 3) * 0.3, // stagger arrival in SF
+    };
+    neoGroup.add(mesh);
+    neoMeshes.push(mesh);
+  });
+}
+
+// ── WEB AUDIO ─────────────────────────────────────────────────────────────
+let audioCtx = null;
+
+function initAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+document.addEventListener('click', () => initAudio(), { once: true });
+
+function playImpactSound(impactMT) {
+  if (!audioCtx) return;
+  const gain = Math.min(0.25, 0.04 + Math.log10(impactMT + 1) * 0.06);
+  const now  = audioCtx.currentTime;
+
+  // Low rumble — sawtooth ~40Hz
+  const rumbleOsc  = audioCtx.createOscillator();
+  const rumbleGain = audioCtx.createGain();
+  rumbleOsc.type = 'sawtooth';
+  rumbleOsc.frequency.setValueAtTime(35 + Math.random()*25, now);
+  rumbleOsc.frequency.exponentialRampToValueAtTime(18, now + 1.5);
+  rumbleGain.gain.setValueAtTime(gain, now);
+  rumbleGain.gain.exponentialRampToValueAtTime(0.0001, now + 1.5);
+  rumbleOsc.connect(rumbleGain);
+  rumbleGain.connect(audioCtx.destination);
+  rumbleOsc.start(now);
+  rumbleOsc.stop(now + 1.5);
+
+  // Mid crack — sine ~300Hz
+  const crackOsc  = audioCtx.createOscillator();
+  const crackGain = audioCtx.createGain();
+  crackOsc.type = 'sine';
+  crackOsc.frequency.setValueAtTime(200 + Math.random()*200, now);
+  crackOsc.frequency.exponentialRampToValueAtTime(80, now + 0.3);
+  crackGain.gain.setValueAtTime(gain * 0.7, now);
+  crackGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
+  crackOsc.connect(crackGain);
+  crackGain.connect(audioCtx.destination);
+  crackOsc.start(now);
+  crackOsc.stop(now + 0.3);
+
+  // White noise burst
+  const bufLen = audioCtx.sampleRate * 0.2;
+  const noiseBuffer = audioCtx.createBuffer(1, bufLen, audioCtx.sampleRate);
+  const data = noiseBuffer.getChannelData(0);
+  for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
+  const noiseSource = audioCtx.createBufferSource();
+  noiseSource.buffer = noiseBuffer;
+  const noiseGain = audioCtx.createGain();
+  noiseGain.gain.setValueAtTime(gain * 0.5, now);
+  noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
+  noiseSource.connect(noiseGain);
+  noiseGain.connect(audioCtx.destination);
+  noiseSource.start(now);
+}
+
+// ── CAMERA ZOOM QUEUE ─────────────────────────────────────────────────────
+const zoomQueue   = [];
+let   zoomActive  = false;
+
+// saved camera position before any zoom-in so we can restore
+let priorCamPos    = null;
+let priorCamTarget = null;
+
+function enqueueZoom(impactPoint) {
+  zoomQueue.push(impactPoint.clone());
+  if (!zoomActive) processNextZoom();
+}
+
+function processNextZoom() {
+  if (!zoomQueue.length) { zoomActive = false; return; }
+  zoomActive = true;
+
+  // snapshot current camera pos on first zoom of a sequence
+  if (!priorCamPos) {
+    priorCamPos    = camera.position.clone();
+    priorCamTarget = controls.target.clone();
+  }
+
+  const pt      = zoomQueue.shift();
+  const dir     = pt.clone().normalize();
+  const zoomDst = 2.5 * EARTH_R;
+  const targetCamPos = dir.clone().multiplyScalar(zoomDst + EARTH_R);
+
+  controls.enabled = false;
+
+  let phase    = 'in'; // 'in' → 'hold' → 'out'
+  let progress = 0;
+  const startPos = camera.position.clone();
+  const SPEED_IN  = 2.2;
+  const HOLD_TIME = 0.5;
+  let   holdTimer  = 0;
+
+  function zoomTick(dt) {
+    if (phase === 'in') {
+      progress = Math.min(1, progress + dt * SPEED_IN);
+      const t  = progress < 1 ? progress*progress*(3-2*progress) : 1;
+      camera.position.lerpVectors(startPos, targetCamPos, t);
+      camera.lookAt(pt);
+      if (progress >= 1) { phase = 'hold'; }
+
+    } else if (phase === 'hold') {
+      holdTimer += dt;
+      camera.lookAt(pt);
+      if (holdTimer >= HOLD_TIME) { phase = 'out'; progress = 0; }
+
+    } else if (phase === 'out') {
+      // restore to priorCamPos if queue is empty, else return to prev start
+      const restorePos = zoomQueue.length ? startPos : priorCamPos;
+      progress = Math.min(1, progress + dt * (SPEED_IN * 0.65));
+      const t  = progress < 1 ? progress*progress*(3-2*progress) : 1;
+      camera.position.lerpVectors(targetCamPos, restorePos, t);
+      camera.lookAt(zoomQueue.length ? zoomQueue[0] : controls.target);
+      if (progress >= 1) {
+        if (!zoomQueue.length) {
+          // fully restored
+          camera.position.copy(priorCamPos);
+          controls.target.copy(priorCamTarget);
+          priorCamPos    = null;
+          priorCamTarget = null;
+          controls.enabled = true;
+        }
+        zoomTickFn = null;
+        processNextZoom();
+      }
+    }
+  }
+
+  zoomTickFn = zoomTick;
+}
+
+let zoomTickFn = null;
+
+// ── DEATH TOLL ─────────────────────────────────────────────────────────────
+let totalCasualties   = 0;
+let displayedCasualties = 0;
+let casualtyTarget    = 0;
+
+function addCasualties(impactMT) {
+  let add = 0;
+  if (impactMT < 1)     add = 50_000;
+  else if (impactMT < 100)  add = 5_000_000;
+  else if (impactMT < 1000) add = 500_000_000;
+  else                      add = 3_000_000_000;
+  casualtyTarget += add;
+  totalCasualties += add;
+}
+
+function formatCasualties(n) {
+  if (n >= 1e9) return (n/1e9).toFixed(2) + 'B';
+  if (n >= 1e6) return (n/1e6).toFixed(2) + 'M';
+  if (n >= 1e3) return (n/1e3).toFixed(1) + 'K';
+  return Math.round(n).toString();
+}
+
+function tickDeathToll(dt) {
+  if (displayedCasualties >= casualtyTarget) return;
+  const diff  = casualtyTarget - displayedCasualties;
+  const step  = Math.max(1, diff * dt * 4);
+  displayedCasualties = Math.min(casualtyTarget, displayedCasualties + step);
+  document.getElementById('deathTollCount').textContent = formatCasualties(Math.round(displayedCasualties));
+}
+
+// ── IMPACT FLASH TEXT ─────────────────────────────────────────────────────
+let impactFlashTimer  = 0;
+let impactFlashActive = false;
+const impactFlashQueue = [];
+
+function enqueueImpactFlash(neo, mt) {
+  impactFlashQueue.push({ neo, mt });
+  if (!impactFlashActive) showNextFlash();
+}
+
+function showNextFlash() {
+  if (!impactFlashQueue.length) { impactFlashActive = false; return; }
+  impactFlashActive = true;
+  const { neo, mt } = impactFlashQueue.shift();
+  const cat = impactCategory(neo);
+
+  document.getElementById('ifName').textContent     = neo.name;
+  document.getElementById('ifCategory').textContent = cat.label;
+  document.getElementById('ifCategory').style.color = cat.color;
+  document.getElementById('ifEnergy').textContent   = 'Energy: ' + formatMT(mt);
+
+  const el = document.getElementById('impactFlash');
+  el.style.borderLeftColor = cat.color;
+  el.classList.add('show');
+  impactFlashTimer = 2.0;
+}
+
+function tickImpactFlash(dt) {
+  if (!impactFlashActive) return;
+  impactFlashTimer -= dt;
+  if (impactFlashTimer <= 0.4) {
+    const t = Math.max(0, impactFlashTimer / 0.4);
+    document.getElementById('impactFlash').style.opacity = t.toString();
+  }
+  if (impactFlashTimer <= 0) {
+    const el = document.getElementById('impactFlash');
+    el.classList.remove('show');
+    el.style.opacity = '1';
+    impactFlashActive = false;
+    setTimeout(showNextFlash, 80);
+  }
+}
+
+// ── SF ANIMATION ──────────────────────────────────────────────────────────
+let sfT = 0;
+let impactCount  = 0;
+let cameraShake  = 0;
+const impactedSet = new Set();
+const explosions  = [];
+const surfaceShockwaves = [];
+const fireDots    = [];
+const debrisParticles = [];
+
+// Screen flash div
+const flashDiv = document.createElement('div');
+Object.assign(flashDiv.style, {
+  position:'fixed', inset:'0', zIndex:'50',
+  background:'rgba(255,140,0,0)', pointerEvents:'none', transition:'background .08s',
+});
+document.body.appendChild(flashDiv);
+let flashT = 0;
+
+function triggerImpact(mesh) {
+  impactCount++;
+  impactedSet.add(mesh);
+  const neo  = mesh.userData.neo;
+  const dir  = mesh.userData.origPos.clone().normalize();
+  const pt   = dir.clone().multiplyScalar(EARTH_R);
+  const mt   = impactEnergy(neo);
+
+  addCrater(dir, neo);
+  spawnExplosion(pt, neo);
+  spawnSurfaceShockwaves(pt, dir);
+  spawnFireDot(pt, neo);
+  spawnDebris(pt, neo);
+  addCasualties(mt);
+  enqueueImpactFlash(neo, mt);
+  enqueueZoom(pt);
+  playImpactSound(mt);
+
+  // Camera shake magnitude scales with log(energy+1)
+  const shakeAmount = 0.4 + Math.log(mt + 1) * 0.12;
+  cameraShake = Math.min(2.5, shakeAmount);
+  flashT = 1;
+  updateEarthDamage();
+
+  // Check completion
+  if (impactedSet.size === neoMeshes.length) {
+    setTimeout(showFinalOverlay, 2000);
+  }
+}
+
+function addCrater(dir, neo) {
+  const u = (Math.atan2(dir.z, dir.x) / (Math.PI * 2) + 0.5) * 1024;
+  const v = (0.5 - Math.asin(Math.max(-1, Math.min(1, dir.y))) / Math.PI) * 512;
+  const diamAvg = (neo.diamMin + neo.diamMax) / 2;
+  // Larger craters: max(12, min(120, diamAvg/8))
+  const r = Math.max(12, Math.min(120, diamAvg / 8));
+
+  earthCtx.save();
+  // Ejecta blanket (outer glow)
+  const eg = earthCtx.createRadialGradient(u, v, r*0.8, u, v, r*2.5);
+  eg.addColorStop(0, 'rgba(160,80,10,0.65)');
+  eg.addColorStop(1, 'rgba(100,40,0,0)');
+  earthCtx.beginPath(); earthCtx.arc(u, v, r*2.5, 0, Math.PI*2);
+  earthCtx.fillStyle = eg; earthCtx.fill();
+
+  // Ejecta rays
+  for (let i = 0; i < 12; i++) {
+    const angle = (i / 12) * Math.PI * 2 + Math.random() * 0.3;
+    const len = r * (2.2 + Math.random() * 2.0);
+    earthCtx.beginPath();
+    earthCtx.moveTo(u + Math.cos(angle)*r*0.9, v + Math.sin(angle)*r*0.9);
+    earthCtx.lineTo(u + Math.cos(angle)*len,   v + Math.sin(angle)*len);
+    earthCtx.strokeStyle = `rgba(200,100,10,${0.35 + Math.random()*0.35})`;
+    earthCtx.lineWidth = 1.5 + Math.random() * 3.5;
+    earthCtx.stroke();
+  }
+
+  // Crater rim (bright)
+  earthCtx.beginPath(); earthCtx.arc(u, v, r, 0, Math.PI*2);
+  earthCtx.fillStyle = 'rgba(210,110,20,0.8)'; earthCtx.fill();
+
+  // Crater floor (dark)
+  earthCtx.beginPath(); earthCtx.arc(u, v, r*0.85, 0, Math.PI*2);
+  earthCtx.fillStyle = '#0d0500'; earthCtx.fill();
+
+  // Central lava glow
+  const lg = earthCtx.createRadialGradient(u, v, 0, u, v, r*0.65);
+  lg.addColorStop(0, 'rgba(255,200,0,1.0)');
+  lg.addColorStop(0.4,'rgba(255,100,0,0.85)');
+  lg.addColorStop(1,  'rgba(120,20,0,0)');
+  earthCtx.beginPath(); earthCtx.arc(u, v, r*0.65, 0, Math.PI*2);
+  earthCtx.fillStyle = lg; earthCtx.fill();
+
+  // Lava cracks — 10-14 multi-segment bezier radiating lines
+  const numCracks = 10 + Math.floor(Math.random() * 5);
+  for (let i = 0; i < numCracks; i++) {
+    const baseAngle = (i / numCracks) * Math.PI * 2 + Math.random() * 0.4;
+    const crackLen  = r * (4 + Math.random() * 4); // 4-8x crater radius
+    const segs      = 4 + Math.floor(Math.random() * 3);
+
+    earthCtx.save();
+    earthCtx.strokeStyle = `rgba(${220 + Math.floor(Math.random()*35)},${80 + Math.floor(Math.random()*80)},0,${0.7 + Math.random()*0.3})`;
+    earthCtx.lineWidth   = 1.5 + Math.random() * 2.5;
+    earthCtx.shadowColor = '#ff8800';
+    earthCtx.shadowBlur  = 8;
+    earthCtx.beginPath();
+
+    let cx = u + Math.cos(baseAngle) * r * 1.05;
+    let cy = v + Math.sin(baseAngle) * r * 1.05;
+    earthCtx.moveTo(cx, cy);
+
+    for (let s = 0; s < segs; s++) {
+      const segAngle  = baseAngle + (Math.random() - 0.5) * 0.6;
+      const segLength = (crackLen / segs) * (0.7 + Math.random() * 0.6);
+      const ex = cx + Math.cos(segAngle) * segLength;
+      const ey = cy + Math.sin(segAngle) * segLength;
+      // control point wobble
+      const cpx = (cx + ex) / 2 + (Math.random()-0.5) * segLength * 0.5;
+      const cpy = (cy + ey) / 2 + (Math.random()-0.5) * segLength * 0.5;
+      earthCtx.quadraticCurveTo(cpx, cpy, ex, ey);
+      cx = ex; cy = ey;
+    }
+    earthCtx.stroke();
+    earthCtx.restore();
+  }
+
+  earthCtx.restore();
+
+  // Between craters: lava flow blob at this crater location
+  if (impactCount > 2) {
+    earthCtx.save();
+    earthCtx.globalAlpha = Math.min(0.55, 0.12 + impactCount * 0.03);
+    const flowGrad = earthCtx.createRadialGradient(u, v, r*0.3, u, v, r * (2 + Math.random()*1.5));
+    flowGrad.addColorStop(0, 'rgba(255,80,0,0.8)');
+    flowGrad.addColorStop(0.5,'rgba(200,40,0,0.5)');
+    flowGrad.addColorStop(1, 'rgba(100,10,0,0)');
+    earthCtx.beginPath();
+    earthCtx.ellipse(u + (Math.random()-0.5)*r, v + (Math.random()-0.5)*r,
+                     r*(1.5+Math.random()), r*(1.0+Math.random()),
+                     Math.random()*Math.PI, 0, Math.PI*2);
+    earthCtx.fillStyle = flowGrad;
+    earthCtx.fill();
+    earthCtx.restore();
+  }
+
+  earthMat.map.needsUpdate = true;
+}
+
+function updateEarthDamage() {
+  earthCtx.save();
+
+  // Progressive surface charring
+  const charAlpha = Math.min(0.09, 0.015 * impactCount);
+  earthCtx.globalAlpha = charAlpha;
+  earthCtx.fillStyle = '#050200';
+  earthCtx.fillRect(0, 0, 1024, 512);
+
+  // After 5+ impacts: darken ocean areas (evaporation)
+  if (impactCount >= 5) {
+    const oceanAlpha = Math.min(0.6, (impactCount - 5) * 0.06);
+    earthCtx.globalAlpha = oceanAlpha;
+    earthCtx.fillStyle = '#020100';
+    earthCtx.fillRect(0, 0, 1024, 512);
+  }
+
+  // After 20+ impacts: draw orange/red lava vein network across surface
+  if (impactCount >= 20) {
+    earthCtx.globalAlpha = Math.min(0.35, (impactCount - 20) * 0.04);
+    const lavaNetColors = ['rgba(255,100,0,0.6)', 'rgba(255,60,0,0.5)', 'rgba(200,40,0,0.4)'];
+    for (let i = 0; i < 30; i++) {
+      earthCtx.strokeStyle = lavaNetColors[i % lavaNetColors.length];
+      earthCtx.lineWidth   = 0.5 + Math.random() * 2;
+      earthCtx.shadowColor = '#ff5500';
+      earthCtx.shadowBlur  = 6;
+      earthCtx.beginPath();
+      const sx = Math.random() * 1024;
+      const sy = Math.random() * 512;
+      earthCtx.moveTo(sx, sy);
+      for (let j = 0; j < 5; j++) {
+        earthCtx.lineTo(sx + (Math.random()-0.5)*180, sy + (Math.random()-0.5)*120);
+      }
+      earthCtx.stroke();
+    }
+  }
+
+  earthCtx.restore();
+  earthMat.map.needsUpdate = true;
+
+  // Atmosphere: blue → thick dark orange-brown at high impact count
+  const d = Math.min(1, impactCount / 20);
+  atmMat.color.setRGB(0.13 + d*0.87, 0.4 - d*0.38, 1.0 - d*0.98);
+  // At 15+ impacts: very thick dark orange-brown, nearly opaque
+  atmMat.opacity = 0.10 + d * (impactCount >= 15 ? 0.75 : 0.45);
+  rimMat.color.setRGB(0.27 + d*0.73, 0.07, 0.07);
+  rimMat.opacity = 0.05 + d * 0.25;
+
+  // Earth self-glow (lava) — ramp aggressively, ~0.6 at 20 impacts
+  const gIntensity = Math.min(0.6, impactCount * 0.022);
+  earthMat.emissive.setRGB(gIntensity, gIntensity * 0.18, 0);
+  earthMat.emissiveIntensity = 1;
+}
+
+function spawnExplosion(pos, neo) {
+  const diamAvg = (neo.diamMin + neo.diamMax) / 2;
+  const scale = Math.max(0.4, Math.min(5, diamAvg / 150));
+  const count = 90;
+  const posArr = new Float32Array(count * 3);
+  const colArr = new Float32Array(count * 3);
+  const vels = [];
+  for (let i = 0; i < count; i++) {
+    posArr[i*3] = pos.x; posArr[i*3+1] = pos.y; posArr[i*3+2] = pos.z;
+    const spd = (0.4 + Math.random() * 1.5) * scale;
+    const th = Math.random() * Math.PI * 2;
+    const ph = Math.random() * Math.PI;
+    vels.push(new THREE.Vector3(Math.sin(ph)*Math.cos(th)*spd, Math.sin(ph)*Math.sin(th)*spd, Math.cos(ph)*spd));
+    const t = Math.random();
+    colArr[i*3]   = 1;
+    colArr[i*3+1] = t > 0.6 ? Math.max(0, 1-(t-0.6)*2.5) : 1;
+    colArr[i*3+2] = t > 0.75 ? 0 : Math.max(0, 1-t/0.75);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(posArr, 3));
+  geo.setAttribute('color',    new THREE.Float32BufferAttribute(colArr, 3));
+  const mat = new THREE.PointsMaterial({ size: 0.18*scale, vertexColors: true, transparent: true, opacity: 1, sizeAttenuation: true });
+  const pts = new THREE.Points(geo, mat);
+  scene.add(pts);
+  explosions.push({ pts, geo, mat, vels, life: 1 });
+}
+
+// ── SURFACE SHOCKWAVES (atmospheric pressure rings tangent to sphere) ──────
+function spawnSurfaceShockwaves(pos, dir) {
+  const numRings = 2 + Math.floor(Math.random() * 2); // 2-3 rings
+  for (let k = 0; k < numRings; k++) {
+    const delay = k * 0.08;
+    // We use a torus-like ring oriented perpendicular to the radius (tangent to sphere surface)
+    const geo = new THREE.RingGeometry(0.01, 0.04, 80);
+    const mat = new THREE.MeshBasicMaterial({
+      color: 0xffffff, transparent: true, opacity: 0.0, side: THREE.DoubleSide,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    // Place at the impact point on the surface
+    mesh.position.copy(pos);
+    // Orient so the ring is tangent to the sphere at this point (perpendicular to the radius)
+    const up = new THREE.Vector3(0, 1, 0);
+    const axis = new THREE.Vector3().crossVectors(up, dir).normalize();
+    const angle = Math.acos(Math.max(-1, Math.min(1, up.dot(dir))));
+    if (axis.lengthSq() > 0.001) {
+      mesh.setRotationFromAxisAngle(axis, angle);
+    }
+    scene.add(mesh);
+    surfaceShockwaves.push({ mesh, mat, age: -delay, maxAge: 2.2, maxR: 3 + Math.random() * 1.5, dir: dir.clone() });
+  }
+}
+
+function tickSurfaceShockwaves(dt) {
+  for (let i = surfaceShockwaves.length - 1; i >= 0; i--) {
+    const s = surfaceShockwaves[i];
+    s.age += dt;
+    if (s.age < 0) continue; // still delayed
+    const t = s.age / s.maxAge;
+    if (t >= 1) {
+      scene.remove(s.mesh);
+      s.mat.dispose();
+      s.mesh.geometry.dispose();
+      surfaceShockwaves.splice(i, 1);
+      continue;
+    }
+    // Decelerate: fast at start, slow at end
+    const easedT = 1 - Math.pow(1 - t, 2.2);
+    const r = easedT * s.maxR;
+    s.mesh.scale.setScalar(r);
+
+    // Color: white → orange → transparent
+    if (t < 0.3) {
+      // white to orange
+      const tPhase = t / 0.3;
+      s.mat.color.setRGB(1, 1 - tPhase * 0.6, 1 - tPhase);
+      s.mat.opacity = 0.82 * (1 - t * 0.2);
+    } else {
+      // orange fading to transparent
+      const tPhase = (t - 0.3) / 0.7;
+      s.mat.color.setRGB(1, 0.4 * (1 - tPhase), 0);
+      s.mat.opacity = 0.65 * (1 - tPhase);
+    }
+    // Move the ring along the surface (it expands outward from impact point)
+    // Keep position at impact surface point — scale handles expansion
+  }
+}
+
+// ── DEBRIS PARTICLES ──────────────────────────────────────────────────────
+function spawnDebris(pos, neo) {
+  const count = 15 + Math.floor(Math.random() * 11); // 15-25
+  const posArr = new Float32Array(count * 3);
+  const vels   = [];
+  for (let i = 0; i < count; i++) {
+    posArr[i*3]   = pos.x + (Math.random()-0.5)*0.2;
+    posArr[i*3+1] = pos.y + (Math.random()-0.5)*0.2;
+    posArr[i*3+2] = pos.z + (Math.random()-0.5)*0.2;
+    // scatter outward from Earth in all directions (slight bias away from center)
+    const outDir = pos.clone().normalize().multiplyScalar(0.3 + Math.random() * 0.5);
+    const rand   = new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).multiplyScalar(0.4);
+    vels.push(outDir.add(rand));
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(posArr, 3));
+  // dark gray/brown rocky fragments
+  const mat = new THREE.PointsMaterial({
+    color: 0x6b5a42, size: 0.14, transparent: true, opacity: 0.85, sizeAttenuation: true,
+  });
+  const pts = new THREE.Points(geo, mat);
+  scene.add(pts);
+  debrisParticles.push({ pts, geo, mat, vels, life: 1, maxLife: 3 + Math.random() });
+}
+
+function tickDebris(dt) {
+  for (let i = debrisParticles.length - 1; i >= 0; i--) {
+    const d = debrisParticles[i];
+    d.life -= dt / d.maxLife;
+    if (d.life <= 0) {
+      scene.remove(d.pts); d.geo.dispose(); d.mat.dispose();
+      debrisParticles.splice(i, 1);
+      continue;
+    }
+    d.mat.opacity = Math.max(0, d.life * 0.85);
+    const pa = d.geo.attributes.position.array;
+    for (let j = 0; j < d.vels.length; j++) {
+      pa[j*3]   += d.vels[j].x * dt * 1.2;
+      pa[j*3+1] += d.vels[j].y * dt * 1.2;
+      pa[j*3+2] += d.vels[j].z * dt * 1.2;
+      // no drag — they just drift away
+    }
+    d.geo.attributes.position.needsUpdate = true;
+  }
+}
+
+function spawnFireDot(pos, neo) {
+  const diamAvg = (neo.diamMin + neo.diamMax) / 2;
+  const size = Math.max(0.04, Math.min(0.35, diamAvg / 1000));
+  const geo = new THREE.SphereGeometry(size, 8, 8);
+  const mat = new THREE.MeshBasicMaterial({ color: 0xff5500, transparent: true, opacity: 0.9 });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.copy(pos);
+  scene.add(mesh);
+  fireDots.push({ mesh, mat, age: 0 });
+}
+
+function tickExplosions(dt) {
+  for (let i = explosions.length - 1; i >= 0; i--) {
+    const e = explosions[i];
+    e.life -= dt * 0.55;
+    if (e.life <= 0) { scene.remove(e.pts); e.geo.dispose(); e.mat.dispose(); explosions.splice(i,1); continue; }
+    e.mat.opacity = e.life * e.life;
+    const pa = e.geo.attributes.position.array;
+    for (let j = 0; j < e.vels.length; j++) {
+      pa[j*3]   += e.vels[j].x * dt * 5;
+      pa[j*3+1] += e.vels[j].y * dt * 5;
+      pa[j*3+2] += e.vels[j].z * dt * 5;
+      e.vels[j].multiplyScalar(0.97);
+    }
+    e.geo.attributes.position.needsUpdate = true;
+  }
+}
+
+function tickFireDots(dt) {
+  for (const fd of fireDots) {
+    fd.age += dt;
+    fd.mat.opacity = 0.55 + Math.sin(fd.age * 5) * 0.35;
+    const pulse = 1 + Math.sin(fd.age * 3) * 0.15;
+    fd.mesh.scale.setScalar(pulse);
+  }
+}
+
+function tickSF(dt) {
+  if (!sfMode || !neoMeshes.length) return;
+  sfT = Math.min(sfT + dt * 0.3, 1);
+
+  for (const mesh of neoMeshes) {
+    const raw   = Math.max(0, (sfT - mesh.userData.sfOffset) / (1 - mesh.userData.sfOffset + 0.001));
+    const tEase = Math.min(1, raw < 1 ? raw*raw*(3-2*raw) : 1);
+    mesh.position.lerpVectors(mesh.userData.origPos, new THREE.Vector3(0,0,0), tEase);
+    if (tEase >= 0.97 && !impactedSet.has(mesh)) triggerImpact(mesh);
+  }
+
+  // Camera zoom tick (overrides orbit controls during zoom)
+  if (zoomTickFn) {
+    zoomTickFn(dt);
+  } else {
+    // Camera shake — only when not zooming
+    if (cameraShake > 0) {
+      cameraShake -= dt * 4;
+      const s = Math.max(0, cameraShake) * 0.4;
+      camera.position.x += (Math.random()-0.5)*s;
+      camera.position.y += (Math.random()-0.5)*s;
+    }
+  }
+
+  // Screen flash decay
+  if (flashT > 0) {
+    flashT = Math.max(0, flashT - dt * 4);
+    flashDiv.style.background = `rgba(255,140,0,${flashT * 0.45})`;
+  }
+
+  tickExplosions(dt);
+  tickSurfaceShockwaves(dt);
+  tickFireDots(dt);
+  tickDebris(dt);
+  tickDeathToll(dt);
+  tickImpactFlash(dt);
+}
+
+// ── FINAL STATE OVERLAY ────────────────────────────────────────────────────
+function showFinalOverlay() {
+  document.getElementById('fcCasualties').textContent = formatCasualties(totalCasualties);
+  const overlay = document.getElementById('finalOverlay');
+  overlay.classList.add('show');
+}
+
+function hideFinalOverlay() {
+  const overlay = document.getElementById('finalOverlay');
+  overlay.classList.remove('show');
+}
+
+function resetSF() {
+  sfT = 0; impactCount = 0; cameraShake = 0; flashT = 0;
+  flashDiv.style.background = 'transparent';
+  impactedSet.clear();
+
+  // Reset death toll
+  totalCasualties     = 0;
+  displayedCasualties = 0;
+  casualtyTarget      = 0;
+  document.getElementById('deathTollCount').textContent = '0';
+
+  // Reset impact flash
+  impactFlashActive = false;
+  impactFlashTimer  = 0;
+  impactFlashQueue.length = 0;
+  const flashEl = document.getElementById('impactFlash');
+  flashEl.classList.remove('show');
+  flashEl.style.opacity = '1';
+
+  // Reset zoom queue
+  zoomQueue.length = 0;
+  zoomTickFn       = null;
+  zoomActive       = false;
+  priorCamPos      = null;
+  priorCamTarget   = null;
+  controls.enabled = true;
+
+  for (const e of explosions) { scene.remove(e.pts); e.geo.dispose(); e.mat.dispose(); }
+  explosions.length = 0;
+
+  for (const s of surfaceShockwaves) { scene.remove(s.mesh); s.mat.dispose(); s.mesh.geometry.dispose(); }
+  surfaceShockwaves.length = 0;
+
+  for (const fd of fireDots) { scene.remove(fd.mesh); fd.mat.dispose(); }
+  fireDots.length = 0;
+
+  for (const d of debrisParticles) { scene.remove(d.pts); d.geo.dispose(); d.mat.dispose(); }
+  debrisParticles.length = 0;
+
+  // Restore Earth texture
+  if (earthCtx && originalImageData) {
+    earthCtx.putImageData(originalImageData, 0, 0);
+    earthMat.map.needsUpdate = true;
+  }
+  earthMat.emissive.set(0, 0, 0);
+  earthMat.emissiveIntensity = 1;
+  atmMat.color.set(0x2266ff); atmMat.opacity = 0.10;
+  rimMat.color.set(0x44aaff); rimMat.opacity = 0.05;
+
+  hideFinalOverlay();
+
+  for (const mesh of neoMeshes) mesh.position.copy(mesh.userData.origPos);
+}
+
+// ── RAYCASTER / HOVER ─────────────────────────────────────────────────────
+const raycaster = new THREE.Raycaster();
+raycaster.params.Points = { threshold: 0.5 };
+const mouse   = new THREE.Vector2(-9999, -9999);
+const tooltip = document.getElementById('tooltip');
+let hovered   = null;
+
+window.addEventListener('mousemove', e => {
+  mouse.x =  (e.clientX / innerWidth)  * 2 - 1;
+  mouse.y = -(e.clientY / innerHeight) * 2 + 1;
+
+  // Position tooltip
+  const pad = 14;
+  let tx = e.clientX + pad, ty = e.clientY + pad;
+  if (tx + 230 > innerWidth)  tx = e.clientX - 230 - pad;
+  if (ty + 200 > innerHeight) ty = e.clientY - 200 - pad;
+  tooltip.style.left = tx + 'px';
+  tooltip.style.top  = ty + 'px';
+});
+
+function checkHover() {
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObjects(neoMeshes);
+  if (hits.length) {
+    const mesh = hits[0].object;
+    if (mesh !== hovered) {
+      hovered = mesh;
+      showTooltip(mesh.userData.neo);
+      document.body.style.cursor = 'pointer';
+    }
+  } else {
+    if (hovered) {
+      hovered = null;
+      tooltip.classList.remove('show');
+      document.body.style.cursor = '';
+    }
+  }
+}
+
+function showTooltip(neo) {
+  document.getElementById('ttName').textContent    = neo.name;
+  document.getElementById('ttDate').textContent    = neo.date;
+  document.getElementById('ttDist').textContent    = neo.distLu.toFixed(2) + ' LD  (' + (neo.distKm/1e6).toFixed(2) + 'M km)';
+  document.getElementById('ttVel').textContent     = neo.velKms.toFixed(2) + ' km/s';
+  document.getElementById('ttDiam').textContent    = ((neo.diamMin+neo.diamMax)/2).toFixed(0) + 'm avg';
+  const hazEl = document.getElementById('ttHaz');
+  hazEl.textContent  = neo.hazardous ? '⚠ YES' : '✓ NO';
+  hazEl.className    = neo.hazardous ? 'tt-hazard-yes' : 'tt-hazard-no';
+
+  const impactDiv = document.getElementById('ttImpact');
+  if (sfMode) {
+    impactDiv.style.display = '';
+    const cat = impactCategory(neo);
+    document.getElementById('ttCat').textContent    = cat.label;
+    document.getElementById('ttCat').style.color    = cat.color;
+    document.getElementById('ttEnergy').textContent = formatMT(impactEnergy(neo));
+    document.getElementById('ttCrater').textContent = '~' + craterDiam(neo) + ' km wide';
+  } else {
+    impactDiv.style.display = 'none';
+  }
+
+  tooltip.classList.add('show');
+}
+
+// ── SF PHYSICS ────────────────────────────────────────────────────────────
+function impactEnergy(neo) {
+  const r    = ((neo.diamMin + neo.diamMax) / 2) / 2;
+  // denser rock: 3000 kg/m³
+  const mass = (4/3) * Math.PI * r * r * r * 3000;
+  const v    = neo.velKms * 1000;
+  return (0.5 * mass * v * v) / 4.184e15; // megatons
+}
+function craterDiam(neo) {
+  return ((neo.diamMin + neo.diamMax) / 2 * 20 / 1000).toFixed(1);
+}
+function formatMT(mt) {
+  if (mt >= 1e6) return (mt/1e6).toFixed(1) + 'M MT';
+  if (mt >= 1e3) return (mt/1e3).toFixed(1) + 'K MT';
+  if (mt >= 1)   return mt.toFixed(1) + ' MT';
+  return (mt*1000).toFixed(1) + ' kT';
+}
+function impactCategory(neo) {
+  const mt = impactEnergy(neo);
+  if (mt > 1e6)  return { label:'MASS EXTINCTION EVENT',    color:'#ff1744' };
+  if (mt > 1e4)  return { label:'CIVILIZATION ENDING',      color:'#ff4d6d' };
+  if (mt > 100)  return { label:'REGIONAL DEVASTATION',     color:'#ff6d00' };
+  if (mt > 1)    return { label:'CITY DESTROYER',           color:'#ffab40' };
+  if (mt > .001) return { label:'LOCAL IMPACT',             color:'#ffd740' };
+  return               { label:'MINOR AIRBURST',            color:'#e0f0ff' };
+}
+
+// ── DATA FETCH ────────────────────────────────────────────────────────────
+async function fetchNeos() {
+  const start = document.getElementById('startDate').value;
+  const end   = document.getElementById('endDate').value;
+  if (!start || !end) return;
+
+  document.getElementById('loadMsg').classList.add('show');
+
+  try {
+    const res  = await fetch(`${BASE_URL}?start_date=${start}&end_date=${end}&api_key=${API_KEY}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+
+    allNeos = [];
+    for (const date of Object.keys(data.near_earth_objects || {}).sort()) {
+      for (const neo of data.near_earth_objects[date]) {
+        const ca = neo.close_approach_data[0];
+        allNeos.push({
+          name:      neo.name.replace(/[()]/g, ''),
+          date:      ca.close_approach_date,
+          distLu:    +ca.miss_distance.lunar,
+          distKm:    +ca.miss_distance.kilometers,
+          velKms:    +ca.relative_velocity.kilometers_per_second,
+          diamMin:   neo.estimated_diameter.meters.estimated_diameter_min,
+          diamMax:   neo.estimated_diameter.meters.estimated_diameter_max,
+          hazardous: neo.is_potentially_hazardous_asteroid,
+        });
+      }
+    }
+    allNeos.sort((a, b) => a.distLu - b.distLu);
+
+    // Stats
+    document.getElementById('sTotal').textContent   = allNeos.length;
+    document.getElementById('sHazard').textContent  = allNeos.filter(n=>n.hazardous).length;
+    if (allNeos.length) {
+      document.getElementById('sClosest').textContent    = allNeos[0].distLu.toFixed(2) + ' LD';
+      document.getElementById('sClosestName').textContent = allNeos[0].name;
+    }
+
+    placeNeos(allNeos);
+    if (sfMode) { resetSF(); }
+
+  } catch(e) {
+    alert('Error: ' + e.message);
+  } finally {
+    document.getElementById('loadMsg').classList.remove('show');
+  }
+}
+
+// ── UI EVENTS ─────────────────────────────────────────────────────────────
+document.getElementById('scanBtn').addEventListener('click', fetchNeos);
+
+document.getElementById('sfWrap').addEventListener('click', () => {
+  sfMode = !sfMode;
+  document.body.classList.toggle('sf', sfMode);
+  if (sfMode && allNeos.length) {
+    resetSF();
+  } else if (!sfMode) {
+    resetSF();
+  }
+  // Refresh tooltip if visible
+  if (hovered) showTooltip(hovered.userData.neo);
+});
+
+// Default dates
+(function() {
+  const today = new Date();
+  const plus7 = new Date(); plus7.setDate(today.getDate() + 7);
+  document.getElementById('startDate').value = today.toISOString().slice(0, 10);
+  document.getElementById('endDate').value   = plus7.toISOString().slice(0, 10);
+})();
+
+// Stop auto-rotate on user drag
+renderer.domElement.addEventListener('pointerdown', () => { controls.autoRotate = false; });
+
+// ── RENDER LOOP ───────────────────────────────────────────────────────────
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = clock.getDelta();
+  controls.update();
+  earthMesh.rotation.y += dt * 0.04;
+  checkHover();
+  tickSF(dt);
+  renderer.render(scene, camera);
+}
+animate();
+
+// ── INTRO + NUDGE ─────────────────────────────────────────────────────────
+const introOverlay = document.getElementById('introOverlay');
+const sfNudge      = document.getElementById('sfNudge');
+
+introOverlay.addEventListener('click', () => {
+  introOverlay.classList.add('hide');
+  introOverlay.addEventListener('animationend', () => introOverlay.remove(), { once: true });
+  // Auto-scan on close
+  fetchNeos();
+  // Show SF nudge 5 seconds later
+  setTimeout(() => { sfNudge.classList.add('show'); }, 5000);
+});
+
+document.getElementById('sfNudgeClose').addEventListener('click', e => {
+  e.stopPropagation();
+  sfNudge.classList.remove('show');
+});
+
+document.getElementById('sfNudgeActivate').addEventListener('click', e => {
+  e.stopPropagation();
+  sfNudge.classList.remove('show');
+  // Activate SF mode if not already on
+  if (!sfMode) document.getElementById('sfWrap').click();
+});
+</script>
+</body>
+</html>
