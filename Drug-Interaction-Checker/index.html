@@ -605,7 +605,7 @@
       <strong>1.5 million</strong> ER visits per year are caused by adverse drug combinations.
       Enter up to <strong>5 drugs</strong> — RxClash checks the FDA database and maps every interaction in real time.
     </div>
-    <div class="ic-hint">CLICK ANYWHERE TO BEGIN</div>
+    <div class="ic-hint">PULL THE LEVER — OR CLICK ANYWHERE TO SKIP</div>
   </div>
 </div>
 
@@ -1273,13 +1273,21 @@ function spinSlot() {
     }, stopDelays[r]);
   }
 
-  // Show result after all reels stop
+  // Show result after all reels stop, then dismiss intro
   setTimeout(() => {
     resultEl.textContent = outcome.label;
     resultEl.className   = 'slot-result ' + outcome.cls;
-    btn.disabled = false;
-    btn.textContent = '🎰 PULL AGAIN';
+    btn.disabled = true;
     slotSpinning = false;
+    // Auto-dismiss overlay 2s after result appears
+    setTimeout(() => {
+      const overlay = document.getElementById('introOverlay');
+      if (overlay) {
+        overlay.classList.add('hide');
+        overlay.addEventListener('animationend', () => overlay.remove(), { once: true });
+        loadFromHash();
+      }
+    }, 2000);
   }, stopDelays[2] + 200);
 }
 
