@@ -1279,15 +1279,13 @@ function spinSlot() {
     resultEl.className   = 'slot-result ' + outcome.cls;
     btn.disabled = true;
     slotSpinning = false;
-    // Auto-dismiss overlay 2s after result appears
-    setTimeout(() => {
-      const overlay = document.getElementById('introOverlay');
-      if (overlay) {
-        overlay.classList.add('hide');
-        overlay.addEventListener('animationend', () => overlay.remove(), { once: true });
-        loadFromHash();
-      }
-    }, 2000);
+    // Dismiss overlay immediately after result appears
+    const overlay = document.getElementById('introOverlay');
+    if (overlay) {
+      overlay.classList.add('hide');
+      overlay.addEventListener('animationend', () => overlay.remove(), { once: true });
+      loadFromHash();
+    }
   }, stopDelays[2] + 200);
 }
 
