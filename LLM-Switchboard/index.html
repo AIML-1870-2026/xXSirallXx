@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LLM Switchboard</title>
+<style>
+  :root {
+    --bg:       #0f1117;
+    --surface:  #1a1d27;
+    --border:   #2e3347;
+    --accent:   #7c6af7;
+    --accent2:  #56cfb2;
+    --text:     #e2e4f0;
+    --muted:    #7a7f99;
+    --danger:   #f06a6a;
+    --warning:  #f0a84e;
+    --success:  #56cfb2;
+    --json-key: #7c9ef8;
+    --json-str: #7ede9a;
+    --json-num: #f0a84e;
+    --json-bool:#d97bf5;
+    --json-null:#f06a6a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 15px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 60px;
+  }
+
+  header {
+    width: 100%;
+    max-width: 760px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+  }
+  header h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .badge {
+    font-size: 11px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 3px 9px;
+    border-radius: 20px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px 24px;
+    width: 100%;
+    max-width: 760px;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+
+  /* Provider / Model row */
+  .row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .field { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 140px; }
+  .field label { font-size: 12px; color: var(--muted); font-weight: 500; }
+
+  select, input[type="password"], textarea {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+    padding: 9px 12px;
+    outline: none;
+    transition: border-color .2s;
+    width: 100%;
+  }
+  select:focus, input[type="password"]:focus, textarea:focus {
+    border-color: var(--accent);
+  }
+  select { cursor: pointer; }
+
+  .key-row { display: flex; gap: 10px; align-items: flex-end; }
+  .key-row .field { flex: 1; }
+  .btn-ghost {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 9px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    white-space: nowrap;
+    transition: border-color .2s, color .2s;
+  }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Mode toggle */
+  .toggle-group { display: flex; gap: 8px; }
+  .toggle-btn {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 7px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all .2s;
+  }
+  .toggle-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  /* Chips */
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .chip {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .chip:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  textarea { resize: vertical; min-height: 100px; line-height: 1.55; }
+
+  /* Schema section */
+  #schema-section { display: none; margin-top: 18px; }
+  #schema-section .card-title { margin-bottom: 10px; }
+  #schema-editor { font-family: 'Fira Code', 'Cascadia Code', monospace; font-size: 13px; min-height: 160px; }
+
+  /* Send button */
+  .send-row { display: flex; justify-content: flex-end; }
+  .btn-primary {
+    background: var(--accent);
+    border: none;
+    color: #fff;
+    padding: 11px 32px;
+    border-radius: 9px;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 600;
+    transition: opacity .2s, transform .1s;
+  }
+  .btn-primary:hover { opacity: .88; }
+  .btn-primary:active { transform: scale(.97); }
+  .btn-primary:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+  /* CORS banner */
+  #cors-banner {
+    display: none;
+    background: #1e1530;
+    border: 1px solid #5a3f9a;
+    border-radius: 12px;
+    padding: 18px 22px;
+    max-width: 760px;
+    width: 100%;
+    margin-bottom: 16px;
+  }
+  #cors-banner h3 { color: #b898f5; font-size: 14px; margin-bottom: 8px; }
+  #cors-banner p  { color: #c5b8e0; font-size: 13px; line-height: 1.6; }
+
+  /* Response card */
+  #response-card { display: none; }
+  .response-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .response-header .left { display: flex; align-items: center; gap: 12px; }
+  .response-header .label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  #timer { font-size: 12px; color: var(--accent2); font-family: monospace; }
+  .response-actions { display: flex; gap: 8px; }
+  .btn-icon {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 5px 11px;
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all .2s;
+  }
+  .btn-icon:hover { border-color: var(--accent); color: var(--accent); }
+
+  #response-body {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 16px;
+    font-size: 14px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 520px;
+    overflow-y: auto;
+    font-family: 'Fira Code', 'Cascadia Code', monospace;
+  }
+
+  /* JSON syntax highlight */
+  .jk { color: var(--json-key); }
+  .js { color: var(--json-str); }
+  .jn { color: var(--json-num); }
+  .jb { color: var(--json-bool); }
+  .jnull { color: var(--json-null); }
+
+  /* Error */
+  .error-msg {
+    color: var(--danger);
+    font-size: 13px;
+    margin-top: 10px;
+    display: none;
+  }
+
+  /* Loading spinner */
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>LLM Switchboard</h1>
+  <span class="badge">AIML 1870</span>
+</header>
+
+<!-- Provider / Model / Key -->
+<div class="card">
+  <div class="card-title">Provider &amp; Key</div>
+  <div class="row" style="margin-bottom:14px">
+    <div class="field">
+      <label>Provider</label>
+      <select id="provider-select">
+        <option value="openai">OpenAI</option>
+        <option value="anthropic">Anthropic</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Model</label>
+      <select id="model-select"></select>
+    </div>
+  </div>
+  <div class="key-row">
+    <div class="field">
+      <label>API Key (stays in memory only)</label>
+      <input type="password" id="api-key" placeholder="sk-..." autocomplete="off" />
+    </div>
+    <button class="btn-ghost" onclick="document.getElementById('env-upload').click()">Upload .env</button>
+    <input type="file" id="env-upload" accept=".env,text/plain" style="display:none" />
+  </div>
+  <p id="key-error" class="error-msg">Please enter your API key before sending.</p>
+</div>
+
+<!-- Anthropic CORS banner -->
+<div id="cors-banner">
+  <h3>Why Anthropic doesn't work directly in the browser</h3>
+  <p>
+    Anthropic's API blocks direct browser requests via a CORS policy — this is intentional security design.
+    Your API key would be exposed in client-side code, so they require requests to be made from a backend server.
+    OpenAI allows browser requests, which is why the OpenAI panel works here.
+    To use Claude in a real app, you'd add a small server (Node/Python) that forwards requests on your behalf.
+  </p>
+</div>
+
+<!-- Prompt -->
+<div class="card">
+  <div class="card-title">Prompt</div>
+
+  <!-- Mode toggle -->
+  <div style="margin-bottom:16px">
+    <div class="toggle-group">
+      <button class="toggle-btn active" id="mode-free" onclick="setMode('free')">Free Text</button>
+      <button class="toggle-btn"        id="mode-struct" onclick="setMode('structured')">Structured JSON</button>
+    </div>
+  </div>
+
+  <textarea id="prompt-input" placeholder="Enter your prompt here…"></textarea>
+
+  <div class="chips" id="example-chips"></div>
+
+  <!-- Schema section (structured mode only) -->
+  <div id="schema-section">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <span class="card-title" style="margin:0">JSON Schema</span>
+      <div class="chips" id="schema-chips"></div>
+    </div>
+    <textarea id="schema-editor" placeholder='{ "type": "object", "properties": { … } }'></textarea>
+    <p id="schema-error" class="error-msg">Schema is not valid JSON — please fix it before sending.</p>
+  </div>
+</div>
+
+<!-- Send -->
+<div class="card" style="padding:16px 24px">
+  <div class="send-row">
+    <button class="btn-primary" id="send-btn" onclick="sendRequest()">Send</button>
+  </div>
+  <p id="send-error" class="error-msg"></p>
+</div>
+
+<!-- Response -->
+<div class="card" id="response-card">
+  <div class="response-header">
+    <div class="left">
+      <span class="label">Response</span>
+      <span id="timer"></span>
+    </div>
+    <div class="response-actions">
+      <button class="btn-icon" onclick="copyResponse()">Copy</button>
+      <button class="btn-icon" onclick="clearResponse()">✕</button>
+    </div>
+  </div>
+  <div id="response-body"></div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────
+let apiKey = '';
+let currentMode = 'free';
+
+const MODELS = {
+  openai:    ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'],
+  anthropic: ['claude-opus-4-6', 'claude-sonnet-4-6', 'claude-haiku-4-5'],
+};
+
+const EXAMPLE_PROMPTS = [
+  'Explain quantum entanglement in one paragraph.',
+  'Write a haiku about machine learning.',
+  'List three pros and cons of remote work.',
+  'Summarize the plot of Romeo and Juliet in two sentences.',
+];
+
+const SCHEMA_TEMPLATES = {
+  'Element Info': {
+    name: 'element_info',
+    strict: true,
+    schema: {
+      type: 'object',
+      properties: {
+        name:          { type: 'string' },
+        symbol:        { type: 'string' },
+        atomic_number: { type: 'integer' },
+        fun_fact:      { type: 'string' },
+      },
+      required: ['name','symbol','atomic_number','fun_fact'],
+      additionalProperties: false,
+    },
+  },
+  'Movie Review': {
+    name: 'movie_review',
+    strict: true,
+    schema: {
+      type: 'object',
+      properties: {
+        title:   { type: 'string' },
+        year:    { type: 'integer' },
+        rating:  { type: 'number', minimum: 0, maximum: 10 },
+        summary: { type: 'string' },
+      },
+      required: ['title','year','rating','summary'],
+      additionalProperties: false,
+    },
+  },
+  'Recipe': {
+    name: 'recipe',
+    strict: true,
+    schema: {
+      type: 'object',
+      properties: {
+        dish:          { type: 'string' },
+        prep_minutes:  { type: 'integer' },
+        ingredients:   { type: 'array', items: { type: 'string' } },
+        steps:         { type: 'array', items: { type: 'string' } },
+      },
+      required: ['dish','prep_minutes','ingredients','steps'],
+      additionalProperties: false,
+    },
+  },
+};
+
+// ── Init ──────────────────────────────────────────────────────────────
+function init() {
+  // populate model dropdown
+  document.getElementById('provider-select').addEventListener('change', onProviderChange);
+  onProviderChange();
+
+  // example prompt chips
+  const chipContainer = document.getElementById('example-chips');
+  EXAMPLE_PROMPTS.forEach(p => {
+    const c = document.createElement('button');
+    c.className = 'chip';
+    c.textContent = p.length > 42 ? p.slice(0, 42) + '…' : p;
+    c.title = p;
+    c.onclick = () => { document.getElementById('prompt-input').value = p; };
+    chipContainer.appendChild(c);
+  });
+
+  // schema template chips
+  const schemaChipContainer = document.getElementById('schema-chips');
+  Object.keys(SCHEMA_TEMPLATES).forEach(name => {
+    const c = document.createElement('button');
+    c.className = 'chip';
+    c.textContent = name;
+    c.onclick = () => loadSchemaTemplate(name);
+    schemaChipContainer.appendChild(c);
+  });
+
+  // .env file upload
+  document.getElementById('env-upload').addEventListener('change', handleEnvUpload);
+}
+
+function onProviderChange() {
+  const p = document.getElementById('provider-select').value;
+  const sel = document.getElementById('model-select');
+  sel.innerHTML = '';
+  MODELS[p].forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = opt.textContent = m;
+    sel.appendChild(opt);
+  });
+  document.getElementById('cors-banner').style.display = p === 'anthropic' ? 'block' : 'none';
+}
+
+function setMode(mode) {
+  currentMode = mode;
+  document.getElementById('mode-free').classList.toggle('active', mode === 'free');
+  document.getElementById('mode-struct').classList.toggle('active', mode === 'structured');
+  document.getElementById('schema-section').style.display = mode === 'structured' ? 'block' : 'none';
+}
+
+function loadSchemaTemplate(name) {
+  const tpl = SCHEMA_TEMPLATES[name];
+  document.getElementById('schema-editor').value = JSON.stringify(tpl.schema, null, 2);
+  hideError('schema-error');
+}
+
+function handleEnvUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const text = ev.target.result;
+    const match = text.match(/(?:OPENAI_API_KEY|ANTHROPIC_API_KEY|API_KEY)\s*=\s*["']?([^\s"']+)["']?/i);
+    if (match) {
+      document.getElementById('api-key').value = match[1];
+      apiKey = match[1];
+    } else {
+      showSendError('Could not find an API key in that .env file.');
+    }
+  };
+  reader.readAsText(file);
+  // reset so same file can be re-uploaded
+  e.target.value = '';
+}
+
+// ── Request ──────────────────────────────────────────────────────────
+async function sendRequest() {
+  hideError('key-error');
+  hideError('schema-error');
+  hideError('send-error');
+
+  // read key from input each time
+  apiKey = document.getElementById('api-key').value.trim();
+  const prompt = document.getElementById('prompt-input').value.trim();
+  const provider = document.getElementById('provider-select').value;
+  const model = document.getElementById('model-select').value;
+
+  if (!apiKey) { showError('key-error'); return; }
+  if (!prompt) { showSendError('Please enter a prompt.'); return; }
+
+  if (currentMode === 'structured') {
+    const raw = document.getElementById('schema-editor').value.trim();
+    if (!raw) { showSendError('Please enter or choose a JSON schema for structured mode.'); return; }
+    try { JSON.parse(raw); } catch {
+      showError('schema-error'); return;
+    }
+  }
+
+  if (provider === 'anthropic') {
+    showSendError('Anthropic's API cannot be called directly from the browser (CORS). See the banner above for details.');
+    return;
+  }
+
+  const btn = document.getElementById('send-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Sending…';
+
+  showResponse('<span class="spinner"></span>', '');
+
+  const t0 = performance.now();
+  const timerInterval = setInterval(() => {
+    document.getElementById('timer').textContent = ((performance.now() - t0) / 1000).toFixed(2) + 's';
+  }, 100);
+
+  try {
+    const result = await callOpenAI(apiKey, model, prompt);
+    clearInterval(timerInterval);
+    document.getElementById('timer').textContent = ((performance.now() - t0) / 1000).toFixed(2) + 's';
+    showResponse(result, currentMode);
+  } catch (err) {
+    clearInterval(timerInterval);
+    showResponse('', '');
+    document.getElementById('response-card').style.display = 'none';
+    showSendError(friendlyError(err));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Send';
+  }
+}
+
+async function callOpenAI(key, model, prompt) {
+  const body = {
+    model,
+    messages: [{ role: 'user', content: prompt }],
+  };
+
+  if (currentMode === 'structured') {
+    const schemaObj = JSON.parse(document.getElementById('schema-editor').value.trim());
+    const templateName = Object.keys(SCHEMA_TEMPLATES).find(n =>
+      JSON.stringify(SCHEMA_TEMPLATES[n].schema) === JSON.stringify(schemaObj)
+    );
+    const schemaName = templateName
+      ? SCHEMA_TEMPLATES[templateName].name
+      : 'custom_schema';
+
+    body.response_format = {
+      type: 'json_schema',
+      json_schema: {
+        name: schemaName,
+        strict: true,
+        schema: schemaObj,
+      },
+    };
+  }
+
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${key}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    const msg = errData?.error?.message || `HTTP ${res.status}`;
+    const err = new Error(msg);
+    err.status = res.status;
+    throw err;
+  }
+
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content ?? '';
+}
+
+// ── Display ──────────────────────────────────────────────────────────
+function showResponse(content, mode) {
+  const card = document.getElementById('response-card');
+  const body = document.getElementById('response-body');
+  card.style.display = 'block';
+
+  if (content.includes('class="spinner"')) {
+    body.innerHTML = content;
+    return;
+  }
+
+  if (mode === 'structured') {
+    try {
+      const parsed = JSON.parse(content);
+      body.innerHTML = syntaxHighlight(JSON.stringify(parsed, null, 2));
+      return;
+    } catch { /* fall through to plain text */ }
+  }
+
+  body.textContent = content;
+}
+
+function syntaxHighlight(json) {
+  return json
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(
+      /("(\\u[a-fA-F0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(\.\d+)?([eE][+-]?\d+)?)/g,
+      match => {
+        if (/^"/.test(match)) {
+          if (/:$/.test(match)) return `<span class="jk">${match}</span>`;
+          return `<span class="js">${match}</span>`;
+        }
+        if (/true|false/.test(match)) return `<span class="jb">${match}</span>`;
+        if (/null/.test(match))       return `<span class="jnull">${match}</span>`;
+        return `<span class="jn">${match}</span>`;
+      }
+    );
+}
+
+function clearResponse() {
+  document.getElementById('response-card').style.display = 'none';
+  document.getElementById('response-body').innerHTML = '';
+  document.getElementById('timer').textContent = '';
+}
+
+function copyResponse() {
+  const text = document.getElementById('response-body').innerText;
+  navigator.clipboard.writeText(text).catch(() => {});
+}
+
+// ── Errors ────────────────────────────────────────────────────────────
+function friendlyError(err) {
+  const s = err.status;
+  if (s === 401) return 'Invalid API key. Double-check and try again.';
+  if (s === 429) return 'Rate limit reached. Wait a moment and try again.';
+  if (s >= 500)  return 'The API returned a server error. Try again shortly.';
+  if (!navigator.onLine) return 'Network error — are you online?';
+  return err.message || 'An unexpected error occurred.';
+}
+
+function showError(id)     { document.getElementById(id).style.display = 'block'; }
+function hideError(id)     { document.getElementById(id).style.display = 'none'; }
+function showSendError(msg) {
+  const el = document.getElementById('send-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+// ── Boot ─────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
