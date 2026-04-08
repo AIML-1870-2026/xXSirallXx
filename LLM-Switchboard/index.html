@@ -395,7 +395,7 @@ const SCHEMA_TEMPLATES = {
       properties: {
         title:   { type: 'string' },
         year:    { type: 'integer' },
-        rating:  { type: 'number', minimum: 0, maximum: 10 },
+        rating:  { type: 'number' },
         summary: { type: 'string' },
       },
       required: ['title','year','rating','summary'],
@@ -518,7 +518,7 @@ async function sendRequest() {
   }
 
   if (provider === 'anthropic') {
-    showSendError('Anthropic's API cannot be called directly from the browser (CORS). See the banner above for details.');
+    showSendError("Anthropic's API cannot be called directly from the browser (CORS). See the banner above for details.");
     return;
   }
 
@@ -557,21 +557,27 @@ async function callOpenAI(key, model, prompt) {
 
   if (currentMode === 'structured') {
     const schemaObj = JSON.parse(document.getElementById('schema-editor').value.trim());
-    const templateName = Object.keys(SCHEMA_TEMPLATES).find(n =>
-      JSON.stringify(SCHEMA_TEMPLATES[n].schema) === JSON.stringify(schemaObj)
-    );
-    const schemaName = templateName
-      ? SCHEMA_TEMPLATES[templateName].name
-      : 'custom_schema';
+    const supportsStructured = ['gpt-4o', 'gpt-4o-mini'].includes(model);
 
-    body.response_format = {
-      type: 'json_schema',
-      json_schema: {
-        name: schemaName,
-        strict: true,
-        schema: schemaObj,
-      },
-    };
+    if (supportsStructured) {
+      const templateName = Object.keys(SCHEMA_TEMPLATES).find(n =>
+        JSON.stringify(SCHEMA_TEMPLATES[n].schema) === JSON.stringify(schemaObj)
+      );
+      const schemaName = templateName
+        ? SCHEMA_TEMPLATES[templateName].name
+        : 'custom_schema';
+      body.response_format = {
+        type: 'json_schema',
+        json_schema: { name: schemaName, strict: true, schema: schemaObj },
+      };
+    } else {
+      // Older models: instruct via system message + json_object mode
+      body.messages.unshift({
+        role: 'system',
+        content: 'Respond with valid JSON matching this schema: ' + JSON.stringify(schemaObj),
+      });
+      body.response_format = { type: 'json_object' };
+    }
   }
 
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
