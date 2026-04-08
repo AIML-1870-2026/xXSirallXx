@@ -355,111 +355,110 @@
 </div>
 
 <script>
-// ── State ──────────────────────────────────────────────────────────────
-let apiKey = '';
-let currentMode = 'free';
+var currentMode = 'free';
 
-const MODELS = {
-  openai:    ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'],
-  anthropic: ['claude-opus-4-6', 'claude-sonnet-4-6', 'claude-haiku-4-5'],
+var MODELS = {
+  openai:    ['gpt-4o', 'gpt-4o-mini', 'gpt-3.5-turbo'],
+  anthropic: ['claude-opus-4-6', 'claude-sonnet-4-6', 'claude-haiku-4-5']
 };
 
-const EXAMPLE_PROMPTS = [
+var EXAMPLE_PROMPTS = [
   'Explain quantum entanglement in one paragraph.',
   'Write a haiku about machine learning.',
   'List three pros and cons of remote work.',
-  'Summarize the plot of Romeo and Juliet in two sentences.',
+  'Summarize the plot of Romeo and Juliet in two sentences.'
 ];
 
-const SCHEMA_TEMPLATES = {
+var SCHEMA_TEMPLATES = {
   'Element Info': {
     name: 'element_info',
-    strict: true,
     schema: {
       type: 'object',
       properties: {
         name:          { type: 'string' },
         symbol:        { type: 'string' },
         atomic_number: { type: 'integer' },
-        fun_fact:      { type: 'string' },
+        fun_fact:      { type: 'string' }
       },
-      required: ['name','symbol','atomic_number','fun_fact'],
-      additionalProperties: false,
-    },
+      required: ['name', 'symbol', 'atomic_number', 'fun_fact'],
+      additionalProperties: false
+    }
   },
   'Movie Review': {
     name: 'movie_review',
-    strict: true,
     schema: {
       type: 'object',
       properties: {
         title:   { type: 'string' },
         year:    { type: 'integer' },
         rating:  { type: 'number' },
-        summary: { type: 'string' },
+        summary: { type: 'string' }
       },
-      required: ['title','year','rating','summary'],
-      additionalProperties: false,
-    },
+      required: ['title', 'year', 'rating', 'summary'],
+      additionalProperties: false
+    }
   },
   'Recipe': {
     name: 'recipe',
-    strict: true,
     schema: {
       type: 'object',
       properties: {
-        dish:          { type: 'string' },
-        prep_minutes:  { type: 'integer' },
-        ingredients:   { type: 'array', items: { type: 'string' } },
-        steps:         { type: 'array', items: { type: 'string' } },
+        dish:         { type: 'string' },
+        prep_minutes: { type: 'integer' },
+        ingredients:  { type: 'array', items: { type: 'string' } },
+        steps:        { type: 'array', items: { type: 'string' } }
       },
-      required: ['dish','prep_minutes','ingredients','steps'],
-      additionalProperties: false,
-    },
-  },
+      required: ['dish', 'prep_minutes', 'ingredients', 'steps'],
+      additionalProperties: false
+    }
+  }
 };
 
-// ── Init ──────────────────────────────────────────────────────────────
 function init() {
-  // populate model dropdown
   document.getElementById('provider-select').addEventListener('change', onProviderChange);
   onProviderChange();
 
-  // example prompt chips
-  const chipContainer = document.getElementById('example-chips');
-  EXAMPLE_PROMPTS.forEach(p => {
-    const c = document.createElement('button');
-    c.className = 'chip';
-    c.textContent = p.length > 42 ? p.slice(0, 42) + '…' : p;
-    c.title = p;
-    c.onclick = () => { document.getElementById('prompt-input').value = p; };
-    chipContainer.appendChild(c);
-  });
+  var chipContainer = document.getElementById('example-chips');
+  for (var i = 0; i < EXAMPLE_PROMPTS.length; i++) {
+    (function(prompt) {
+      var btn = document.createElement('button');
+      btn.className = 'chip';
+      btn.textContent = prompt.length > 42 ? prompt.slice(0, 42) + '...' : prompt;
+      btn.title = prompt;
+      btn.onclick = function() {
+        document.getElementById('prompt-input').value = prompt;
+      };
+      chipContainer.appendChild(btn);
+    })(EXAMPLE_PROMPTS[i]);
+  }
 
-  // schema template chips
-  const schemaChipContainer = document.getElementById('schema-chips');
-  Object.keys(SCHEMA_TEMPLATES).forEach(name => {
-    const c = document.createElement('button');
-    c.className = 'chip';
-    c.textContent = name;
-    c.onclick = () => loadSchemaTemplate(name);
-    schemaChipContainer.appendChild(c);
-  });
+  var schemaContainer = document.getElementById('schema-chips');
+  var templateNames = Object.keys(SCHEMA_TEMPLATES);
+  for (var j = 0; j < templateNames.length; j++) {
+    (function(name) {
+      var btn = document.createElement('button');
+      btn.className = 'chip';
+      btn.textContent = name;
+      btn.onclick = function() { loadSchemaTemplate(name); };
+      schemaContainer.appendChild(btn);
+    })(templateNames[j]);
+  }
 
-  // .env file upload
   document.getElementById('env-upload').addEventListener('change', handleEnvUpload);
 }
 
 function onProviderChange() {
-  const p = document.getElementById('provider-select').value;
-  const sel = document.getElementById('model-select');
+  var provider = document.getElementById('provider-select').value;
+  var sel = document.getElementById('model-select');
   sel.innerHTML = '';
-  MODELS[p].forEach(m => {
-    const opt = document.createElement('option');
-    opt.value = opt.textContent = m;
+  var models = MODELS[provider];
+  for (var i = 0; i < models.length; i++) {
+    var opt = document.createElement('option');
+    opt.value = models[i];
+    opt.textContent = models[i];
     sel.appendChild(opt);
-  });
-  document.getElementById('cors-banner').style.display = p === 'anthropic' ? 'block' : 'none';
+  }
+  document.getElementById('cors-banner').style.display = provider === 'anthropic' ? 'block' : 'none';
 }
 
 function setMode(mode) {
@@ -470,208 +469,226 @@ function setMode(mode) {
 }
 
 function loadSchemaTemplate(name) {
-  const tpl = SCHEMA_TEMPLATES[name];
+  var tpl = SCHEMA_TEMPLATES[name];
   document.getElementById('schema-editor').value = JSON.stringify(tpl.schema, null, 2);
-  hideError('schema-error');
+  document.getElementById('schema-error').style.display = 'none';
 }
 
 function handleEnvUpload(e) {
-  const file = e.target.files[0];
+  var file = e.target.files[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    const text = ev.target.result;
-    const match = text.match(/(?:OPENAI_API_KEY|ANTHROPIC_API_KEY|API_KEY)\s*=\s*["']?([^\s"']+)["']?/i);
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    var text = ev.target.result;
+    var match = text.match(/(?:OPENAI_API_KEY|ANTHROPIC_API_KEY|API_KEY)\s*=\s*["']?([^\s"'\r\n]+)["']?/i);
     if (match) {
       document.getElementById('api-key').value = match[1];
-      apiKey = match[1];
     } else {
-      showSendError('Could not find an API key in that .env file.');
+      setSendError('Could not find an API key in that .env file.');
     }
   };
   reader.readAsText(file);
-  // reset so same file can be re-uploaded
   e.target.value = '';
 }
 
-// ── Request ──────────────────────────────────────────────────────────
-async function sendRequest() {
-  hideError('key-error');
-  hideError('schema-error');
-  hideError('send-error');
+function sendRequest() {
+  clearErrors();
 
-  // read key from input each time
-  apiKey = document.getElementById('api-key').value.trim();
-  const prompt = document.getElementById('prompt-input').value.trim();
-  const provider = document.getElementById('provider-select').value;
-  const model = document.getElementById('model-select').value;
+  var key    = document.getElementById('api-key').value.trim();
+  var prompt = document.getElementById('prompt-input').value.trim();
+  var provider = document.getElementById('provider-select').value;
+  var model    = document.getElementById('model-select').value;
 
-  if (!apiKey) { showError('key-error'); return; }
-  if (!prompt) { showSendError('Please enter a prompt.'); return; }
+  if (!key) {
+    document.getElementById('key-error').style.display = 'block';
+    return;
+  }
+  if (!prompt) {
+    setSendError('Please enter a prompt.');
+    return;
+  }
 
   if (currentMode === 'structured') {
-    const raw = document.getElementById('schema-editor').value.trim();
-    if (!raw) { showSendError('Please enter or choose a JSON schema for structured mode.'); return; }
-    try { JSON.parse(raw); } catch {
-      showError('schema-error'); return;
+    var raw = document.getElementById('schema-editor').value.trim();
+    if (!raw) {
+      setSendError('Please enter or select a JSON schema.');
+      return;
+    }
+    try {
+      JSON.parse(raw);
+    } catch (e) {
+      document.getElementById('schema-error').style.display = 'block';
+      return;
     }
   }
 
   if (provider === 'anthropic') {
-    showSendError("Anthropic's API cannot be called directly from the browser (CORS). See the banner above for details.");
+    setSendError("Anthropic cannot be called from the browser directly (CORS policy). See the banner above.");
     return;
   }
 
-  const btn = document.getElementById('send-btn');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Sending…';
+  setLoading(true);
 
-  showResponse('<span class="spinner"></span>', '');
-
-  const t0 = performance.now();
-  const timerInterval = setInterval(() => {
-    document.getElementById('timer').textContent = ((performance.now() - t0) / 1000).toFixed(2) + 's';
+  var t0 = Date.now();
+  var timerEl = document.getElementById('timer');
+  var timerId = setInterval(function() {
+    timerEl.textContent = ((Date.now() - t0) / 1000).toFixed(2) + 's';
   }, 100);
 
-  try {
-    const result = await callOpenAI(apiKey, model, prompt);
-    clearInterval(timerInterval);
-    document.getElementById('timer').textContent = ((performance.now() - t0) / 1000).toFixed(2) + 's';
-    showResponse(result, currentMode);
-  } catch (err) {
-    clearInterval(timerInterval);
-    showResponse('', '');
-    document.getElementById('response-card').style.display = 'none';
-    showSendError(friendlyError(err));
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Send';
-  }
+  callOpenAI(key, model, prompt)
+    .then(function(text) {
+      clearInterval(timerId);
+      timerEl.textContent = ((Date.now() - t0) / 1000).toFixed(2) + 's';
+      showResult(text);
+    })
+    .catch(function(err) {
+      clearInterval(timerId);
+      setSendError(friendlyError(err));
+    })
+    .finally(function() {
+      setLoading(false);
+    });
 }
 
-async function callOpenAI(key, model, prompt) {
-  const body = {
-    model,
-    messages: [{ role: 'user', content: prompt }],
+function callOpenAI(key, model, prompt) {
+  var body = {
+    model: model,
+    messages: [{ role: 'user', content: prompt }]
   };
 
   if (currentMode === 'structured') {
-    const schemaObj = JSON.parse(document.getElementById('schema-editor').value.trim());
-    const supportsStructured = ['gpt-4o', 'gpt-4o-mini'].includes(model);
+    var schemaObj = JSON.parse(document.getElementById('schema-editor').value.trim());
+    var supportsJsonSchema = (model === 'gpt-4o' || model === 'gpt-4o-mini');
 
-    if (supportsStructured) {
-      const templateName = Object.keys(SCHEMA_TEMPLATES).find(n =>
-        JSON.stringify(SCHEMA_TEMPLATES[n].schema) === JSON.stringify(schemaObj)
-      );
-      const schemaName = templateName
-        ? SCHEMA_TEMPLATES[templateName].name
-        : 'custom_schema';
+    if (supportsJsonSchema) {
+      var templateName = null;
+      var names = Object.keys(SCHEMA_TEMPLATES);
+      for (var i = 0; i < names.length; i++) {
+        if (JSON.stringify(SCHEMA_TEMPLATES[names[i]].schema) === JSON.stringify(schemaObj)) {
+          templateName = names[i];
+          break;
+        }
+      }
+      var schemaName = templateName ? SCHEMA_TEMPLATES[templateName].name : 'custom_schema';
       body.response_format = {
         type: 'json_schema',
-        json_schema: { name: schemaName, strict: true, schema: schemaObj },
+        json_schema: { name: schemaName, strict: true, schema: schemaObj }
       };
     } else {
-      // Older models: instruct via system message + json_object mode
       body.messages.unshift({
         role: 'system',
-        content: 'Respond with valid JSON matching this schema: ' + JSON.stringify(schemaObj),
+        content: 'Respond only with valid JSON matching this schema: ' + JSON.stringify(schemaObj)
       });
       body.response_format = { type: 'json_object' };
     }
   }
 
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+  return fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${key}`,
+      'Authorization': 'Bearer ' + key
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify(body)
+  }).then(function(res) {
+    return res.json().then(function(data) {
+      if (!res.ok) {
+        var msg = (data && data.error && data.error.message) ? data.error.message : ('HTTP ' + res.status);
+        var err = new Error(msg);
+        err.status = res.status;
+        throw err;
+      }
+      return data.choices[0].message.content;
+    });
   });
-
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
-    const msg = errData?.error?.message || `HTTP ${res.status}`;
-    const err = new Error(msg);
-    err.status = res.status;
-    throw err;
-  }
-
-  const data = await res.json();
-  return data.choices?.[0]?.message?.content ?? '';
 }
 
-// ── Display ──────────────────────────────────────────────────────────
-function showResponse(content, mode) {
-  const card = document.getElementById('response-card');
-  const body = document.getElementById('response-body');
+function showResult(text) {
+  var card = document.getElementById('response-card');
+  var body = document.getElementById('response-body');
   card.style.display = 'block';
 
-  if (content.includes('class="spinner"')) {
-    body.innerHTML = content;
-    return;
-  }
-
-  if (mode === 'structured') {
+  if (currentMode === 'structured') {
     try {
-      const parsed = JSON.parse(content);
+      var parsed = JSON.parse(text);
       body.innerHTML = syntaxHighlight(JSON.stringify(parsed, null, 2));
       return;
-    } catch { /* fall through to plain text */ }
+    } catch (e) { /* fall through */ }
   }
 
-  body.textContent = content;
+  body.textContent = text;
 }
 
 function syntaxHighlight(json) {
-  return json
+  var escaped = json
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(
-      /("(\\u[a-fA-F0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(\.\d+)?([eE][+-]?\d+)?)/g,
-      match => {
-        if (/^"/.test(match)) {
-          if (/:$/.test(match)) return `<span class="jk">${match}</span>`;
-          return `<span class="js">${match}</span>`;
-        }
-        if (/true|false/.test(match)) return `<span class="jb">${match}</span>`;
-        if (/null/.test(match))       return `<span class="jnull">${match}</span>`;
-        return `<span class="jn">${match}</span>`;
+    .replace(/>/g, '&gt;');
+  return escaped.replace(
+    /("(\\u[a-fA-F0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(\.\d+)?([eE][+-]?\d+)?)/g,
+    function(match) {
+      if (/^"/.test(match)) {
+        return /:$/.test(match)
+          ? '<span class="jk">' + match + '</span>'
+          : '<span class="js">' + match + '</span>';
       }
-    );
+      if (/true|false/.test(match)) return '<span class="jb">' + match + '</span>';
+      if (/null/.test(match))       return '<span class="jnull">' + match + '</span>';
+      return '<span class="jn">' + match + '</span>';
+    }
+  );
 }
 
 function clearResponse() {
   document.getElementById('response-card').style.display = 'none';
-  document.getElementById('response-body').innerHTML = '';
+  document.getElementById('response-body').textContent = '';
   document.getElementById('timer').textContent = '';
 }
 
 function copyResponse() {
-  const text = document.getElementById('response-body').innerText;
-  navigator.clipboard.writeText(text).catch(() => {});
+  var text = document.getElementById('response-body').innerText;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text);
+  } else {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
 }
 
-// ── Errors ────────────────────────────────────────────────────────────
+function setLoading(on) {
+  var btn = document.getElementById('send-btn');
+  btn.disabled = on;
+  btn.textContent = on ? 'Sending...' : 'Send';
+  if (on) {
+    document.getElementById('response-card').style.display = 'block';
+    document.getElementById('response-body').innerHTML = '<div class="spinner" style="margin:0 auto;display:block;"></div>';
+  }
+}
+
 function friendlyError(err) {
-  const s = err.status;
+  var s = err.status;
   if (s === 401) return 'Invalid API key. Double-check and try again.';
   if (s === 429) return 'Rate limit reached. Wait a moment and try again.';
   if (s >= 500)  return 'The API returned a server error. Try again shortly.';
-  if (!navigator.onLine) return 'Network error — are you online?';
   return err.message || 'An unexpected error occurred.';
 }
 
-function showError(id)     { document.getElementById(id).style.display = 'block'; }
-function hideError(id)     { document.getElementById(id).style.display = 'none'; }
-function showSendError(msg) {
-  const el = document.getElementById('send-error');
+function clearErrors() {
+  document.getElementById('key-error').style.display = 'none';
+  document.getElementById('schema-error').style.display = 'none';
+  document.getElementById('send-error').style.display = 'none';
+}
+
+function setSendError(msg) {
+  var el = document.getElementById('send-error');
   el.textContent = msg;
   el.style.display = 'block';
 }
 
-// ── Boot ─────────────────────────────────────────────────────────────
 init();
 </script>
 </body>
