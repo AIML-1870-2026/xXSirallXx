@@ -612,6 +612,28 @@ function startApp() {
 
 // ── NASA API ──
 const API_KEY = 'DEMO_KEY';
+
+const DEMO_NEOS = [
+  { id: '54016382', name: '(2020 XL5)', date: '2026-04-10', hazardous: false, diameterMin: 210, diameterMax: 470, distanceKm: 4870000, distanceLunar: 12.67, velocityKmh: 42300, velocityKms: 11.75 },
+  { id: '54204856', name: '(2021 RB1)', date: '2026-04-10', hazardous: true,  diameterMin: 140, diameterMax: 320, distanceKm: 980000,  distanceLunar: 2.55,  velocityKmh: 68500, velocityKms: 19.03 },
+  { id: '53780123', name: '(2019 GC6)', date: '2026-04-11', hazardous: false, diameterMin: 60,  diameterMax: 140, distanceKm: 1540000, distanceLunar: 4.01,  velocityKmh: 31200, velocityKms: 8.67 },
+  { id: '54391044', name: '(2022 AP7)', date: '2026-04-11', hazardous: true,  diameterMin: 730, diameterMax: 1630,distanceKm: 7290000, distanceLunar: 18.97, velocityKmh: 55800, velocityKms: 15.5 },
+  { id: '53101200', name: '(2018 KP1)', date: '2026-04-12', hazardous: false, diameterMin: 30,  diameterMax: 68,  distanceKm: 350000,  distanceLunar: 0.91,  velocityKmh: 21800, velocityKms: 6.06 },
+  { id: '54501337', name: '(2023 DZ2)', date: '2026-04-12', hazardous: false, diameterMin: 40,  diameterMax: 90,  distanceKm: 175000,  distanceLunar: 0.46,  velocityKmh: 19400, velocityKms: 5.39 },
+  { id: '53002811', name: '(2017 BQ6)', date: '2026-04-13', hazardous: true,  diameterMin: 290, diameterMax: 650, distanceKm: 6100000, distanceLunar: 15.88, velocityKmh: 78200, velocityKms: 21.72 },
+  { id: '54700298', name: '(2024 RW1)', date: '2026-04-13', hazardous: false, diameterMin: 12,  diameterMax: 28,  distanceKm: 2200000, distanceLunar: 5.73,  velocityKmh: 27600, velocityKms: 7.67 },
+  { id: '53455611', name: '(2019 SB6)', date: '2026-04-14', hazardous: false, diameterMin: 80,  diameterMax: 180, distanceKm: 3400000, distanceLunar: 8.85,  velocityKmh: 36900, velocityKms: 10.25 },
+  { id: '54088976', name: '(2021 GM4)', date: '2026-04-15', hazardous: true,  diameterMin: 180, diameterMax: 410, distanceKm: 1200000, distanceLunar: 3.12,  velocityKmh: 61000, velocityKms: 16.94 },
+];
+
+function showApiError(msg) {
+  const toast = $('#toast');
+  toast.innerHTML = `<span>${msg}</span><button class="toast-close" aria-label="Dismiss hint">✕</button>`;
+  toast.querySelector('.toast-close').addEventListener('click', () => toast.classList.remove('active'));
+  toast.style.borderColor = 'var(--warn)';
+  toast.classList.add('active');
+}
+
 async function fetchNEOs(from, to) {
   $('#loading').classList.add('active');
   announce('Loading near-Earth object data');
@@ -619,6 +641,10 @@ async function fetchNEOs(from, to) {
     const url = `https://api.nasa.gov/neo/rest/v1/feed?start_date=${from}&end_date=${to}&api_key=${API_KEY}`;
     const res = await fetch(url);
     const data = await res.json();
+    if (!res.ok || !data.near_earth_objects) {
+      const reason = data.error?.message || (res.status === 429 ? 'Rate limit reached (DEMO_KEY: 30 req/hr)' : `HTTP ${res.status}`);
+      throw new Error(reason);
+    }
     const neos = [];
     for (const date of Object.keys(data.near_earth_objects).sort()) {
       for (const obj of data.near_earth_objects[date]) {
@@ -638,6 +664,7 @@ async function fetchNEOs(from, to) {
       }
     }
     state.neos = neos;
+    state.usingDemoData = false;
     updateHUD();
     updateAllViews();
     update3DObjects();
@@ -645,7 +672,13 @@ async function fetchNEOs(from, to) {
     if (neos.length === 0) announce('No near-Earth objects found for this date range');
   } catch (e) {
     console.error('API error:', e);
-    announce('Error loading data. Try again.');
+    state.neos = DEMO_NEOS;
+    state.usingDemoData = true;
+    updateHUD();
+    updateAllViews();
+    update3DObjects();
+    showApiError(`⚠ API unavailable (${e.message}). Showing demo data — 10 sample NEOs.`);
+    announce('API error. Showing demo data.');
   }
   $('#loading').classList.remove('active');
 }
@@ -943,13 +976,13 @@ function init3D() {
 
   // Earth
   const earthGeo = new THREE.SphereGeometry(1, 48, 48);
-  const earthMat = new THREE.MeshPhongMaterial({ color: 0x1144aa, emissive: 0x061230, shininess: 10, wireframe: false });
+  const earthMat = new THREE.MeshPhongMaterial({ color: 0x1a5fcc, emissive: 0x0a2060, shininess: 30, wireframe: false });
   earth = new THREE.Mesh(earthGeo, earthMat);
   scene.add(earth);
 
   // Wireframe overlay
   const wireGeo = new THREE.SphereGeometry(1.005, 24, 24);
-  const wireMat = new THREE.MeshBasicMaterial({ color: 0x00b4ff, wireframe: true, transparent: true, opacity: 0.06 });
+  const wireMat = new THREE.MeshBasicMaterial({ color: 0x00b4ff, wireframe: true, transparent: true, opacity: 0.15 });
   scene.add(new THREE.Mesh(wireGeo, wireMat));
 
   // Atmosphere glow
@@ -1007,11 +1040,17 @@ function init3D() {
     checkHover(true);
   });
 
-  window.addEventListener('resize', () => {
-    camera.aspect = container.clientWidth / container.clientHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(container.clientWidth, container.clientHeight);
-  });
+  const resizeRenderer = () => {
+    const w = container.clientWidth, h = container.clientHeight;
+    if (w > 0 && h > 0) {
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    }
+  };
+  window.addEventListener('resize', resizeRenderer);
+  // Re-check size after layout settles (fixes zero-size on first paint)
+  requestAnimationFrame(resizeRenderer);
 
   animate(rotX, rotY);
 
