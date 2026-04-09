@@ -1,553 +1,658 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LLM Switchboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg:       #0f1117;
-    --surface:  #1a1d27;
-    --border:   #2e3347;
-    --accent:   #7c6af7;
-    --accent2:  #56cfb2;
-    --text:     #e2e4f0;
-    --muted:    #7a7f99;
-    --danger:   #f06a6a;
-    --warning:  #f0a84e;
-    --success:  #56cfb2;
-    --json-key: #7c9ef8;
-    --json-str: #7ede9a;
-    --json-num: #f0a84e;
-    --json-bool:#d97bf5;
-    --json-null:#f06a6a;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Segoe UI', system-ui, sans-serif;
-    font-size: 15px;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 24px 16px 60px;
-  }
+:root {
+  --bg: #0c0c0e;
+  --surface: #16161a;
+  --surface2: #1e1e24;
+  --border: #2a2a32;
+  --border-hover: #3a3a44;
+  --text: #e8e6e3;
+  --text-dim: #8a8a96;
+  --accent: #f0c040;
+  --accent-dim: #f0c04020;
+  --green: #4ade80;
+  --red: #f87171;
+  --blue: #60a5fa;
+  --radius: 10px;
+  --mono: 'DM Mono', monospace;
+  --serif: 'Instrument Serif', serif;
+  --sans: 'DM Sans', sans-serif;
+}
 
-  header {
-    width: 100%;
-    max-width: 760px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 28px;
-  }
-  header h1 {
-    font-size: 1.5rem;
-    font-weight: 700;
-    letter-spacing: -0.5px;
-    background: linear-gradient(90deg, var(--accent), var(--accent2));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-  .badge {
-    font-size: 11px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    color: var(--muted);
-    padding: 3px 9px;
-    border-radius: 20px;
-  }
+html { font-size: 15px; }
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.5;
+}
 
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 20px 24px;
-    width: 100%;
-    max-width: 760px;
-    margin-bottom: 16px;
-  }
-  .card-title {
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--muted);
-    margin-bottom: 14px;
-  }
+/* LAYOUT */
+.app {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  min-height: 100vh;
+}
 
-  /* Provider / Model row */
-  .row { display: flex; gap: 12px; flex-wrap: wrap; }
-  .field { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 140px; }
-  .field label { font-size: 12px; color: var(--muted); font-weight: 500; }
+/* SIDEBAR */
+.sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  overflow-y: auto;
+}
 
-  select, input[type="password"], textarea {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    color: var(--text);
-    font-size: 14px;
-    font-family: inherit;
-    padding: 9px 12px;
-    outline: none;
-    transition: border-color .2s;
-    width: 100%;
-  }
-  select:focus, input[type="password"]:focus, textarea:focus {
-    border-color: var(--accent);
-  }
-  select { cursor: pointer; }
+.logo {
+  font-family: var(--serif);
+  font-size: 1.75rem;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.logo .bolt { color: var(--accent); font-size: 1.5rem; }
 
-  .key-row { display: flex; gap: 10px; align-items: flex-end; }
-  .key-row .field { flex: 1; }
-  .btn-ghost {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 9px 14px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 13px;
-    white-space: nowrap;
-    transition: border-color .2s, color .2s;
-  }
-  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+.section-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
 
-  /* Mode toggle */
-  .toggle-group { display: flex; gap: 8px; }
-  .toggle-btn {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    color: var(--muted);
-    padding: 7px 18px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 500;
-    transition: all .2s;
-  }
-  .toggle-btn.active {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #fff;
-  }
+label { display: block; }
+select, input[type="text"], input[type="password"], textarea {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  font-family: var(--sans);
+  font-size: 0.87rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%238a8a96'%3E%3Cpath d='M6 8.5L1 3.5h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+select:hover, input:hover, textarea:hover { border-color: var(--border-hover); }
+select:focus, input:focus, textarea:focus { border-color: var(--accent); }
+textarea { resize: vertical; font-family: var(--mono); font-size: 0.8rem; min-height: 80px; }
 
-  /* Chips */
-  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-  .chip {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    color: var(--muted);
-    padding: 5px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    cursor: pointer;
-    transition: all .2s;
-  }
-  .chip:hover { border-color: var(--accent2); color: var(--accent2); }
+.key-row { display: flex; gap: 6px; }
+.key-row input { flex: 1; }
+.key-status {
+  font-size: 0.75rem;
+  margin-top: 4px;
+  color: var(--text-dim);
+}
+.key-status.loaded { color: var(--green); }
 
-  textarea { resize: vertical; min-height: 100px; line-height: 1.55; }
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface2);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn:hover { border-color: var(--accent); color: var(--accent); }
+.btn-primary {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+.btn-primary:hover { background: #e0b030; border-color: #e0b030; }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-sm { padding: 6px 10px; font-size: 0.75rem; }
 
-  /* Schema section */
-  #schema-section { display: none; margin-top: 18px; }
-  #schema-section .card-title { margin-bottom: 10px; }
-  #schema-editor { font-family: 'Fira Code', 'Cascadia Code', monospace; font-size: 13px; min-height: 160px; }
+.toggle-group {
+  display: flex;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.toggle-group button {
+  flex: 1;
+  padding: 9px 6px;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.toggle-group button.active {
+  background: var(--accent-dim);
+  color: var(--accent);
+}
 
-  /* Send button */
-  .send-row { display: flex; justify-content: flex-end; }
-  .btn-primary {
-    background: var(--accent);
-    border: none;
-    color: #fff;
-    padding: 11px 32px;
-    border-radius: 9px;
-    cursor: pointer;
-    font-size: 15px;
-    font-weight: 600;
-    transition: opacity .2s, transform .1s;
-  }
-  .btn-primary:hover { opacity: .88; }
-  .btn-primary:active { transform: scale(.97); }
-  .btn-primary:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+.example-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip {
+  padding: 5px 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.chip:hover { border-color: var(--accent); color: var(--accent); }
 
-  /* CORS banner */
-  #cors-banner {
-    display: none;
-    background: #1e1530;
-    border: 1px solid #5a3f9a;
-    border-radius: 12px;
-    padding: 18px 22px;
-    max-width: 760px;
-    width: 100%;
-    margin-bottom: 16px;
-  }
-  #cors-banner h3 { color: #b898f5; font-size: 14px; margin-bottom: 8px; }
-  #cors-banner p  { color: #c5b8e0; font-size: 13px; line-height: 1.6; }
+.file-upload-area {
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.file-upload-area:hover { border-color: var(--accent); color: var(--text); }
 
-  /* Response card */
-  #response-card { display: none; }
-  .response-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 12px;
-  }
-  .response-header .left { display: flex; align-items: center; gap: 12px; }
-  .response-header .label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
-  #timer { font-size: 12px; color: var(--accent2); font-family: monospace; }
-  .response-actions { display: flex; gap: 8px; }
-  .btn-icon {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    color: var(--muted);
-    padding: 5px 11px;
-    border-radius: 7px;
-    cursor: pointer;
-    font-size: 12px;
-    transition: all .2s;
-  }
-  .btn-icon:hover { border-color: var(--accent); color: var(--accent); }
+/* MAIN */
+.main {
+  display: flex;
+  flex-direction: column;
+  padding: 28px 36px;
+  gap: 20px;
+  overflow-y: auto;
+}
 
-  #response-body {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 9px;
-    padding: 16px;
-    font-size: 14px;
-    line-height: 1.7;
-    white-space: pre-wrap;
-    word-break: break-word;
-    max-height: 520px;
-    overflow-y: auto;
-    font-family: 'Fira Code', 'Cascadia Code', monospace;
-  }
+.prompt-area {
+  position: relative;
+}
+.prompt-area textarea {
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  min-height: 120px;
+  padding: 16px;
+  padding-bottom: 52px;
+}
+.prompt-actions {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
 
-  /* JSON syntax highlight */
-  .jk { color: var(--json-key); }
-  .js { color: var(--json-str); }
-  .jn { color: var(--json-num); }
-  .jb { color: var(--json-bool); }
-  .jnull { color: var(--json-null); }
+.mode-badge {
+  font-size: 0.7rem;
+  font-family: var(--mono);
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: var(--surface);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+}
+.mode-badge.structured { color: var(--blue); border-color: var(--blue); background: #60a5fa12; }
 
-  /* Error */
-  .error-msg {
-    color: var(--danger);
-    font-size: 13px;
-    margin-top: 10px;
-    display: none;
-  }
+.schema-editor {
+  display: none;
+  position: relative;
+}
+.schema-editor.visible { display: block; }
+.schema-editor textarea { min-height: 160px; }
+.schema-chips {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
 
-  /* Loading spinner */
-  .spinner {
-    width: 18px; height: 18px;
-    border: 2px solid var(--border);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin .7s linear infinite;
-    display: inline-block;
-    vertical-align: middle;
-    margin-right: 8px;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
+/* RESPONSE */
+.response-panel {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 300px;
+}
+.response-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+.response-meta {
+  display: flex;
+  gap: 16px;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+}
+.response-meta span { display: flex; align-items: center; gap: 4px; }
 
-  /* Scrollbar */
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.response-body {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  font-size: 0.9rem;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.response-body.json {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: var(--green);
+}
+.response-body .placeholder {
+  color: var(--text-dim);
+  font-style: italic;
+  text-align: center;
+  margin-top: 80px;
+  font-family: var(--serif);
+  font-size: 1.1rem;
+}
+
+.cors-warning {
+  display: none;
+  background: #f8717112;
+  border: 1px solid #f8717140;
+  border-radius: var(--radius);
+  padding: 16px;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--red);
+}
+.cors-warning.visible { display: block; }
+.cors-warning strong { color: var(--text); }
+
+.loading-spinner {
+  display: none;
+  justify-content: center;
+  padding: 40px;
+}
+.loading-spinner.visible { display: flex; }
+.spinner {
+  width: 28px; height: 28px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.error-msg {
+  background: #f8717112;
+  border: 1px solid #f8717140;
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  font-size: 0.82rem;
+  color: var(--red);
+  display: none;
+}
+.error-msg.visible { display: block; }
+
+/* RESPONSIVE */
+@media (max-width: 860px) {
+  .app { grid-template-columns: 1fr; }
+  .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
+  .main { padding: 20px 16px; }
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 </style>
 </head>
 <body>
 
-<header>
-  <h1>LLM Switchboard</h1>
-  <span class="badge">AIML 1870</span>
-</header>
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="logo"><span class="bolt">&#9889;</span> LLM Switchboard</div>
 
-<!-- Provider / Model / Key -->
-<div class="card">
-  <div class="card-title">Provider &amp; Key</div>
-  <div class="row" style="margin-bottom:14px">
-    <div class="field">
-      <label>Provider</label>
-      <select id="provider-select">
-        <option value="openai">OpenAI</option>
-        <option value="anthropic">Anthropic</option>
-      </select>
+    <!-- API Keys -->
+    <div>
+      <div class="section-label">API Keys</div>
+      <div style="margin-bottom:10px">
+        <label style="font-size:0.78rem;color:var(--text-dim);margin-bottom:4px;display:block">OpenAI Key</label>
+        <div class="key-row">
+          <input type="password" id="openai-key" placeholder="sk-...">
+          <button class="btn btn-sm" onclick="toggleKeyVis('openai-key',this)">&#128065;</button>
+        </div>
+        <div class="key-status" id="openai-key-status">Not loaded</div>
+      </div>
+      <div style="margin-bottom:10px">
+        <label style="font-size:0.78rem;color:var(--text-dim);margin-bottom:4px;display:block">Anthropic Key</label>
+        <div class="key-row">
+          <input type="password" id="anthropic-key" placeholder="sk-ant-...">
+          <button class="btn btn-sm" onclick="toggleKeyVis('anthropic-key',this)">&#128065;</button>
+        </div>
+        <div class="key-status" id="anthropic-key-status">Not loaded</div>
+      </div>
+      <div class="file-upload-area" onclick="document.getElementById('file-input').click()">
+        <input type="file" id="file-input" onchange="handleFileUpload(event)" style="display:none">
+        &#128196; Upload .env or CSV with keys
+      </div>
     </div>
-    <div class="field">
-      <label>Model</label>
+
+    <!-- Provider & Model -->
+    <div>
+      <div class="section-label">Provider</div>
+      <div class="toggle-group" id="provider-toggle">
+        <button class="active" onclick="setProvider('openai')">OpenAI</button>
+        <button onclick="setProvider('anthropic')">Anthropic</button>
+      </div>
+    </div>
+    <div>
+      <div class="section-label">Model</div>
       <select id="model-select"></select>
     </div>
-  </div>
-  <div class="key-row">
-    <div class="field">
-      <label>API Key (stays in memory only)</label>
-      <input type="password" id="api-key" placeholder="sk-..." autocomplete="off" />
+
+    <!-- Output Mode -->
+    <div>
+      <div class="section-label">Output Mode</div>
+      <div class="toggle-group" id="mode-toggle">
+        <button class="active" onclick="setMode('unstructured')">Unstructured</button>
+        <button onclick="setMode('structured')">Structured</button>
+      </div>
     </div>
-    <button class="btn-ghost" onclick="document.getElementById('env-upload').click()">Upload .env</button>
-    <input type="file" id="env-upload" accept="*" style="display:none" />
-  </div>
-  <p id="key-error" class="error-msg">Please enter your API key before sending.</p>
-</div>
 
-<!-- Anthropic CORS banner -->
-<div id="cors-banner">
-  <h3>Why Anthropic doesn't work directly in the browser</h3>
-  <p>
-    Anthropic's API blocks direct browser requests via a CORS policy — this is intentional security design.
-    Your API key would be exposed in client-side code, so they require requests to be made from a backend server.
-    OpenAI allows browser requests, which is why the OpenAI panel works here.
-    To use Claude in a real app, you'd add a small server (Node/Python) that forwards requests on your behalf.
-  </p>
-</div>
-
-<!-- Prompt -->
-<div class="card">
-  <div class="card-title">Prompt</div>
-
-  <!-- Mode toggle -->
-  <div style="margin-bottom:16px">
-    <div class="toggle-group">
-      <button class="toggle-btn active" id="mode-free" onclick="setMode('free')">Free Text</button>
-      <button class="toggle-btn"        id="mode-struct" onclick="setMode('structured')">Structured JSON</button>
+    <!-- Example Prompts -->
+    <div>
+      <div class="section-label">Example Prompts</div>
+      <div class="example-chips" id="prompt-chips"></div>
     </div>
-  </div>
 
-  <textarea id="prompt-input" placeholder="Enter your prompt here…"></textarea>
-
-  <div class="chips" id="example-chips"></div>
-
-  <!-- Schema section (structured mode only) -->
-  <div id="schema-section">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-      <span class="card-title" style="margin:0">JSON Schema</span>
-      <div class="chips" id="schema-chips"></div>
+    <div style="margin-top:auto;font-size:0.7rem;color:var(--text-dim);line-height:1.6">
+      Keys are stored <strong style="color:var(--text)">in memory only</strong> and never persisted. Refresh to clear.
     </div>
-    <textarea id="schema-editor" placeholder='{ "type": "object", "properties": { … } }'></textarea>
-    <p id="schema-error" class="error-msg">Schema is not valid JSON — please fix it before sending.</p>
-  </div>
-</div>
+  </aside>
 
-<!-- Send -->
-<div class="card" style="padding:16px 24px">
-  <div class="send-row">
-    <button class="btn-primary" id="send-btn" onclick="sendRequest()">Send</button>
-  </div>
-  <p id="send-error" class="error-msg"></p>
-</div>
+  <!-- MAIN -->
+  <main class="main">
+    <div class="cors-warning" id="cors-warning">
+      <strong>&#9888; Anthropic CORS Restriction</strong><br><br>
+      Anthropic's API does not allow direct browser requests by default. This app sends the required
+      <code>anthropic-dangerous-direct-browser-access: true</code> header to opt in, but your
+      Anthropic account must have direct browser access enabled. If the request fails, that is why.
+      OpenAI's API always permits browser requests.
+    </div>
 
-<!-- Response -->
-<div class="card" id="response-card">
-  <div class="response-header">
-    <div class="left">
-      <span class="label">Response</span>
-      <span id="timer"></span>
+    <div class="prompt-area">
+      <textarea id="prompt-input" placeholder="Type your prompt here... (Ctrl+Enter to send)"></textarea>
+      <div class="prompt-actions">
+        <span class="mode-badge" id="mode-badge">unstructured</span>
+        <button class="btn btn-primary" id="send-btn" onclick="sendPrompt()">Send &#8594;</button>
+      </div>
     </div>
-    <div class="response-actions">
-      <button class="btn-icon" onclick="copyResponse()">Copy</button>
-      <button class="btn-icon" onclick="clearResponse()">✕</button>
+
+    <div class="schema-editor" id="schema-editor">
+      <div class="section-label">JSON Schema</div>
+      <div class="schema-chips" id="schema-chips"></div>
+      <textarea id="schema-input" placeholder='{"type":"object","properties":{...}}'></textarea>
     </div>
-  </div>
-  <div id="response-body"></div>
+
+    <div class="error-msg" id="error-msg"></div>
+
+    <div class="response-panel">
+      <div class="response-header">
+        <span id="response-label">Response</span>
+        <div class="response-meta">
+          <span id="meta-time" style="display:none">&#9200; <span></span></span>
+          <span id="meta-tokens" style="display:none">&#9830; <span></span> tokens</span>
+        </div>
+      </div>
+      <div class="loading-spinner" id="loading"><div class="spinner"></div></div>
+      <div class="response-body" id="response-body">
+        <div class="placeholder">Response will appear here</div>
+      </div>
+    </div>
+  </main>
 </div>
 
 <script>
-var currentMode = 'free';
+var state = {
+  provider: 'openai',
+  mode: 'unstructured',
+  keys: { openai: '', anthropic: '' }
+};
 
 var MODELS = {
-  openai:    ['gpt-4o', 'gpt-4o-mini', 'gpt-3.5-turbo'],
-  anthropic: ['claude-opus-4-6', 'claude-sonnet-4-6', 'claude-haiku-4-5']
+  openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'],
+  anthropic: ['claude-sonnet-4-20250514', 'claude-haiku-4-5-20241022']
 };
 
 var EXAMPLE_PROMPTS = [
-  'Explain quantum entanglement in one paragraph.',
-  'Write a haiku about machine learning.',
-  'List three pros and cons of remote work.',
-  'Summarize the plot of Romeo and Juliet in two sentences.'
+  { label: 'Explain Recursion', text: 'Explain recursion to a 10 year old using a fun analogy.' },
+  { label: 'Haiku Generator', text: 'Write three haikus about the feeling of debugging code at 2 AM.' },
+  { label: 'Meal Planner', text: 'Suggest a healthy 3-day meal plan for someone who is vegetarian and on a budget.' },
+  { label: 'Cover Letter', text: 'Write a cover letter for a junior web developer applying to a startup that makes educational games.' },
+  { label: 'Trivia Quiz', text: 'Create 5 multiple-choice trivia questions about space exploration.' },
+  { label: 'Code Review', text: 'Review this code and suggest improvements:\nfunction add(a,b){return a+b}' }
 ];
 
-var SCHEMA_TEMPLATES = {
-  'Element Info': {
-    name: 'element_info',
-    schema: {
-      type: 'object',
-      properties: {
-        name:          { type: 'string' },
-        symbol:        { type: 'string' },
-        atomic_number: { type: 'integer' },
-        fun_fact:      { type: 'string' }
-      },
-      required: ['name', 'symbol', 'atomic_number', 'fun_fact'],
-      additionalProperties: false
-    }
-  },
-  'Movie Review': {
-    name: 'movie_review',
-    schema: {
-      type: 'object',
-      properties: {
-        title:   { type: 'string' },
-        year:    { type: 'integer' },
-        rating:  { type: 'number' },
-        summary: { type: 'string' }
-      },
-      required: ['title', 'year', 'rating', 'summary'],
-      additionalProperties: false
-    }
-  },
-  'Recipe': {
-    name: 'recipe',
-    schema: {
-      type: 'object',
-      properties: {
-        dish:         { type: 'string' },
-        prep_minutes: { type: 'integer' },
-        ingredients:  { type: 'array', items: { type: 'string' } },
-        steps:        { type: 'array', items: { type: 'string' } }
-      },
-      required: ['dish', 'prep_minutes', 'ingredients', 'steps'],
-      additionalProperties: false
-    }
-  }
-};
+var SCHEMA_TEMPLATES = [
+  { label: 'Element', schema: {"type":"object","properties":{"name":{"type":"string"},"symbol":{"type":"string"},"atomic_number":{"type":"integer"},"fun_fact":{"type":"string"}},"required":["name","symbol","atomic_number","fun_fact"],"additionalProperties":false} },
+  { label: 'Trivia Q', schema: {"type":"object","properties":{"questions":{"type":"array","items":{"type":"object","properties":{"question":{"type":"string"},"options":{"type":"array","items":{"type":"string"}},"correct_answer":{"type":"string"},"explanation":{"type":"string"}},"required":["question","options","correct_answer","explanation"],"additionalProperties":false}}},"required":["questions"],"additionalProperties":false} },
+  { label: 'Meal Plan', schema: {"type":"object","properties":{"days":{"type":"array","items":{"type":"object","properties":{"day":{"type":"string"},"breakfast":{"type":"string"},"lunch":{"type":"string"},"dinner":{"type":"string"}},"required":["day","breakfast","lunch","dinner"],"additionalProperties":false}}},"required":["days"],"additionalProperties":false} },
+  { label: 'Sentiment', schema: {"type":"object","properties":{"sentiment":{"type":"string","enum":["positive","negative","neutral"]},"confidence":{"type":"number"},"key_phrases":{"type":"array","items":{"type":"string"}},"summary":{"type":"string"}},"required":["sentiment","confidence","key_phrases","summary"],"additionalProperties":false} }
+];
 
 function init() {
-  document.getElementById('provider-select').addEventListener('change', onProviderChange);
-  onProviderChange();
+  populateModels();
+  renderPromptChips();
+  renderSchemaChips();
 
-  var chipContainer = document.getElementById('example-chips');
-  for (var i = 0; i < EXAMPLE_PROMPTS.length; i++) {
-    (function(prompt) {
-      var btn = document.createElement('button');
-      btn.className = 'chip';
-      btn.textContent = prompt.length > 42 ? prompt.slice(0, 42) + '...' : prompt;
-      btn.title = prompt;
-      btn.onclick = function() {
-        document.getElementById('prompt-input').value = prompt;
-      };
-      chipContainer.appendChild(btn);
-    })(EXAMPLE_PROMPTS[i]);
-  }
+  document.getElementById('openai-key').addEventListener('input', function(e) {
+    state.keys.openai = e.target.value.trim();
+    updateKeyStatus('openai');
+  });
+  document.getElementById('anthropic-key').addEventListener('input', function(e) {
+    state.keys.anthropic = e.target.value.trim();
+    updateKeyStatus('anthropic');
+  });
 
-  var schemaContainer = document.getElementById('schema-chips');
-  var templateNames = Object.keys(SCHEMA_TEMPLATES);
-  for (var j = 0; j < templateNames.length; j++) {
-    (function(name) {
-      var btn = document.createElement('button');
-      btn.className = 'chip';
-      btn.textContent = name;
-      btn.onclick = function() { loadSchemaTemplate(name); };
-      schemaContainer.appendChild(btn);
-    })(templateNames[j]);
-  }
-
-  document.getElementById('env-upload').addEventListener('change', handleEnvUpload);
+  document.getElementById('prompt-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) sendPrompt();
+  });
 }
 
-function onProviderChange() {
-  var provider = document.getElementById('provider-select').value;
+function populateModels() {
   var sel = document.getElementById('model-select');
+  var models = MODELS[state.provider];
   sel.innerHTML = '';
-  var models = MODELS[provider];
   for (var i = 0; i < models.length; i++) {
     var opt = document.createElement('option');
     opt.value = models[i];
     opt.textContent = models[i];
     sel.appendChild(opt);
   }
-  document.getElementById('cors-banner').style.display = provider === 'anthropic' ? 'block' : 'none';
 }
 
-function setMode(mode) {
-  currentMode = mode;
-  document.getElementById('mode-free').classList.toggle('active', mode === 'free');
-  document.getElementById('mode-struct').classList.toggle('active', mode === 'structured');
-  document.getElementById('schema-section').style.display = mode === 'structured' ? 'block' : 'none';
+function renderPromptChips() {
+  var container = document.getElementById('prompt-chips');
+  container.innerHTML = '';
+  for (var i = 0; i < EXAMPLE_PROMPTS.length; i++) {
+    (function(idx) {
+      var chip = document.createElement('span');
+      chip.className = 'chip';
+      chip.textContent = EXAMPLE_PROMPTS[idx].label;
+      chip.onclick = function() { document.getElementById('prompt-input').value = EXAMPLE_PROMPTS[idx].text; };
+      container.appendChild(chip);
+    })(i);
+  }
 }
 
-function loadSchemaTemplate(name) {
-  var tpl = SCHEMA_TEMPLATES[name];
-  document.getElementById('schema-editor').value = JSON.stringify(tpl.schema, null, 2);
-  document.getElementById('schema-error').style.display = 'none';
+function renderSchemaChips() {
+  var container = document.getElementById('schema-chips');
+  container.innerHTML = '';
+  for (var i = 0; i < SCHEMA_TEMPLATES.length; i++) {
+    (function(idx) {
+      var chip = document.createElement('span');
+      chip.className = 'chip';
+      chip.textContent = SCHEMA_TEMPLATES[idx].label;
+      chip.onclick = function() {
+        document.getElementById('schema-input').value = JSON.stringify(SCHEMA_TEMPLATES[idx].schema, null, 2);
+      };
+      container.appendChild(chip);
+    })(i);
+  }
 }
 
-function handleEnvUpload(e) {
+function setProvider(p) {
+  state.provider = p;
+  var btns = document.querySelectorAll('#provider-toggle button');
+  btns[0].classList.toggle('active', p === 'openai');
+  btns[1].classList.toggle('active', p === 'anthropic');
+  populateModels();
+  document.getElementById('cors-warning').classList.toggle('visible', p === 'anthropic');
+}
+
+function setMode(m) {
+  state.mode = m;
+  var btns = document.querySelectorAll('#mode-toggle button');
+  btns[0].classList.toggle('active', m === 'unstructured');
+  btns[1].classList.toggle('active', m === 'structured');
+  document.getElementById('schema-editor').classList.toggle('visible', m === 'structured');
+  var badge = document.getElementById('mode-badge');
+  badge.textContent = m;
+  badge.classList.toggle('structured', m === 'structured');
+}
+
+function toggleKeyVis(id, btn) {
+  var inp = document.getElementById(id);
+  var show = inp.type === 'password';
+  inp.type = show ? 'text' : 'password';
+  btn.innerHTML = show ? '&#128584;' : '&#128065;';
+}
+
+function updateKeyStatus(provider) {
+  var el = document.getElementById(provider + '-key-status');
+  if (state.keys[provider]) {
+    el.textContent = 'Key loaded';
+    el.classList.add('loaded');
+  } else {
+    el.textContent = 'Not loaded';
+    el.classList.remove('loaded');
+  }
+}
+
+function handleFileUpload(e) {
   var file = e.target.files[0];
   if (!file) return;
   var reader = new FileReader();
   reader.onload = function(ev) {
     var text = ev.target.result;
-    var match = text.match(/(?:OPENAI_API_KEY|ANTHROPIC_API_KEY|API_KEY)\s*=\s*["']?([^\s"'\r\n]+)["']?/i);
-    if (match) {
-      document.getElementById('api-key').value = match[1];
-    } else {
-      setSendError('Could not find an API key in that .env file.');
+    var lines = text.split('\n');
+    for (var i = 0; i < lines.length; i++) {
+      var trimmed = lines[i].trim();
+      if (!trimmed || trimmed.charAt(0) === '#' || trimmed.indexOf('=') === -1) continue;
+      var eqIdx = trimmed.indexOf('=');
+      var k = trimmed.substring(0, eqIdx).trim();
+      var v = trimmed.substring(eqIdx + 1).trim().replace(/^["']|["']$/g, '');
+      if (/openai/i.test(k) && v.indexOf('sk-') === 0) {
+        state.keys.openai = v;
+        document.getElementById('openai-key').value = v;
+        updateKeyStatus('openai');
+      }
+      if (/anthropic/i.test(k) && v.indexOf('sk-ant') === 0) {
+        state.keys.anthropic = v;
+        document.getElementById('anthropic-key').value = v;
+        updateKeyStatus('anthropic');
+      }
+    }
+    // CSV fallback: key,value
+    if (!state.keys.openai && !state.keys.anthropic) {
+      for (var j = 0; j < lines.length; j++) {
+        var parts = lines[j].split(',');
+        if (parts.length >= 2) {
+          var val = parts[1].trim();
+          if (val.indexOf('sk-ant') === 0) {
+            state.keys.anthropic = val;
+            document.getElementById('anthropic-key').value = val;
+            updateKeyStatus('anthropic');
+          } else if (val.indexOf('sk-') === 0) {
+            state.keys.openai = val;
+            document.getElementById('openai-key').value = val;
+            updateKeyStatus('openai');
+          }
+        }
+      }
     }
   };
   reader.readAsText(file);
   e.target.value = '';
 }
 
-function sendRequest() {
-  clearErrors();
-
-  var key    = document.getElementById('api-key').value.trim();
+function sendPrompt() {
   var prompt = document.getElementById('prompt-input').value.trim();
-  var provider = document.getElementById('provider-select').value;
-  var model    = document.getElementById('model-select').value;
+  if (!prompt) return;
 
+  var key = state.keys[state.provider];
   if (!key) {
-    document.getElementById('key-error').style.display = 'block';
-    return;
-  }
-  if (!prompt) {
-    setSendError('Please enter a prompt.');
+    showError('Please enter your ' + (state.provider === 'openai' ? 'OpenAI' : 'Anthropic') + ' API key.');
     return;
   }
 
-  if (currentMode === 'structured') {
-    var raw = document.getElementById('schema-editor').value.trim();
-    if (!raw) {
-      setSendError('Please enter or select a JSON schema.');
-      return;
-    }
-    try {
-      JSON.parse(raw);
-    } catch (e) {
-      document.getElementById('schema-error').style.display = 'block';
-      return;
-    }
-  }
+  hideError();
+  showLoading(true);
+  clearResponse();
 
-  if (provider === 'anthropic') {
-    setSendError("Anthropic cannot be called from the browser directly (CORS policy). See the banner above.");
-    return;
-  }
-
-  setLoading(true);
-
+  var model = document.getElementById('model-select').value;
   var t0 = Date.now();
-  var timerEl = document.getElementById('timer');
-  var timerId = setInterval(function() {
-    timerEl.textContent = ((Date.now() - t0) / 1000).toFixed(2) + 's';
-  }, 100);
 
-  callOpenAI(key, model, prompt)
-    .then(function(text) {
-      clearInterval(timerId);
-      timerEl.textContent = ((Date.now() - t0) / 1000).toFixed(2) + 's';
-      showResult(text);
-    })
-    .catch(function(err) {
-      clearInterval(timerId);
-      setSendError(friendlyError(err));
-    })
-    .finally(function() {
-      setLoading(false);
-    });
+  var promise = state.provider === 'openai'
+    ? callOpenAI(key, model, prompt)
+    : callAnthropic(key, model, prompt);
+
+  promise.then(function(data) {
+    var elapsed = ((Date.now() - t0) / 1000).toFixed(2);
+    renderResponse(data, elapsed);
+  }).catch(function(err) {
+    showError(err.message || 'Request failed.');
+  }).then(function() {
+    showLoading(false);
+  });
 }
 
 function callOpenAI(key, model, prompt) {
@@ -556,31 +661,15 @@ function callOpenAI(key, model, prompt) {
     messages: [{ role: 'user', content: prompt }]
   };
 
-  if (currentMode === 'structured') {
-    var schemaObj = JSON.parse(document.getElementById('schema-editor').value.trim());
-    var supportsJsonSchema = (model === 'gpt-4o' || model === 'gpt-4o-mini');
-
-    if (supportsJsonSchema) {
-      var templateName = null;
-      var names = Object.keys(SCHEMA_TEMPLATES);
-      for (var i = 0; i < names.length; i++) {
-        if (JSON.stringify(SCHEMA_TEMPLATES[names[i]].schema) === JSON.stringify(schemaObj)) {
-          templateName = names[i];
-          break;
-        }
-      }
-      var schemaName = templateName ? SCHEMA_TEMPLATES[templateName].name : 'custom_schema';
-      body.response_format = {
-        type: 'json_schema',
-        json_schema: { name: schemaName, strict: true, schema: schemaObj }
-      };
-    } else {
-      body.messages.unshift({
-        role: 'system',
-        content: 'Respond only with valid JSON matching this schema: ' + JSON.stringify(schemaObj)
-      });
-      body.response_format = { type: 'json_object' };
-    }
+  if (state.mode === 'structured') {
+    var schemaText = document.getElementById('schema-input').value.trim();
+    if (!schemaText) return Promise.reject(new Error('Please provide a JSON schema for structured output.'));
+    var schema;
+    try { schema = JSON.parse(schemaText); } catch(e) { return Promise.reject(new Error('Invalid JSON schema.')); }
+    body.response_format = {
+      type: 'json_schema',
+      json_schema: { name: 'response', strict: true, schema: schema }
+    };
   }
 
   return fetch('https://api.openai.com/v1/chat/completions', {
@@ -593,100 +682,105 @@ function callOpenAI(key, model, prompt) {
   }).then(function(res) {
     return res.json().then(function(data) {
       if (!res.ok) {
-        var msg = (data && data.error && data.error.message) ? data.error.message : ('HTTP ' + res.status);
-        var err = new Error(msg);
-        err.status = res.status;
-        throw err;
+        var msg = (data && data.error && data.error.message) ? data.error.message : ('OpenAI error ' + res.status);
+        throw new Error(msg);
       }
-      return data.choices[0].message.content;
+      return {
+        content: data.choices[0].message.content,
+        tokens: data.usage ? data.usage.total_tokens : null,
+        model: model
+      };
     });
   });
 }
 
-function showResult(text) {
-  var card = document.getElementById('response-card');
-  var body = document.getElementById('response-body');
-  card.style.display = 'block';
+function callAnthropic(key, model, prompt) {
+  var body = {
+    model: model,
+    max_tokens: 1024,
+    messages: [{ role: 'user', content: prompt }]
+  };
 
-  if (currentMode === 'structured') {
-    try {
-      var parsed = JSON.parse(text);
-      body.innerHTML = syntaxHighlight(JSON.stringify(parsed, null, 2));
-      return;
-    } catch (e) { /* fall through */ }
-  }
-
-  body.textContent = text;
+  return fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify(body)
+  }).then(function(res) {
+    return res.json().then(function(data) {
+      if (!res.ok) {
+        var msg = (data && data.error && data.error.message) ? data.error.message : ('Anthropic error ' + res.status);
+        throw new Error(msg);
+      }
+      var content = '';
+      if (data.content && data.content.length) {
+        for (var i = 0; i < data.content.length; i++) {
+          if (data.content[i].text) content += data.content[i].text;
+        }
+      }
+      var tokens = data.usage ? (data.usage.input_tokens + data.usage.output_tokens) : null;
+      return { content: content, tokens: tokens, model: model };
+    });
+  });
 }
 
-function syntaxHighlight(json) {
-  var escaped = json
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-  return escaped.replace(
-    /("(\\u[a-fA-F0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(\.\d+)?([eE][+-]?\d+)?)/g,
-    function(match) {
-      if (/^"/.test(match)) {
-        return /:$/.test(match)
-          ? '<span class="jk">' + match + '</span>'
-          : '<span class="js">' + match + '</span>';
-      }
-      if (/true|false/.test(match)) return '<span class="jb">' + match + '</span>';
-      if (/null/.test(match))       return '<span class="jnull">' + match + '</span>';
-      return '<span class="jn">' + match + '</span>';
+function renderResponse(data, elapsed) {
+  var body = document.getElementById('response-body');
+  body.innerHTML = '';
+  document.getElementById('response-label').textContent = data.model;
+
+  var metaTime = document.getElementById('meta-time');
+  metaTime.style.display = 'flex';
+  metaTime.querySelector('span').textContent = elapsed + 's';
+
+  if (data.tokens) {
+    var metaTokens = document.getElementById('meta-tokens');
+    metaTokens.style.display = 'flex';
+    metaTokens.querySelector('span').textContent = data.tokens;
+  }
+
+  if (state.mode === 'structured') {
+    try {
+      var parsed = JSON.parse(data.content);
+      body.textContent = JSON.stringify(parsed, null, 2);
+    } catch(e) {
+      body.textContent = data.content;
     }
-  );
+    body.classList.add('json');
+  } else {
+    body.textContent = data.content;
+    body.classList.remove('json');
+  }
 }
 
 function clearResponse() {
-  document.getElementById('response-card').style.display = 'none';
-  document.getElementById('response-body').textContent = '';
-  document.getElementById('timer').textContent = '';
+  var body = document.getElementById('response-body');
+  body.innerHTML = '<div class="placeholder">Response will appear here</div>';
+  body.classList.remove('json');
+  document.getElementById('meta-time').style.display = 'none';
+  document.getElementById('meta-tokens').style.display = 'none';
+  document.getElementById('response-label').textContent = 'Response';
 }
 
-function copyResponse() {
-  var text = document.getElementById('response-body').innerText;
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(text);
-  } else {
-    var ta = document.createElement('textarea');
-    ta.value = text;
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
-  }
-}
-
-function setLoading(on) {
+function showLoading(v) {
+  document.getElementById('loading').classList.toggle('visible', v);
   var btn = document.getElementById('send-btn');
-  btn.disabled = on;
-  btn.textContent = on ? 'Sending...' : 'Send';
-  if (on) {
-    document.getElementById('response-card').style.display = 'block';
-    document.getElementById('response-body').innerHTML = '<div class="spinner" style="margin:0 auto;display:block;"></div>';
-  }
+  btn.disabled = v;
+  btn.textContent = v ? '...' : 'Send \u2192';
 }
 
-function friendlyError(err) {
-  var s = err.status;
-  if (s === 401) return 'Invalid API key. Double-check and try again.';
-  if (s === 429) return 'Rate limit reached. Wait a moment and try again.';
-  if (s >= 500)  return 'The API returned a server error. Try again shortly.';
-  return err.message || 'An unexpected error occurred.';
-}
-
-function clearErrors() {
-  document.getElementById('key-error').style.display = 'none';
-  document.getElementById('schema-error').style.display = 'none';
-  document.getElementById('send-error').style.display = 'none';
-}
-
-function setSendError(msg) {
-  var el = document.getElementById('send-error');
+function showError(msg) {
+  var el = document.getElementById('error-msg');
   el.textContent = msg;
-  el.style.display = 'block';
+  el.classList.add('visible');
+}
+
+function hideError() {
+  document.getElementById('error-msg').classList.remove('visible');
 }
 
 init();
