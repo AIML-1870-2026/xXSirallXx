@@ -595,37 +595,38 @@ function addDays(str, n) { const d = new Date(str); d.setDate(d.getDate() + n); 
 function formatNum(n) { return n.toLocaleString(undefined, { maximumFractionDigits: 1 }); }
 function lunarDist(km) { return km / 384400; }
 
-// ── SPLASH ──
-$('#splash').addEventListener('click', startApp);
-$('#splash').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') startApp(); });
+// ── INIT (runs immediately, no click required) ──
+const today = todayStr();
+$('#date-from').value = today;
+$('#date-to').value = addDays(today, 7);
 
-let appStarted = false;
-function startApp() {
-  if (appStarted) return;
-  appStarted = true;
-  $('#splash').classList.add('hidden');
-  setTimeout(() => { $('#splash').style.display = 'none'; }, 600);
-  try {
-    init3D();
-  } catch(err) {
-    const c = $('#globe-container');
-    c.innerHTML = `<div style="color:#ff3355;font-family:monospace;padding:2rem;font-size:0.9rem;">
-      ⚠ 3D INIT ERROR: ${err.message}<br><br>
-      Possible causes:<br>
-      • WebGL not supported in this browser<br>
-      • Three.js failed to load (check network/CSP)<br>
-      • Try Chrome or Firefox
-    </div>`;
-  }
-  const today = todayStr();
-  $('#date-from').value = today;
-  $('#date-to').value = addDays(today, 7);
-  fetchNEOs(today, addDays(today, 7));
-  setTimeout(() => { $('#toast').classList.add('active'); }, 3000);
+// Dismiss splash after 2s, or immediately on click/touch
+function dismissSplash() {
+  const s = $('#splash');
+  if (!s || s.style.display === 'none') return;
+  s.classList.add('hidden');
+  setTimeout(() => { s.style.display = 'none'; }, 600);
 }
-// Also handle touch and auto-start after 8s if user never clicks
-$('#splash').addEventListener('touchend', e => { e.preventDefault(); startApp(); });
-setTimeout(() => startApp(), 8000);
+$('#splash').addEventListener('click', dismissSplash);
+$('#splash').addEventListener('touchend', e => { e.preventDefault(); dismissSplash(); });
+setTimeout(dismissSplash, 2000);
+
+// Init 3D globe immediately — no waiting for user interaction
+try {
+  init3D();
+} catch(err) {
+  const c = $('#globe-container');
+  c.style.cssText = 'display:flex;align-items:center;justify-content:center;padding:2rem;';
+  c.innerHTML = `<div style="color:#ff3355;font-family:monospace;font-size:0.85rem;max-width:420px;">
+    <b>⚠ 3D INIT FAILED: ${err.message}</b><br><br>
+    • WebGL may not be supported<br>
+    • Three.js CDN may have failed to load<br>
+    • Try Chrome or Firefox with WebGL enabled
+  </div>`;
+}
+
+fetchNEOs(today, addDays(today, 7));
+setTimeout(() => { $('#toast').classList.add('active'); }, 4000);
 
 // ── NASA API ──
 const API_KEY = 'DEMO_KEY';
