@@ -959,42 +959,77 @@ function init3D() {
   const ch = container.clientHeight || (window.innerHeight - 52);
 
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-  renderer.setClearColor(0x050510, 1);
+  renderer.setClearColor(0x000008, 1);
   renderer.setSize(cw, ch);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   container.appendChild(renderer.domElement);
 
-  // Earth — MeshBasicMaterial so it's visible regardless of lighting
-  const earthGeo = new THREE.SphereGeometry(1, 48, 48);
-  const earthMat = new THREE.MeshBasicMaterial({ color: 0x2266cc });
+  // Star field background
+  const starGeo = new THREE.BufferGeometry();
+  const starPositions = [];
+  for (let i = 0; i < 2000; i++) {
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(2 * Math.random() - 1);
+    const r = 80 + Math.random() * 20;
+    starPositions.push(
+      r * Math.sin(phi) * Math.cos(theta),
+      r * Math.sin(phi) * Math.sin(theta),
+      r * Math.cos(phi)
+    );
+  }
+  starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starPositions, 3));
+  scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.15, sizeAttenuation: true })));
+
+  // Lights — directional light from the side gives the 3D shaded look
+  scene.add(new THREE.AmbientLight(0x112244, 0.8));
+  const sun = new THREE.DirectionalLight(0xffffff, 1.4);
+  sun.position.set(5, 3, 5);
+  scene.add(sun);
+  // Subtle fill light from opposite side (dark side glow)
+  const fill = new THREE.DirectionalLight(0x001133, 0.3);
+  fill.position.set(-5, -2, -3);
+  scene.add(fill);
+
+  // Earth — Phong shading gives light/dark sides = looks 3D
+  const earthGeo = new THREE.SphereGeometry(1, 64, 64);
+  const earthMat = new THREE.MeshPhongMaterial({
+    color: 0x1a6699,
+    emissive: 0x040d1a,
+    specular: 0x4499cc,
+    shininess: 25,
+  });
   earth = new THREE.Mesh(earthGeo, earthMat);
   scene.add(earth);
 
-  // Wireframe overlay (shows continents-like grid)
-  const wireGeo = new THREE.SphereGeometry(1.002, 24, 24);
-  const wireMat = new THREE.MeshBasicMaterial({ color: 0x44ccff, wireframe: true, transparent: true, opacity: 0.35 });
+  // Land-mass tinted overlay (slightly lighter green-blue patches via second sphere)
+  const landGeo = new THREE.SphereGeometry(1.001, 32, 32);
+  const landMat = new THREE.MeshPhongMaterial({
+    color: 0x2d7a4f,
+    emissive: 0x050f08,
+    transparent: true, opacity: 0.45,
+    wireframe: false,
+  });
+  scene.add(new THREE.Mesh(landGeo, landMat));
+
+  // Grid lines overlay
+  const wireGeo = new THREE.SphereGeometry(1.003, 18, 18);
+  const wireMat = new THREE.MeshBasicMaterial({ color: 0x88ddff, wireframe: true, transparent: true, opacity: 0.08 });
   scene.add(new THREE.Mesh(wireGeo, wireMat));
 
-  // Atmosphere glow
-  const atmosGeo = new THREE.SphereGeometry(1.1, 32, 32);
-  const atmosMat = new THREE.MeshBasicMaterial({ color: 0x0088ff, transparent: true, opacity: 0.12, side: THREE.BackSide });
+  // Atmosphere glow (thick blue halo)
+  const atmosGeo = new THREE.SphereGeometry(1.15, 32, 32);
+  const atmosMat = new THREE.MeshBasicMaterial({ color: 0x3399ff, transparent: true, opacity: 0.08, side: THREE.BackSide });
   scene.add(new THREE.Mesh(atmosGeo, atmosMat));
 
   // Distance rings
   [1, 5, 10].forEach((ld, i) => {
     const r = 1 + ld * 0.3;
     const ringGeo = new THREE.RingGeometry(r - 0.006, r + 0.006, 64);
-    const ringMat = new THREE.MeshBasicMaterial({ color: 0x00b4ff, transparent: true, opacity: 0.2 - i * 0.04, side: THREE.DoubleSide });
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0x00b4ff, transparent: true, opacity: 0.18 - i * 0.04, side: THREE.DoubleSide });
     const ring = new THREE.Mesh(ringGeo, ringMat);
     ring.rotation.x = Math.PI / 2;
     scene.add(ring);
   });
-
-  // Lights (kept for NEO mesh shading even though Earth is now BasicMaterial)
-  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-  const sun = new THREE.DirectionalLight(0xffffff, 1);
-  sun.position.set(5, 3, 5);
-  scene.add(sun);
 
   raycaster = new THREE.Raycaster();
   mouse = new THREE.Vector2(-10, -10);
