@@ -4,1250 +4,671 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NeoWatch 3D</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: #050510;
-  --panel: rgba(10, 15, 35, 0.85);
-  --panel-border: rgba(0, 180, 255, 0.15);
+  --bg: #05050f;
+  --panel: rgba(8,12,30,0.9);
+  --border: rgba(0,180,255,0.18);
   --accent: #00b4ff;
-  --accent-glow: rgba(0, 180, 255, 0.3);
   --danger: #ff3355;
-  --danger-glow: rgba(255, 51, 85, 0.4);
   --warn: #ff9922;
   --safe: #22ff88;
-  --text: #d0e8ff;
-  --text-dim: #6080a0;
-  --font-display: 'Orbitron', monospace;
-  --font-mono: 'Share Tech Mono', monospace;
-  --font-body: 'Exo 2', sans-serif;
-  --radius: 6px;
+  --text: #cce4ff;
+  --dim: #4a6a8a;
+  --r: 6px;
+  --font-d: 'Orbitron', monospace;
+  --font-m: 'Share Tech Mono', monospace;
+  --font-b: 'Exo 2', sans-serif;
 }
-[data-high-contrast="true"] {
-  --bg: #ffffff;
-  --panel: rgba(240, 240, 245, 0.95);
-  --panel-border: rgba(0, 0, 0, 0.3);
-  --accent: #0055cc;
-  --danger: #cc0022;
-  --warn: #cc6600;
-  --safe: #007744;
-  --text: #111111;
-  --text-dim: #555555;
-}
-*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-body {
-  font-family: var(--font-body);
-  background: var(--bg);
-  color: var(--text);
-  overflow: hidden;
-  height: 100vh;
-  width: 100vw;
-}
-/* ── SPLASH ── */
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); color:var(--text); font-family:var(--font-b); }
+
+/* SPLASH */
 #splash {
-  position: fixed; inset: 0; z-index: 1000;
-  background: var(--bg);
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  cursor: pointer; transition: opacity 0.6s ease;
+  position:fixed; inset:0; z-index:999;
+  background:var(--bg);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  cursor:pointer;
+  transition:opacity 0.8s ease;
 }
-#splash.hidden { opacity: 0; pointer-events: none; }
-#splash h1 {
-  font-family: var(--font-display); font-size: clamp(2rem, 6vw, 4rem);
-  font-weight: 900; letter-spacing: 0.15em; color: var(--accent);
-  text-shadow: 0 0 30px var(--accent-glow);
-  margin-bottom: 0.3em;
-}
-#splash .subtitle {
-  font-family: var(--font-mono); font-size: clamp(0.7rem, 2vw, 1rem);
-  color: var(--text-dim); letter-spacing: 0.3em; text-transform: uppercase;
-  margin-bottom: 2em;
-}
-#splash .desc {
-  max-width: 520px; text-align: center; line-height: 1.7;
-  font-size: 0.95rem; color: var(--text); padding: 0 1rem; margin-bottom: 2.5em;
-}
-#splash .cta {
-  font-family: var(--font-mono); font-size: 0.85rem;
-  letter-spacing: 0.25em; color: var(--accent);
-  animation: pulse 2s ease-in-out infinite;
-}
-@keyframes pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
+#splash.fade { opacity:0; pointer-events:none; }
+#splash h1 { font-family:var(--font-d); font-size:clamp(2rem,6vw,4rem); font-weight:900; letter-spacing:.15em; color:var(--accent); text-shadow:0 0 40px rgba(0,180,255,.5); margin-bottom:.4em; }
+#splash p.sub { font-family:var(--font-m); font-size:.85rem; letter-spacing:.3em; color:var(--dim); margin-bottom:2.5em; }
+#splash p.cta { font-family:var(--font-m); font-size:.8rem; letter-spacing:.2em; color:var(--accent); animation:blink 1.8s ease-in-out infinite; }
+@keyframes blink { 0%,100%{opacity:.3} 50%{opacity:1} }
 
-/* ── TOP BAR ── */
+/* TOPBAR */
 #topbar {
-  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0.6rem 1rem; gap: 0.5rem;
-  background: var(--panel); border-bottom: 1px solid var(--panel-border);
-  backdrop-filter: blur(12px);
+  position:fixed; top:0; left:0; right:0; height:48px; z-index:100;
+  display:flex; align-items:center; gap:.5rem; padding:0 1rem;
+  background:var(--panel); border-bottom:1px solid var(--border); backdrop-filter:blur(12px);
 }
-#topbar .logo {
-  font-family: var(--font-display); font-weight: 700;
-  font-size: 1rem; color: var(--accent); letter-spacing: 0.1em;
-  white-space: nowrap;
-}
-.view-switcher {
-  display: flex; gap: 2px; background: rgba(0,0,0,0.3); border-radius: var(--radius); overflow: hidden;
-}
-.view-switcher button {
-  font-family: var(--font-mono); font-size: 0.7rem;
-  padding: 0.4rem 0.7rem; border: none; background: transparent;
-  color: var(--text-dim); cursor: pointer; transition: all 0.2s;
-  letter-spacing: 0.05em;
-}
-.view-switcher button:hover { color: var(--text); background: rgba(255,255,255,0.05); }
-.view-switcher button.active { color: var(--accent); background: rgba(0,180,255,0.1); }
-.view-switcher button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-.topbar-actions {
-  display: flex; gap: 0.4rem; align-items: center;
-}
-.btn {
-  font-family: var(--font-mono); font-size: 0.7rem;
-  padding: 0.4rem 0.8rem; border: 1px solid var(--panel-border);
-  border-radius: var(--radius); background: transparent;
-  color: var(--text); cursor: pointer; transition: all 0.2s;
-  white-space: nowrap;
-}
-.btn:hover { border-color: var(--accent); color: var(--accent); }
-.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.btn-danger {
-  border-color: var(--danger); color: var(--danger);
-}
-.btn-danger:hover { background: var(--danger); color: #fff; }
-.btn-danger.active { background: var(--danger); color: #fff; box-shadow: 0 0 20px var(--danger-glow); }
+#topbar .logo { font-family:var(--font-d); font-size:.95rem; font-weight:700; color:var(--accent); letter-spacing:.1em; white-space:nowrap; }
+.view-btns { display:flex; gap:2px; background:rgba(0,0,0,.4); border-radius:var(--r); overflow:hidden; }
+.view-btns button { font-family:var(--font-m); font-size:.68rem; padding:.35rem .65rem; border:none; background:transparent; color:var(--dim); cursor:pointer; letter-spacing:.05em; transition:all .15s; }
+.view-btns button:hover { color:var(--text); background:rgba(255,255,255,.06); }
+.view-btns button.on { color:#fff; background:rgba(0,180,255,.2); }
+.spacer { flex:1; }
+.btn { font-family:var(--font-m); font-size:.68rem; padding:.35rem .75rem; border:1px solid var(--border); border-radius:var(--r); background:transparent; color:var(--text); cursor:pointer; letter-spacing:.05em; transition:all .15s; white-space:nowrap; }
+.btn:hover { background:rgba(0,180,255,.1); }
+.btn.danger { border-color:var(--danger); color:var(--danger); }
+.btn.danger:hover { background:rgba(255,51,85,.15); }
 
-/* ── HUD PANEL ── */
+/* HUD SIDEBAR */
 #hud {
-  position: fixed; top: 52px; left: 0; z-index: 90;
-  width: 260px; padding: 1rem;
-  background: var(--panel); border-right: 1px solid var(--panel-border);
-  border-bottom: 1px solid var(--panel-border);
-  backdrop-filter: blur(12px);
-  display: flex; flex-direction: column; gap: 1rem;
-  max-height: calc(100vh - 52px); overflow-y: auto;
+  position:fixed; top:48px; left:0; bottom:0; width:240px; z-index:90;
+  background:var(--panel); border-right:1px solid var(--border); backdrop-filter:blur(10px);
+  display:flex; flex-direction:column; gap:.9rem; padding:1rem; overflow-y:auto;
 }
-.stat-group { display: flex; flex-direction: column; gap: 0.6rem; }
-.stat-label {
-  font-family: var(--font-mono); font-size: 0.6rem;
-  letter-spacing: 0.2em; color: var(--text-dim); text-transform: uppercase;
-}
-.stat-value {
-  font-family: var(--font-display); font-size: 1.4rem; font-weight: 700;
-  color: var(--text);
-}
-.stat-value.danger { color: var(--danger); }
-.legend { display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.5rem; }
-.legend-item {
-  display: flex; align-items: center; gap: 0.5rem;
-  font-size: 0.75rem; color: var(--text-dim);
-}
-.legend-dot {
-  width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
-}
-.legend-dot.hazardous { background: var(--danger); }
-.legend-dot.close { background: var(--warn); }
-.legend-dot.safe { background: var(--safe); }
-/* Shape variants for accessibility */
-.legend-shape { width: 10px; height: 10px; flex-shrink: 0; }
-.legend-shape.hazardous { width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 10px solid var(--danger); }
-.legend-shape.close { width: 10px; height: 10px; background: var(--warn); transform: rotate(45deg); }
-.legend-shape.safe { width: 10px; height: 10px; border-radius: 50%; background: var(--safe); }
+.stat-lbl { font-family:var(--font-m); font-size:.58rem; letter-spacing:.2em; color:var(--dim); text-transform:uppercase; margin-bottom:.2rem; }
+.stat-val { font-family:var(--font-d); font-size:1.4rem; font-weight:700; color:var(--accent); }
+.stat-val.red { color:var(--danger); }
+.legend { display:flex; flex-direction:column; gap:.35rem; padding-top:.2rem; }
+.leg-row { display:flex; align-items:center; gap:.5rem; font-size:.72rem; color:var(--dim); }
+.leg-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.date-block { display:flex; flex-direction:column; gap:.4rem; padding-top:.2rem; }
+.date-block label { font-family:var(--font-m); font-size:.6rem; letter-spacing:.15em; color:var(--dim); text-transform:uppercase; }
+.date-block input[type=date] { width:100%; background:rgba(0,0,0,.4); border:1px solid var(--border); border-radius:var(--r); color:var(--text); font-family:var(--font-m); font-size:.75rem; padding:.3rem .5rem; }
+.btn-scan { width:100%; margin-top:.3rem; padding:.45rem; font-size:.7rem; }
 
-.date-controls {
-  display: flex; flex-direction: column; gap: 0.4rem;
+/* GLOBE AREA */
+#globe-wrap {
+  position:fixed;
+  top:48px; left:240px; right:0; bottom:0;
+  background:#000;
 }
-.date-controls label {
-  font-family: var(--font-mono); font-size: 0.6rem;
-  letter-spacing: 0.15em; color: var(--text-dim); text-transform: uppercase;
-}
-.date-controls input[type="date"] {
-  font-family: var(--font-mono); font-size: 0.75rem;
-  padding: 0.3rem 0.5rem; background: rgba(0,0,0,0.3);
-  border: 1px solid var(--panel-border); border-radius: var(--radius);
-  color: var(--text); color-scheme: dark;
-}
-[data-high-contrast="true"] .date-controls input[type="date"] { color-scheme: light; }
-.btn-scan {
-  font-family: var(--font-display); font-size: 0.7rem; font-weight: 700;
-  padding: 0.5rem; border: 1px solid var(--accent); border-radius: var(--radius);
-  background: rgba(0,180,255,0.1); color: var(--accent); cursor: pointer;
-  letter-spacing: 0.15em; transition: all 0.2s;
-}
-.btn-scan:hover { background: var(--accent); color: var(--bg); }
-.btn-scan:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.rings-legend { display: flex; flex-direction: column; gap: 0.3rem; }
-.ring-item { display: flex; align-items: center; gap: 0.4rem; font-size: 0.7rem; color: var(--text-dim); }
-.ring-line { width: 18px; height: 1px; }
+#globe-wrap canvas { display:block; width:100% !important; height:100% !important; }
 
-/* ── MAIN CONTENT AREA ── */
-#main-content {
-  position: fixed; top: 52px; left: 260px; right: 0; bottom: 0;
+/* ALT VIEWS */
+.view {
+  position:absolute; inset:0; display:none;
+  padding:1.5rem; overflow:auto; background:var(--bg);
 }
-#globe-container {
-  position: absolute; inset: 0;
-  width: 100%; height: 100%;
-  overflow: hidden;
-}
-#globe-container canvas {
-  display: block;
-  width: 100% !important;
-  height: 100% !important;
-}
+.view.show { display:block; }
 
-/* ── TOOLTIP ── */
-#tooltip {
-  position: fixed; z-index: 200; pointer-events: none;
-  background: var(--panel); border: 1px solid var(--panel-border);
-  border-radius: var(--radius); padding: 0.8rem;
-  backdrop-filter: blur(12px); min-width: 220px;
-  opacity: 0; transition: opacity 0.15s;
-  font-size: 0.78rem;
-}
-#tooltip.visible { opacity: 1; }
-#tooltip .tt-name {
-  font-family: var(--font-display); font-size: 0.8rem; font-weight: 700;
-  margin-bottom: 0.5rem; color: var(--accent);
-}
-#tooltip .tt-row {
-  display: flex; justify-content: space-between; gap: 1rem;
-  padding: 0.15rem 0; color: var(--text-dim);
-}
-#tooltip .tt-row span:last-child { color: var(--text); font-family: var(--font-mono); }
-#tooltip .tt-hazard { color: var(--danger); font-weight: 600; }
+/* TABLE */
+table { width:100%; border-collapse:collapse; font-size:.78rem; }
+th { font-family:var(--font-m); font-size:.62rem; letter-spacing:.15em; text-transform:uppercase; color:var(--dim); text-align:left; padding:.55rem .7rem; border-bottom:1px solid var(--border); cursor:pointer; user-select:none; }
+th:hover { color:var(--text); }
+td { padding:.45rem .7rem; border-bottom:1px solid rgba(0,180,255,.05); }
+tr:hover td { background:rgba(0,180,255,.04); }
+td.red { color:var(--danger); }
+td.warn { color:var(--warn); }
+td.safe { color:var(--safe); }
 
-/* ── ALTERNATE VIEWS ── */
-.alt-view {
-  position: absolute; inset: 0; overflow: auto;
-  padding: 1.5rem; display: none;
-  background: var(--bg);
-}
-.alt-view.active { display: block; }
+/* CARDS */
+.card-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:1rem; }
+.card { background:var(--panel); border:1px solid var(--border); border-radius:var(--r); padding:1rem; }
+.card.haz { border-color:rgba(255,51,85,.4); }
+.card-name { font-family:var(--font-d); font-size:.78rem; color:var(--accent); margin-bottom:.6rem; }
+.card-row { display:flex; justify-content:space-between; font-size:.72rem; color:var(--dim); padding:.15rem 0; }
+.card-row span:last-child { color:var(--text); font-family:var(--font-m); }
 
-/* Table View */
-#table-view table {
-  width: 100%; border-collapse: collapse; font-size: 0.8rem;
-}
-#table-view th {
-  font-family: var(--font-mono); font-size: 0.65rem;
-  letter-spacing: 0.15em; text-transform: uppercase;
-  color: var(--text-dim); text-align: left;
-  padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--panel-border);
-  cursor: pointer; user-select: none; white-space: nowrap;
-}
-#table-view th:hover { color: var(--accent); }
-#table-view th.sorted-asc::after { content: ' ▲'; color: var(--accent); }
-#table-view th.sorted-desc::after { content: ' ▼'; color: var(--accent); }
-#table-view td {
-  padding: 0.5rem 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.03);
-  font-family: var(--font-mono); font-size: 0.75rem;
-}
-#table-view tr:hover td { background: rgba(0,180,255,0.05); }
-#table-view tr:focus-within td { outline: 1px solid var(--accent); }
-.badge {
-  display: inline-block; padding: 0.15rem 0.5rem; border-radius: 3px;
-  font-size: 0.65rem; letter-spacing: 0.1em; font-family: var(--font-mono);
-}
-.badge-danger { background: rgba(255,51,85,0.15); color: var(--danger); }
-.badge-safe { background: rgba(34,255,136,0.1); color: var(--safe); }
+/* TIMELINE */
+.tl-item { display:flex; gap:1rem; padding:.6rem 0; border-bottom:1px solid var(--border); align-items:center; }
+.tl-date { font-family:var(--font-m); font-size:.7rem; color:var(--dim); min-width:90px; }
+.tl-name { font-size:.8rem; flex:1; }
+.tl-badge { font-family:var(--font-m); font-size:.65rem; padding:.2rem .5rem; border-radius:3px; }
+.tl-badge.haz { background:rgba(255,51,85,.2); color:var(--danger); }
+.tl-badge.safe { background:rgba(34,255,136,.1); color:var(--safe); }
 
-/* Card View */
-#card-view {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 1rem;
-}
-.neo-card {
-  background: var(--panel); border: 1px solid var(--panel-border);
-  border-radius: var(--radius); padding: 1rem; cursor: pointer;
-  transition: all 0.2s;
-}
-.neo-card:hover { border-color: var(--accent); transform: translateY(-2px); }
-.neo-card:focus-visible { outline: 2px solid var(--accent); }
-.neo-card .card-name {
-  font-family: var(--font-display); font-size: 0.75rem; font-weight: 700;
-  margin-bottom: 0.5rem; color: var(--text);
-}
-.neo-card .card-threat {
-  height: 3px; border-radius: 2px; margin-bottom: 0.6rem;
-}
-.neo-card .card-stats {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 0.3rem;
-  font-size: 0.7rem;
-}
-.neo-card .card-stats .cs-label { color: var(--text-dim); font-family: var(--font-mono); font-size: 0.6rem; }
-.neo-card .card-stats .cs-val { font-family: var(--font-mono); }
-.card-detail {
-  margin-top: 0.6rem; padding-top: 0.6rem;
-  border-top: 1px solid var(--panel-border);
-  font-size: 0.7rem; color: var(--text-dim); display: none;
-}
-.neo-card.expanded .card-detail { display: block; }
+/* 2D MAP */
+#map-canvas { display:block; width:100%; height:100%; }
 
-/* Timeline View */
-#timeline-view {
-  display: flex; flex-direction: column; gap: 0;
-  padding-left: 2rem; border-left: 2px solid var(--panel-border);
-  margin-left: 1rem;
+/* TOOLTIP */
+#tip {
+  position:fixed; z-index:300; pointer-events:none;
+  background:var(--panel); border:1px solid var(--border); border-radius:var(--r);
+  padding:.8rem; min-width:200px; font-size:.75rem;
+  opacity:0; transition:opacity .12s; backdrop-filter:blur(10px);
 }
-.tl-group-label {
-  font-family: var(--font-display); font-size: 0.7rem; font-weight: 700;
-  color: var(--accent); padding: 0.8rem 0 0.4rem;
-  letter-spacing: 0.1em; position: relative;
-}
-.tl-group-label::before {
-  content: ''; position: absolute; left: -2.35rem; top: 1rem;
-  width: 10px; height: 10px; border-radius: 50%;
-  background: var(--accent); box-shadow: 0 0 8px var(--accent-glow);
-}
-.tl-card {
-  background: var(--panel); border: 1px solid var(--panel-border);
-  border-radius: var(--radius); padding: 0.7rem 0.9rem;
-  margin-bottom: 0.5rem; position: relative;
-  font-size: 0.75rem; transition: border-color 0.2s;
-}
-.tl-card:hover { border-color: var(--accent); }
-.tl-card::before {
-  content: ''; position: absolute; left: -1.65rem; top: 50%;
-  width: 12px; height: 1px; background: var(--panel-border);
-}
-.tl-card .tl-name { font-family: var(--font-display); font-size: 0.7rem; font-weight: 700; }
-.tl-card .tl-stats {
-  display: flex; gap: 1rem; margin-top: 0.3rem;
-  font-family: var(--font-mono); font-size: 0.65rem; color: var(--text-dim);
-}
+#tip.show { opacity:1; }
+#tip .tip-name { font-family:var(--font-d); font-size:.76rem; color:var(--accent); margin-bottom:.5rem; }
+#tip .tip-row { display:flex; justify-content:space-between; gap:.8rem; color:var(--dim); padding:.1rem 0; }
+#tip .tip-row span:last-child { color:var(--text); font-family:var(--font-m); }
 
-/* 2D Map View */
-#map-view { position: relative; }
-#map-canvas { width: 100%; height: 100%; }
-
-/* ── SCI-FI OVERLAY ── */
-#scifi-overlay {
-  position: fixed; inset: 0; z-index: 300;
-  background: rgba(5,5,16,0.92); backdrop-filter: blur(6px);
-  display: none; flex-direction: column; align-items: center; justify-content: center;
-  text-align: center; padding: 2rem;
-}
-#scifi-overlay.active { display: flex; }
-#scifi-overlay h2 {
-  font-family: var(--font-display); font-size: 1.2rem;
-  color: var(--danger); letter-spacing: 0.2em; margin-bottom: 0.5rem;
-}
-#scifi-casualties {
-  font-family: var(--font-display); font-size: clamp(2rem, 8vw, 5rem);
-  font-weight: 900; color: var(--danger);
-  text-shadow: 0 0 40px var(--danger-glow);
-  margin: 0.5rem 0;
-}
-#scifi-status {
-  font-family: var(--font-mono); font-size: 0.9rem;
-  color: var(--text-dim); margin-bottom: 1.5rem;
-}
-#scifi-log {
-  max-height: 200px; overflow-y: auto; width: 100%; max-width: 500px;
-  margin-bottom: 1.5rem; text-align: left;
-  font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-dim);
-}
-.scifi-log-entry { padding: 0.2rem 0; border-bottom: 1px solid rgba(255,255,255,0.03); }
-
-/* ── LOADING ── */
+/* LOADING */
 #loading {
-  position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%);
-  z-index: 150; font-family: var(--font-mono); font-size: 0.75rem;
-  color: var(--accent); letter-spacing: 0.15em;
-  display: none; align-items: center; gap: 0.5rem;
+  position:fixed; bottom:1.2rem; left:50%; transform:translateX(-50%);
+  z-index:200; display:none; align-items:center; gap:.5rem;
+  font-family:var(--font-m); font-size:.72rem; color:var(--accent); letter-spacing:.15em;
 }
-#loading.active { display: flex; }
-.spinner {
-  width: 14px; height: 14px; border: 2px solid var(--panel-border);
-  border-top-color: var(--accent); border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
+#loading.show { display:flex; }
+.spin { width:13px; height:13px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite; }
+@keyframes spin { to{transform:rotate(360deg)} }
 
-/* ── TOAST ── */
+/* TOAST */
 #toast {
-  position: fixed; bottom: 2rem; right: 1rem; z-index: 160;
-  background: var(--panel); border: 1px solid var(--panel-border);
-  border-radius: var(--radius); padding: 0.8rem 1rem;
-  backdrop-filter: blur(12px); max-width: 340px;
-  font-size: 0.8rem; display: none; align-items: flex-start; gap: 0.6rem;
+  position:fixed; bottom:2rem; right:1rem; z-index:200;
+  background:var(--panel); border:1px solid var(--border); border-radius:var(--r);
+  padding:.75rem 1rem; max-width:320px; font-size:.78rem;
+  display:none; gap:.6rem; align-items:flex-start; backdrop-filter:blur(10px);
 }
-#toast.active { display: flex; }
-#toast .toast-close {
-  background: none; border: none; color: var(--text-dim);
-  cursor: pointer; font-size: 1rem; line-height: 1; flex-shrink: 0;
-}
+#toast.show { display:flex; }
+#toast button { background:none; border:none; color:var(--dim); cursor:pointer; font-size:1rem; line-height:1; flex-shrink:0; }
 
-/* ── ARIA LIVE REGION ── */
-#sr-announce {
-  position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden;
+/* SCI-FI OVERLAY */
+#scifi {
+  position:fixed; inset:0; z-index:500; display:none;
+  background:rgba(0,0,0,.92); flex-direction:column; align-items:center; justify-content:center;
+  font-family:var(--font-m);
 }
+#scifi.show { display:flex; }
+#scifi h2 { font-family:var(--font-d); font-size:1.4rem; color:var(--danger); letter-spacing:.2em; margin-bottom:.5rem; text-shadow:0 0 20px var(--danger); }
+#scifi .big { font-size:3rem; font-weight:900; color:var(--danger); margin:.3rem 0; text-shadow:0 0 40px var(--danger); }
+#scifi .status { font-size:.85rem; color:var(--dim); margin-bottom:1.5rem; }
+#scifi .log { max-height:180px; overflow-y:auto; width:100%; max-width:480px; font-size:.68rem; color:var(--dim); margin-bottom:1.5rem; }
+.log-line { padding:.15rem 0; border-bottom:1px solid rgba(255,255,255,.04); }
 
-/* ── SETTINGS MENU ── */
-#settings-menu {
-  position: fixed; top: 52px; right: 0; z-index: 200;
-  background: var(--panel); border: 1px solid var(--panel-border);
-  border-radius: 0 0 0 var(--radius); padding: 1rem;
-  backdrop-filter: blur(12px); display: none;
-  flex-direction: column; gap: 0.6rem; min-width: 200px;
-}
-#settings-menu.active { display: flex; }
-.setting-row {
-  display: flex; align-items: center; justify-content: space-between;
-  font-size: 0.75rem; gap: 0.8rem;
-}
-.toggle {
-  position: relative; width: 36px; height: 20px;
-  background: rgba(255,255,255,0.1); border-radius: 10px;
-  cursor: pointer; transition: background 0.2s; border: none;
-}
-.toggle::after {
-  content: ''; position: absolute; top: 2px; left: 2px;
-  width: 16px; height: 16px; border-radius: 50%;
-  background: var(--text-dim); transition: all 0.2s;
-}
-.toggle.on { background: var(--accent); }
-.toggle.on::after { left: 18px; background: #fff; }
-.toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-
-/* ── RESPONSIVE ── */
-@media (max-width: 768px) {
-  #hud {
-    position: fixed; top: auto; bottom: 0; left: 0; right: 0;
-    width: 100%; max-height: 40vh;
-    border-right: none; border-top: 1px solid var(--panel-border);
-    flex-direction: row; flex-wrap: wrap; gap: 0.6rem;
-    padding: 0.6rem;
-  }
-  #hud .stat-group { flex: 1; min-width: 100px; }
-  #hud .date-controls { flex-basis: 100%; flex-direction: row; flex-wrap: wrap; gap: 0.3rem; }
-  #main-content { left: 0; bottom: 40vh; }
-  .view-switcher button { font-size: 0.6rem; padding: 0.3rem 0.5rem; }
-  #topbar .logo { font-size: 0.8rem; }
-}
-
-/* ── REDUCED MOTION ── */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
-  }
-}
-[data-reduce-motion="true"] * {
-  animation-duration: 0.01ms !important;
-  transition-duration: 0.01ms !important;
+/* RESPONSIVE */
+@media(max-width:700px) {
+  #hud { top:auto; bottom:0; left:0; right:0; width:100%; height:auto; max-height:38vh; flex-direction:row; flex-wrap:wrap; border-right:none; border-top:1px solid var(--border); }
+  #globe-wrap { left:0; bottom:38vh; }
+  .view { bottom:38vh; }
 }
 </style>
 </head>
 <body>
 
-<!-- Screen reader live region -->
-<div id="sr-announce" aria-live="polite" aria-atomic="true"></div>
-
 <!-- SPLASH -->
-<div id="splash" role="button" tabindex="0" aria-label="Click to begin NeoWatch 3D">
-  <h1>NeoWatch</h1>
-  <p class="subtitle">Real-time Near Earth Object Tracker</p>
-  <p class="desc">
-    Welcome to <strong>NeoWatch 3D</strong> — a live visualization of asteroids and comets
-    passing close to Earth, powered by <strong>NASA's NeoWs API</strong>.<br><br>
-    Drag to rotate the globe, scroll to zoom in, and hover any object to see its
-    speed, size, and distance. Switch on <strong>Sci-Fi Mode</strong> to simulate
-    what would happen if they all hit.
-  </p>
-  <p class="cta">— CLICK ANYWHERE TO BEGIN —</p>
+<div id="splash">
+  <h1>NeoWatch 3D</h1>
+  <p class="sub">NASA Near-Earth Object Tracker</p>
+  <p class="cta">— TAP TO BEGIN —</p>
 </div>
 
 <!-- TOP BAR -->
-<div id="topbar" role="banner">
+<div id="topbar">
   <span class="logo">NEOWATCH 3D</span>
-  <nav class="view-switcher" role="tablist" aria-label="View mode">
-    <button role="tab" aria-selected="true" class="active" data-view="globe" aria-label="3D Globe view">3D GLOBE</button>
-    <button role="tab" aria-selected="false" data-view="map" aria-label="2D Map view">2D MAP</button>
-    <button role="tab" aria-selected="false" data-view="table" aria-label="Table view">TABLE</button>
-    <button role="tab" aria-selected="false" data-view="timeline" aria-label="Timeline view">TIMELINE</button>
-    <button role="tab" aria-selected="false" data-view="cards" aria-label="Card view">CARDS</button>
-  </nav>
-  <div class="topbar-actions">
-    <button class="btn btn-danger" id="scifi-btn" aria-label="Toggle Sci-Fi Mode" aria-pressed="false">☢ SCI-FI</button>
-    <button class="btn" id="settings-btn" aria-label="Settings" aria-expanded="false">⚙ SETTINGS</button>
+  <div class="view-btns">
+    <button class="on" data-view="globe">3D GLOBE</button>
+    <button data-view="map">2D MAP</button>
+    <button data-view="table">TABLE</button>
+    <button data-view="timeline">TIMELINE</button>
+    <button data-view="cards">CARDS</button>
   </div>
-</div>
-
-<!-- SETTINGS -->
-<div id="settings-menu" role="dialog" aria-label="Settings">
-  <div class="setting-row">
-    <span>High Contrast</span>
-    <button class="toggle" id="toggle-contrast" role="switch" aria-checked="false" aria-label="High contrast mode"></button>
-  </div>
-  <div class="setting-row">
-    <span>Reduce Motion</span>
-    <button class="toggle" id="toggle-motion" role="switch" aria-checked="false" aria-label="Reduce motion"></button>
-  </div>
-  <div class="setting-row">
-    <span>Units</span>
-    <button class="btn" id="toggle-units" aria-label="Toggle units">METRIC</button>
-  </div>
+  <div class="spacer"></div>
+  <button class="btn danger" id="scifi-btn">☢ SCI-FI</button>
 </div>
 
 <!-- HUD -->
-<div id="hud" role="complementary" aria-label="Statistics panel">
-  <div class="stat-group">
-    <div class="stat-label">Total Objects</div>
-    <div class="stat-value" id="stat-total">—</div>
+<div id="hud">
+  <div>
+    <div class="stat-lbl">Total Objects</div>
+    <div class="stat-val" id="stat-total">—</div>
   </div>
-  <div class="stat-group">
-    <div class="stat-label">Hazardous</div>
-    <div class="stat-value danger" id="stat-hazardous">—</div>
+  <div>
+    <div class="stat-lbl">Hazardous</div>
+    <div class="stat-val red" id="stat-haz">—</div>
   </div>
-  <div class="stat-group">
-    <div class="stat-label">Closest Approach</div>
-    <div class="stat-value" id="stat-closest">—</div>
+  <div>
+    <div class="stat-lbl">Closest Approach</div>
+    <div class="stat-val" id="stat-close">—</div>
   </div>
-  <div class="legend" aria-label="Object legend">
-    <div class="legend-item"><div class="legend-shape hazardous"></div> Hazardous (▲)</div>
-    <div class="legend-item"><div class="legend-shape close"></div> &lt; 1 Lunar Dist (◆)</div>
-    <div class="legend-item"><div class="legend-shape safe"></div> Safe (●)</div>
+  <div class="legend">
+    <div class="stat-lbl">Legend</div>
+    <div class="leg-row"><div class="leg-dot" style="background:#ff3355"></div>Hazardous ▲</div>
+    <div class="leg-row"><div class="leg-dot" style="background:#ff9922"></div>&lt;1 Lunar Dist ◆</div>
+    <div class="leg-row"><div class="leg-dot" style="background:#22ff88"></div>Safe ●</div>
   </div>
-  <div class="rings-legend" aria-label="Distance rings">
-    <div class="stat-label" style="margin-bottom:0.2rem">Distance Rings</div>
-    <div class="ring-item"><div class="ring-line" style="background:rgba(0,180,255,0.4)"></div> 1 Lunar Distance</div>
-    <div class="ring-item"><div class="ring-line" style="background:rgba(0,180,255,0.2)"></div> 5 Lunar Distances</div>
-    <div class="ring-item"><div class="ring-line" style="background:rgba(0,180,255,0.1)"></div> 10 Lunar Distances</div>
-  </div>
-  <div class="date-controls">
-    <label for="date-from">From</label>
-    <input type="date" id="date-from" aria-label="Start date">
-    <label for="date-to">To</label>
-    <input type="date" id="date-to" aria-label="End date">
-    <button class="btn-scan" id="btn-scan">SCAN</button>
+  <div class="date-block">
+    <div class="stat-lbl">Date Range</div>
+    <label>From</label><input type="date" id="df">
+    <label>To</label><input type="date" id="dt">
+    <button class="btn btn-scan" id="btn-scan">SCAN</button>
   </div>
 </div>
 
-<!-- MAIN CONTENT -->
-<div id="main-content">
-  <div id="globe-container"></div>
-  <div id="map-view" class="alt-view" role="tabpanel" aria-label="2D Map view">
-    <canvas id="map-canvas"></canvas>
-  </div>
-  <div id="table-view" class="alt-view" role="tabpanel" aria-label="Table view">
-    <table role="grid" aria-label="Near-Earth Objects data">
-      <thead>
-        <tr>
-          <th data-sort="name" tabindex="0" role="columnheader" aria-sort="none">Name</th>
-          <th data-sort="date" tabindex="0" role="columnheader" aria-sort="none">Date</th>
-          <th data-sort="distance" tabindex="0" role="columnheader" aria-sort="none">Miss Dist</th>
-          <th data-sort="velocity" tabindex="0" role="columnheader" aria-sort="none">Velocity</th>
-          <th data-sort="diameter" tabindex="0" role="columnheader" aria-sort="none">Diameter</th>
-          <th data-sort="hazardous" tabindex="0" role="columnheader" aria-sort="none">Hazardous</th>
-        </tr>
-      </thead>
-      <tbody id="table-body"></tbody>
+<!-- GLOBE CONTAINER -->
+<div id="globe-wrap">
+  <!-- Three.js canvas injected here -->
+
+  <!-- ALT VIEWS inside same container -->
+  <div id="view-map" class="view"><canvas id="map-canvas"></canvas></div>
+  <div id="view-table" class="view">
+    <table id="tbl">
+      <thead><tr>
+        <th data-s="name">Name</th>
+        <th data-s="date">Date</th>
+        <th data-s="dist">Miss Dist (LD)</th>
+        <th data-s="vel">Velocity (km/s)</th>
+        <th data-s="diam">Diameter (m)</th>
+        <th data-s="haz">Hazardous</th>
+      </tr></thead>
+      <tbody id="tbl-body"></tbody>
     </table>
   </div>
-  <div id="timeline-view" class="alt-view" role="tabpanel" aria-label="Timeline view"></div>
-  <div id="card-view" class="alt-view" role="tabpanel" aria-label="Card view"></div>
+  <div id="view-timeline" class="view"><div id="tl-body"></div></div>
+  <div id="view-cards" class="view"><div class="card-grid" id="card-body"></div></div>
 </div>
 
 <!-- TOOLTIP -->
-<div id="tooltip" role="tooltip" aria-hidden="true">
-  <div class="tt-name" id="tt-name"></div>
-  <div class="tt-row"><span>Date</span><span id="tt-date"></span></div>
-  <div class="tt-row"><span>Miss dist</span><span id="tt-dist"></span></div>
-  <div class="tt-row"><span>Velocity</span><span id="tt-vel"></span></div>
-  <div class="tt-row"><span>Diameter</span><span id="tt-diam"></span></div>
-  <div class="tt-row"><span>Hazardous</span><span id="tt-haz"></span></div>
-  <div class="tt-row" id="tt-energy-row" style="display:none"><span>Energy</span><span id="tt-energy"></span></div>
-  <div class="tt-row" id="tt-crater-row" style="display:none"><span>Crater</span><span id="tt-crater"></span></div>
-</div>
-
-<!-- SCI-FI OVERLAY -->
-<div id="scifi-overlay" role="dialog" aria-label="Sci-Fi impact simulation results">
-  <h2>SIMULATION COMPLETE</h2>
-  <div id="scifi-casualties">0</div>
-  <div id="scifi-status">Earth Status: ☠ UNINHABITABLE</div>
-  <div id="scifi-log"></div>
-  <button class="btn" id="scifi-close" aria-label="Close simulation">DISMISS</button>
+<div id="tip">
+  <div class="tip-name" id="tip-name"></div>
+  <div class="tip-row"><span>Date</span><span id="tip-date"></span></div>
+  <div class="tip-row"><span>Miss dist</span><span id="tip-dist"></span></div>
+  <div class="tip-row"><span>Velocity</span><span id="tip-vel"></span></div>
+  <div class="tip-row"><span>Diameter</span><span id="tip-diam"></span></div>
+  <div class="tip-row"><span>Hazardous</span><span id="tip-haz"></span></div>
 </div>
 
 <!-- LOADING -->
-<div id="loading" aria-live="polite"><div class="spinner"></div><span>Scanning near-Earth space…</span></div>
+<div id="loading"><div class="spin"></div>Scanning near-Earth space…</div>
 
 <!-- TOAST -->
-<div id="toast" role="alert">
-  <span>Try <strong>☢ Sci-Fi Mode</strong> to simulate what would happen if they all hit! ☄️</span>
-  <button class="toast-close" aria-label="Dismiss hint">✕</button>
+<div id="toast"><span id="toast-msg"></span><button id="toast-x">✕</button></div>
+
+<!-- SCI-FI OVERLAY -->
+<div id="scifi">
+  <h2>☄ IMPACT SIMULATION</h2>
+  <div class="big" id="sf-cas">0</div>
+  <div class="status" id="sf-status">Earth Status: CALCULATING…</div>
+  <div class="log" id="sf-log"></div>
+  <button class="btn" id="sf-close">DISMISS</button>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
-// ── STATE ──
-const state = {
-  neos: [],
-  currentView: 'globe',
-  scifiMode: false,
-  useImperial: false,
-  highContrast: false,
-  reduceMotion: false,
-  sortCol: null,
-  sortDir: 'asc',
-};
+'use strict';
 
-// ── HELPERS ──
-const $ = s => document.querySelector(s);
-const $$ = s => document.querySelectorAll(s);
-const announce = msg => { const el = $('#sr-announce'); el.textContent = ''; requestAnimationFrame(() => el.textContent = msg); };
-
-function todayStr() { const d = new Date(); return d.toISOString().slice(0, 10); }
-function addDays(str, n) { const d = new Date(str); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); }
-function formatNum(n) { return n.toLocaleString(undefined, { maximumFractionDigits: 1 }); }
-function lunarDist(km) { return km / 384400; }
-
-// ── NASA API KEY ──
+// ── CONFIG ──────────────────────────────────────────────────────────────────
 const API_KEY = 'D36Q3kKCmVGaDcTt1sCY1WHCC94EJ51jHacDH7P9';
+const LUNAR   = 384400; // km
 
-const DEMO_NEOS = [
-  { id: '54016382', name: '(2020 XL5)', date: '2026-04-10', hazardous: false, diameterMin: 210, diameterMax: 470, distanceKm: 4870000, distanceLunar: 12.67, velocityKmh: 42300, velocityKms: 11.75 },
-  { id: '54204856', name: '(2021 RB1)', date: '2026-04-10', hazardous: true,  diameterMin: 140, diameterMax: 320, distanceKm: 980000,  distanceLunar: 2.55,  velocityKmh: 68500, velocityKms: 19.03 },
-  { id: '53780123', name: '(2019 GC6)', date: '2026-04-11', hazardous: false, diameterMin: 60,  diameterMax: 140, distanceKm: 1540000, distanceLunar: 4.01,  velocityKmh: 31200, velocityKms: 8.67 },
-  { id: '54391044', name: '(2022 AP7)', date: '2026-04-11', hazardous: true,  diameterMin: 730, diameterMax: 1630,distanceKm: 7290000, distanceLunar: 18.97, velocityKmh: 55800, velocityKms: 15.5 },
-  { id: '53101200', name: '(2018 KP1)', date: '2026-04-12', hazardous: false, diameterMin: 30,  diameterMax: 68,  distanceKm: 350000,  distanceLunar: 0.91,  velocityKmh: 21800, velocityKms: 6.06 },
-  { id: '54501337', name: '(2023 DZ2)', date: '2026-04-12', hazardous: false, diameterMin: 40,  diameterMax: 90,  distanceKm: 175000,  distanceLunar: 0.46,  velocityKmh: 19400, velocityKms: 5.39 },
-  { id: '53002811', name: '(2017 BQ6)', date: '2026-04-13', hazardous: true,  diameterMin: 290, diameterMax: 650, distanceKm: 6100000, distanceLunar: 15.88, velocityKmh: 78200, velocityKms: 21.72 },
-  { id: '54700298', name: '(2024 RW1)', date: '2026-04-13', hazardous: false, diameterMin: 12,  diameterMax: 28,  distanceKm: 2200000, distanceLunar: 5.73,  velocityKmh: 27600, velocityKms: 7.67 },
-  { id: '53455611', name: '(2019 SB6)', date: '2026-04-14', hazardous: false, diameterMin: 80,  diameterMax: 180, distanceKm: 3400000, distanceLunar: 8.85,  velocityKmh: 36900, velocityKms: 10.25 },
-  { id: '54088976', name: '(2021 GM4)', date: '2026-04-15', hazardous: true,  diameterMin: 180, diameterMax: 410, distanceKm: 1200000, distanceLunar: 3.12,  velocityKmh: 61000, velocityKms: 16.94 },
+// ── HELPERS ─────────────────────────────────────────────────────────────────
+const $  = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const fmt = n => n.toLocaleString(undefined, { maximumFractionDigits: 1 });
+const today  = () => { const d=new Date(); return d.toISOString().slice(0,10); };
+const addDay = (s,n) => { const d=new Date(s); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); };
+
+// ── STATE ────────────────────────────────────────────────────────────────────
+const S = { neos:[], view:'globe', sortCol:'dist', sortDir:'asc' };
+
+// ── FALLBACK DATA (shown if NASA API is unavailable) ─────────────────────────
+const DEMO = [
+  {id:'54016382',name:'(2020 XL5)',  date:'2026-04-10',haz:false,dMin:210,dMax:470, distKm:4870000,distLD:12.67,velKmh:42300,velKms:11.75},
+  {id:'54204856',name:'(2021 RB1)',  date:'2026-04-10',haz:true, dMin:140,dMax:320, distKm:980000, distLD:2.55, velKmh:68500,velKms:19.03},
+  {id:'53780123',name:'(2019 GC6)',  date:'2026-04-11',haz:false,dMin:60, dMax:140, distKm:1540000,distLD:4.01, velKmh:31200,velKms:8.67},
+  {id:'54391044',name:'(2022 AP7)',  date:'2026-04-11',haz:true, dMin:730,dMax:1630,distKm:7290000,distLD:18.97,velKmh:55800,velKms:15.5},
+  {id:'53101200',name:'(2018 KP1)',  date:'2026-04-12',haz:false,dMin:30, dMax:68,  distKm:350000, distLD:0.91, velKmh:21800,velKms:6.06},
+  {id:'54501337',name:'(2023 DZ2)',  date:'2026-04-12',haz:false,dMin:40, dMax:90,  distKm:175000, distLD:0.46, velKmh:19400,velKms:5.39},
+  {id:'53002811',name:'(2017 BQ6)',  date:'2026-04-13',haz:true, dMin:290,dMax:650, distKm:6100000,distLD:15.88,velKmh:78200,velKms:21.72},
+  {id:'54700298',name:'(2024 RW1)',  date:'2026-04-13',haz:false,dMin:12, dMax:28,  distKm:2200000,distLD:5.73, velKmh:27600,velKms:7.67},
+  {id:'53455611',name:'(2019 SB6)',  date:'2026-04-14',haz:false,dMin:80, dMax:180, distKm:3400000,distLD:8.85, velKmh:36900,velKms:10.25},
+  {id:'54088976',name:'(2021 GM4)',  date:'2026-04-15',haz:true, dMin:180,dMax:410, distKm:1200000,distLD:3.12, velKmh:61000,velKms:16.94},
 ];
 
-function showApiError(msg) {
-  const toast = $('#toast');
-  toast.innerHTML = `<span>${msg}</span><button class="toast-close" aria-label="Dismiss hint">✕</button>`;
-  toast.querySelector('.toast-close').addEventListener('click', () => toast.classList.remove('active'));
-  toast.style.borderColor = 'var(--warn)';
-  toast.classList.add('active');
-}
+// ── THREE.JS GLOBALS ─────────────────────────────────────────────────────────
+let scene, camera, renderer, earth, neoMeshes=[], raycaster, mouse;
 
-async function fetchNEOs(from, to) {
-  $('#loading').classList.add('active');
-  announce('Loading near-Earth object data');
-  try {
-    const url = `https://api.nasa.gov/neo/rest/v1/feed?start_date=${from}&end_date=${to}&api_key=${API_KEY}`;
-    const res = await fetch(url);
-    const data = await res.json();
-    if (!res.ok || !data.near_earth_objects) {
-      const reason = data.error?.message || (res.status === 429 ? 'Rate limit reached (DEMO_KEY: 30 req/hr)' : `HTTP ${res.status}`);
-      throw new Error(reason);
-    }
-    const neos = [];
-    for (const date of Object.keys(data.near_earth_objects).sort()) {
-      for (const obj of data.near_earth_objects[date]) {
-        const ca = obj.close_approach_data[0];
-        neos.push({
-          id: obj.id,
-          name: obj.name,
-          date: date,
-          hazardous: obj.is_potentially_hazardous_asteroid,
-          diameterMin: obj.estimated_diameter.meters.estimated_diameter_min,
-          diameterMax: obj.estimated_diameter.meters.estimated_diameter_max,
-          distanceKm: parseFloat(ca.miss_distance.kilometers),
-          distanceLunar: parseFloat(ca.miss_distance.lunar),
-          velocityKmh: parseFloat(ca.relative_velocity.kilometers_per_hour),
-          velocityKms: parseFloat(ca.relative_velocity.kilometers_per_second),
-        });
-      }
-    }
-    state.neos = neos;
-    state.usingDemoData = false;
-    updateHUD();
-    updateAllViews();
-    update3DObjects();
-    announce(`Loaded ${neos.length} near-Earth objects`);
-    if (neos.length === 0) announce('No near-Earth objects found for this date range');
-  } catch (e) {
-    console.error('API error:', e);
-    state.neos = DEMO_NEOS;
-    state.usingDemoData = true;
-    updateHUD();
-    updateAllViews();
-    update3DObjects();
-    showApiError(`⚠ API unavailable (${e.message}). Showing demo data — 10 sample NEOs.`);
-    announce('API error. Showing demo data.');
-  }
-  $('#loading').classList.remove('active');
-}
-
-// ── HUD ──
-function updateHUD() {
-  const { neos } = state;
-  $('#stat-total').textContent = neos.length || '—';
-  const haz = neos.filter(n => n.hazardous).length;
-  $('#stat-hazardous').textContent = haz || '0';
-  if (neos.length) {
-    const closest = Math.min(...neos.map(n => n.distanceLunar));
-    $('#stat-closest').textContent = formatNum(closest) + ' LD';
-  } else {
-    $('#stat-closest').textContent = '—';
-  }
-}
-
-// ── VIEW SWITCHING ──
-$$('.view-switcher button').forEach(btn => {
-  btn.addEventListener('click', () => {
-    $$('.view-switcher button').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
-    btn.classList.add('active');
-    btn.setAttribute('aria-selected', 'true');
-    state.currentView = btn.dataset.view;
-    $$('.alt-view').forEach(v => v.classList.remove('active'));
-    const globeEl = $('#globe-container');
-    if (state.currentView === 'globe') {
-      globeEl.style.display = 'block';
-    } else {
-      globeEl.style.display = 'none';
-      const viewEl = $(`#${state.currentView === 'cards' ? 'card' : state.currentView}-view`);
-      if (viewEl) viewEl.classList.add('active');
-    }
-    announce(`Switched to ${btn.textContent} view`);
-  });
-});
-
-// ── DATE SCAN ──
-$('#btn-scan').addEventListener('click', () => {
-  const from = $('#date-from').value;
-  const to = $('#date-to').value;
-  if (from && to) fetchNEOs(from, to);
-});
-
-// ── SETTINGS ──
-$('#settings-btn').addEventListener('click', () => {
-  const menu = $('#settings-menu');
-  const open = menu.classList.toggle('active');
-  $('#settings-btn').setAttribute('aria-expanded', open);
-});
-
-$('#toggle-contrast').addEventListener('click', function() {
-  state.highContrast = !state.highContrast;
-  this.classList.toggle('on', state.highContrast);
-  this.setAttribute('aria-checked', state.highContrast);
-  document.documentElement.setAttribute('data-high-contrast', state.highContrast);
-  announce(state.highContrast ? 'High contrast on' : 'High contrast off');
-});
-
-$('#toggle-motion').addEventListener('click', function() {
-  state.reduceMotion = !state.reduceMotion;
-  this.classList.toggle('on', state.reduceMotion);
-  this.setAttribute('aria-checked', state.reduceMotion);
-  document.documentElement.setAttribute('data-reduce-motion', state.reduceMotion);
-  announce(state.reduceMotion ? 'Reduced motion on' : 'Reduced motion off');
-});
-
-$('#toggle-units').addEventListener('click', function() {
-  state.useImperial = !state.useImperial;
-  this.textContent = state.useImperial ? 'IMPERIAL' : 'METRIC';
-  updateAllViews();
-  announce(`Units switched to ${state.useImperial ? 'imperial' : 'metric'}`);
-});
-
-// ── TOAST ──
-$('.toast-close').addEventListener('click', () => $('#toast').classList.remove('active'));
-
-// ── SCI-FI MODE ──
-$('#scifi-btn').addEventListener('click', () => {
-  state.scifiMode = !state.scifiMode;
-  $('#scifi-btn').classList.toggle('active', state.scifiMode);
-  $('#scifi-btn').setAttribute('aria-pressed', state.scifiMode);
-  if (state.scifiMode) runSciFiSimulation();
-  announce(state.scifiMode ? 'Sci-Fi mode activated' : 'Sci-Fi mode deactivated');
-});
-$('#scifi-close').addEventListener('click', () => {
-  $('#scifi-overlay').classList.remove('active');
-  state.scifiMode = false;
-  $('#scifi-btn').classList.remove('active');
-  $('#scifi-btn').setAttribute('aria-pressed', 'false');
-});
-
-function runSciFiSimulation() {
-  const overlay = $('#scifi-overlay');
-  const log = $('#scifi-log');
-  const casEl = $('#scifi-casualties');
-  log.innerHTML = '';
-  casEl.textContent = '0';
-  overlay.classList.add('active');
-
-  let totalCas = 0;
-  const neos = state.neos.filter(n => n.hazardous).concat(state.neos.filter(n => !n.hazardous));
-  if (!neos.length) { casEl.textContent = '0'; $('#scifi-status').textContent = 'No objects loaded'; return; }
-
-  let i = 0;
-  const interval = state.reduceMotion ? 0 : 200;
-  function next() {
-    if (i >= neos.length) {
-      $('#scifi-status').textContent = totalCas > 4e9 ? 'Earth Status: ☠ UNINHABITABLE' :
-        totalCas > 1e9 ? 'Earth Status: ⚠ CRITICAL' :
-        totalCas > 1e6 ? 'Earth Status: ⚠ SEVERE DAMAGE' : 'Earth Status: MINOR DAMAGE';
-      return;
-    }
-    const neo = neos[i];
-    const avgDiam = (neo.diameterMin + neo.diameterMax) / 2;
-    const mass = (4/3) * Math.PI * Math.pow(avgDiam/2, 3) * 3000;
-    const v = neo.velocityKms * 1000;
-    const energyJ = 0.5 * mass * v * v;
-    const energyMT = energyJ / 4.184e15;
-    const craterKm = 0.07 * Math.pow(energyMT, 0.29);
-    const casualties = Math.min(Math.round(craterKm * craterKm * 3.14 * 500), 5e8);
-    totalCas += casualties;
-    casEl.textContent = formatNum(totalCas);
-    const entry = document.createElement('div');
-    entry.className = 'scifi-log-entry';
-    entry.textContent = `${neo.name} — ${formatNum(energyMT)} MT — crater ${formatNum(craterKm)} km — ${formatNum(casualties)} casualties`;
-    log.appendChild(entry);
-    log.scrollTop = log.scrollHeight;
-    i++;
-    setTimeout(next, interval);
-  }
-  next();
-}
-
-// ── UPDATE ALL ALT VIEWS ──
-function updateAllViews() {
-  updateTableView();
-  updateCardView();
-  updateTimelineView();
-  updateMapView();
-}
-
-// ── TABLE VIEW ──
-function updateTableView() {
-  const tbody = $('#table-body');
-  tbody.innerHTML = '';
-  let neos = [...state.neos];
-  if (state.sortCol) {
-    neos.sort((a, b) => {
-      let va, vb;
-      switch(state.sortCol) {
-        case 'name': va = a.name; vb = b.name; return state.sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
-        case 'date': va = a.date; vb = b.date; return state.sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
-        case 'distance': va = a.distanceKm; vb = b.distanceKm; break;
-        case 'velocity': va = a.velocityKmh; vb = b.velocityKmh; break;
-        case 'diameter': va = a.diameterMax; vb = b.diameterMax; break;
-        case 'hazardous': va = a.hazardous?1:0; vb = b.hazardous?1:0; break;
-      }
-      return state.sortDir === 'asc' ? va - vb : vb - va;
-    });
-  }
-  for (const neo of neos) {
-    const tr = document.createElement('tr');
-    tr.tabIndex = 0;
-    const dist = state.useImperial ? formatNum(neo.distanceKm * 0.621371) + ' mi' : formatNum(neo.distanceKm) + ' km';
-    const vel = state.useImperial ? formatNum(neo.velocityKmh * 0.621371) + ' mph' : formatNum(neo.velocityKmh) + ' km/h';
-    const diam = state.useImperial ? formatNum(neo.diameterMax * 3.28084) + ' ft' : formatNum(neo.diameterMax) + ' m';
-    const hazBadge = neo.hazardous ? '<span class="badge badge-danger">YES</span>' : '<span class="badge badge-safe">NO</span>';
-    tr.innerHTML = `<td>${neo.name}</td><td>${neo.date}</td><td>${dist}</td><td>${vel}</td><td>${diam}</td><td>${hazBadge}</td>`;
-    tbody.appendChild(tr);
-  }
-}
-
-$$('#table-view th').forEach(th => {
-  th.addEventListener('click', () => {
-    const col = th.dataset.sort;
-    if (state.sortCol === col) state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
-    else { state.sortCol = col; state.sortDir = 'asc'; }
-    $$('#table-view th').forEach(h => { h.classList.remove('sorted-asc', 'sorted-desc'); h.setAttribute('aria-sort', 'none'); });
-    th.classList.add(state.sortDir === 'asc' ? 'sorted-asc' : 'sorted-desc');
-    th.setAttribute('aria-sort', state.sortDir === 'asc' ? 'ascending' : 'descending');
-    updateTableView();
-  });
-  th.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); th.click(); }});
-});
-
-// ── CARD VIEW ──
-function updateCardView() {
-  const container = $('#card-view');
-  container.innerHTML = '';
-  for (const neo of state.neos) {
-    const color = neo.hazardous ? 'var(--danger)' : neo.distanceLunar < 1 ? 'var(--warn)' : 'var(--safe)';
-    const dist = state.useImperial ? formatNum(neo.distanceKm * 0.621371) + ' mi' : formatNum(neo.distanceLunar) + ' LD';
-    const vel = state.useImperial ? formatNum(neo.velocityKmh * 0.621371) + ' mph' : formatNum(neo.velocityKms) + ' km/s';
-    const diam = state.useImperial ? formatNum(neo.diameterMax * 3.28084) + ' ft' : formatNum(neo.diameterMax) + ' m';
-    const card = document.createElement('div');
-    card.className = 'neo-card';
-    card.tabIndex = 0;
-    card.setAttribute('role', 'button');
-    card.setAttribute('aria-label', `${neo.name}, ${neo.hazardous ? 'hazardous' : 'safe'}, ${dist}`);
-    card.innerHTML = `
-      <div class="card-name">${neo.name}</div>
-      <div class="card-threat" style="background:${color}"></div>
-      <div class="card-stats">
-        <div><div class="cs-label">DIST</div><div class="cs-val">${dist}</div></div>
-        <div><div class="cs-label">VEL</div><div class="cs-val">${vel}</div></div>
-        <div><div class="cs-label">SIZE</div><div class="cs-val">${diam}</div></div>
-        <div><div class="cs-label">DATE</div><div class="cs-val">${neo.date}</div></div>
-      </div>
-      <div class="card-detail">Hazardous: ${neo.hazardous ? 'Yes' : 'No'}<br>Min diameter: ${formatNum(neo.diameterMin)} m</div>`;
-    card.addEventListener('click', () => card.classList.toggle('expanded'));
-    card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); card.classList.toggle('expanded'); }});
-    container.appendChild(card);
-  }
-}
-
-// ── TIMELINE VIEW ──
-function updateTimelineView() {
-  const container = $('#timeline-view');
-  container.innerHTML = '';
-  const byDate = {};
-  state.neos.forEach(n => { (byDate[n.date] = byDate[n.date] || []).push(n); });
-  for (const date of Object.keys(byDate).sort()) {
-    const label = document.createElement('div');
-    label.className = 'tl-group-label';
-    label.textContent = date;
-    container.appendChild(label);
-    for (const neo of byDate[date]) {
-      const dist = formatNum(neo.distanceLunar) + ' LD';
-      const card = document.createElement('div');
-      card.className = 'tl-card';
-      card.innerHTML = `<div class="tl-name" style="color:${neo.hazardous ? 'var(--danger)' : 'var(--text)'}">${neo.name} ${neo.hazardous ? '<span class="badge badge-danger">HAZ</span>' : ''}</div>
-        <div class="tl-stats"><span>${dist}</span><span>${formatNum(neo.velocityKms)} km/s</span><span>⌀ ${formatNum(neo.diameterMax)} m</span></div>`;
-      container.appendChild(card);
-    }
-  }
-}
-
-// ── 2D MAP VIEW ──
-function updateMapView() {
-  const canvas = $('#map-canvas');
-  const parent = canvas.parentElement;
-  canvas.width = parent.clientWidth || 800;
-  canvas.height = parent.clientHeight || 500;
-  const ctx = canvas.getContext('2d');
-  const w = canvas.width, h = canvas.height;
-
-  // Draw equirectangular Earth outline
-  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() || '#050510';
-  ctx.fillRect(0, 0, w, h);
-  ctx.strokeStyle = 'rgba(0,180,255,0.15)';
-  ctx.lineWidth = 1;
-  // grid
-  for (let i = 0; i <= 12; i++) { ctx.beginPath(); ctx.moveTo(i*w/12,0); ctx.lineTo(i*w/12,h); ctx.stroke(); }
-  for (let i = 0; i <= 6; i++) { ctx.beginPath(); ctx.moveTo(0,i*h/6); ctx.lineTo(w,i*h/6); ctx.stroke(); }
-  // equator
-  ctx.strokeStyle = 'rgba(0,180,255,0.3)'; ctx.beginPath(); ctx.moveTo(0,h/2); ctx.lineTo(w,h/2); ctx.stroke();
-  // outline
-  ctx.strokeStyle = 'rgba(0,180,255,0.2)';
-  ctx.strokeRect(0,0,w,h);
-
-  // Plot NEOs at pseudo-random positions seeded by id
-  for (const neo of state.neos) {
-    const seed = parseInt(neo.id) || 0;
-    const x = ((seed * 2654435761) % w + w) % w;
-    const y = ((seed * 340573321) % h + h) % h;
-    const r = Math.max(3, Math.min(10, neo.diameterMax / 50));
-    ctx.fillStyle = neo.hazardous ? '#ff3355' : neo.distanceLunar < 1 ? '#ff9922' : '#22ff88';
-    ctx.globalAlpha = 0.8;
-    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-    ctx.globalAlpha = 0.3;
-    ctx.beginPath(); ctx.arc(x, y, r + 4, 0, Math.PI * 2); ctx.fill();
-    ctx.globalAlpha = 1;
-  }
-  // label
-  ctx.fillStyle = 'rgba(0,180,255,0.5)';
-  ctx.font = '11px "Share Tech Mono"';
-  ctx.fillText('2D EQUIRECTANGULAR PROJECTION', 10, h - 10);
-}
-
-// ── THREE.JS 3D GLOBE ──
-let scene, camera, renderer, earth, neoMeshes = [], raycaster, mouse;
-
+// ── INIT 3D ──────────────────────────────────────────────────────────────────
 function init3D() {
-  const container = $('#globe-container');
+  const wrap = $('#globe-wrap');
+  const W = wrap.clientWidth  || window.innerWidth  - 240;
+  const H = wrap.clientHeight || window.innerHeight - 48;
 
-  // Use fallback size immediately — clientWidth/Height may be 0 at script run time
-  const cw = container.clientWidth  || (window.innerWidth  - 260);
-  const ch = container.clientHeight || (window.innerHeight - 52);
+  scene    = new THREE.Scene();
+  camera   = new THREE.PerspectiveCamera(45, W / H, 0.1, 500);
+  camera.position.z = 4;
 
-  scene = new THREE.Scene();
-  camera = new THREE.PerspectiveCamera(50, cw / ch, 0.1, 1000);
-  camera.position.z = 5;
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(W, H);
+  renderer.setClearColor(0x000005);
+  wrap.prepend(renderer.domElement);
 
-  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-  renderer.setClearColor(0x000008, 1);
-  renderer.setSize(cw, ch);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  container.appendChild(renderer.domElement);
-
-  // Star field background
-  const starGeo = new THREE.BufferGeometry();
-  const starPositions = [];
-  for (let i = 0; i < 2000; i++) {
-    const theta = Math.random() * Math.PI * 2;
-    const phi = Math.acos(2 * Math.random() - 1);
-    const r = 80 + Math.random() * 20;
-    starPositions.push(
-      r * Math.sin(phi) * Math.cos(theta),
-      r * Math.sin(phi) * Math.sin(theta),
-      r * Math.cos(phi)
-    );
+  // ── Stars ──
+  const pos = [];
+  for (let i=0; i<2500; i++) {
+    const th = Math.random()*Math.PI*2;
+    const ph = Math.acos(2*Math.random()-1);
+    const r  = 60 + Math.random()*30;
+    pos.push(r*Math.sin(ph)*Math.cos(th), r*Math.sin(ph)*Math.sin(th), r*Math.cos(ph));
   }
-  starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starPositions, 3));
-  scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.15, sizeAttenuation: true })));
+  const sg = new THREE.BufferGeometry();
+  sg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  scene.add(new THREE.Points(sg, new THREE.PointsMaterial({color:0xffffff, size:0.12})));
 
-  // Lights — directional light from the side gives the 3D shaded look
-  scene.add(new THREE.AmbientLight(0x112244, 0.8));
-  const sun = new THREE.DirectionalLight(0xffffff, 1.4);
-  sun.position.set(5, 3, 5);
+  // ── Lights ──
+  scene.add(new THREE.AmbientLight(0x223355, 1.2));
+  const sun = new THREE.DirectionalLight(0xffffff, 2.0);
+  sun.position.set(6, 3, 4);
   scene.add(sun);
-  // Subtle fill light from opposite side (dark side glow)
-  const fill = new THREE.DirectionalLight(0x001133, 0.3);
-  fill.position.set(-5, -2, -3);
-  scene.add(fill);
 
-  // Earth — Phong shading gives light/dark sides = looks 3D
-  const earthGeo = new THREE.SphereGeometry(1, 64, 64);
-  const earthMat = new THREE.MeshPhongMaterial({
-    color: 0x1a6699,
-    emissive: 0x040d1a,
-    specular: 0x4499cc,
-    shininess: 25,
-  });
-  earth = new THREE.Mesh(earthGeo, earthMat);
+  // ── Earth (ocean) ──
+  const eg = new THREE.SphereGeometry(1, 64, 64);
+  const em = new THREE.MeshPhongMaterial({ color:0x1155aa, emissive:0x040d20, specular:0x3377aa, shininess:40 });
+  earth = new THREE.Mesh(eg, em);
   scene.add(earth);
 
-  // Land-mass tinted overlay (slightly lighter green-blue patches via second sphere)
-  const landGeo = new THREE.SphereGeometry(1.001, 32, 32);
-  const landMat = new THREE.MeshPhongMaterial({
-    color: 0x2d7a4f,
-    emissive: 0x050f08,
-    transparent: true, opacity: 0.45,
-    wireframe: false,
-  });
-  scene.add(new THREE.Mesh(landGeo, landMat));
+  // ── Land mass tint ──
+  const lg = new THREE.SphereGeometry(1.001, 32, 32);
+  const lm = new THREE.MeshPhongMaterial({ color:0x2d7a3a, emissive:0x050e07, transparent:true, opacity:0.5 });
+  scene.add(new THREE.Mesh(lg, lm));
 
-  // Grid lines overlay
-  const wireGeo = new THREE.SphereGeometry(1.003, 18, 18);
-  const wireMat = new THREE.MeshBasicMaterial({ color: 0x88ddff, wireframe: true, transparent: true, opacity: 0.08 });
-  scene.add(new THREE.Mesh(wireGeo, wireMat));
+  // ── Lat/lon grid ──
+  const gg = new THREE.SphereGeometry(1.002, 18, 18);
+  const gm = new THREE.MeshBasicMaterial({ color:0x66bbff, wireframe:true, transparent:true, opacity:0.07 });
+  scene.add(new THREE.Mesh(gg, gm));
 
-  // Atmosphere glow (thick blue halo)
-  const atmosGeo = new THREE.SphereGeometry(1.15, 32, 32);
-  const atmosMat = new THREE.MeshBasicMaterial({ color: 0x3399ff, transparent: true, opacity: 0.08, side: THREE.BackSide });
-  scene.add(new THREE.Mesh(atmosGeo, atmosMat));
+  // ── Atmosphere halo ──
+  const ag = new THREE.SphereGeometry(1.14, 32, 32);
+  const am = new THREE.MeshBasicMaterial({ color:0x2299ff, transparent:true, opacity:0.07, side:THREE.BackSide });
+  scene.add(new THREE.Mesh(ag, am));
 
-  // Distance rings
-  [1, 5, 10].forEach((ld, i) => {
-    const r = 1 + ld * 0.3;
-    const ringGeo = new THREE.RingGeometry(r - 0.006, r + 0.006, 64);
-    const ringMat = new THREE.MeshBasicMaterial({ color: 0x00b4ff, transparent: true, opacity: 0.18 - i * 0.04, side: THREE.DoubleSide });
-    const ring = new THREE.Mesh(ringGeo, ringMat);
-    ring.rotation.x = Math.PI / 2;
+  // ── Distance rings ──
+  [1, 5, 10].forEach((ld,i) => {
+    const r  = 1 + ld*0.28;
+    const rg = new THREE.RingGeometry(r-0.005, r+0.005, 64);
+    const rm = new THREE.MeshBasicMaterial({ color:0x00b4ff, transparent:true, opacity:0.14-i*0.03, side:THREE.DoubleSide });
+    const ring = new THREE.Mesh(rg, rm);
+    ring.rotation.x = Math.PI/2;
     scene.add(ring);
   });
 
   raycaster = new THREE.Raycaster();
-  mouse = new THREE.Vector2(-10, -10);
+  mouse     = new THREE.Vector2(-9,-9);
 
-  // Controls - simple drag rotation
-  let isDragging = false, prevX = 0, prevY = 0, rotX = 0, rotY = 0;
+  // ── Drag rotation ──
+  let drag=false, px=0, py=0, rx=0, ry=0;
   const el = renderer.domElement;
-  el.addEventListener('pointerdown', e => { isDragging = true; prevX = e.clientX; prevY = e.clientY; });
+  el.addEventListener('pointerdown', e => { drag=true; px=e.clientX; py=e.clientY; });
+  window.addEventListener('pointerup',   () => { drag=false; });
   window.addEventListener('pointermove', e => {
-    // update mouse for raycaster
-    const rect = el.getBoundingClientRect();
-    mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-    mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-    if (!isDragging) return;
-    rotY += (e.clientX - prevX) * 0.005;
-    rotX += (e.clientY - prevY) * 0.005;
-    rotX = Math.max(-1.2, Math.min(1.2, rotX));
-    prevX = e.clientX; prevY = e.clientY;
+    const r2 = el.getBoundingClientRect();
+    mouse.x =  ((e.clientX-r2.left)/r2.width )*2-1;
+    mouse.y = -((e.clientY-r2.top )/r2.height)*2+1;
+    if (!drag) return;
+    ry += (e.clientX-px)*0.005; rx += (e.clientY-py)*0.005;
+    rx = Math.max(-1.3, Math.min(1.3, rx));
+    px=e.clientX; py=e.clientY;
   });
-  window.addEventListener('pointerup', () => isDragging = false);
-  el.addEventListener('wheel', e => { camera.position.z = Math.max(2, Math.min(12, camera.position.z + e.deltaY * 0.005)); e.preventDefault(); }, { passive: false });
+  el.addEventListener('wheel', e => {
+    camera.position.z = Math.max(2, Math.min(10, camera.position.z + e.deltaY*0.004));
+    e.preventDefault();
+  }, {passive:false});
+  el.addEventListener('click', () => checkHover(true));
 
-  // Touch
-  el.addEventListener('touchstart', e => { if (e.touches.length === 1) { isDragging = true; prevX = e.touches[0].clientX; prevY = e.touches[0].clientY; } }, { passive: true });
-  el.addEventListener('touchmove', e => { if (!isDragging || e.touches.length !== 1) return; const t = e.touches[0]; rotY += (t.clientX - prevX) * 0.005; rotX += (t.clientY - prevY) * 0.005; rotX = Math.max(-1.2, Math.min(1.2, rotX)); prevX = t.clientX; prevY = t.clientY; }, { passive: true });
-  el.addEventListener('touchend', () => isDragging = false);
-
-  // tap to select on mobile
-  el.addEventListener('click', e => {
-    const rect = el.getBoundingClientRect();
-    mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-    mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-    checkHover(true);
-  });
-
-  const resizeRenderer = () => {
-    const w = container.clientWidth  || (window.innerWidth  - 260);
-    const h = container.clientHeight || (window.innerHeight - 52);
-    camera.aspect = w / h;
+  // ── Resize ──
+  const resize = () => {
+    const W2 = wrap.clientWidth  || window.innerWidth  - 240;
+    const H2 = wrap.clientHeight || window.innerHeight - 48;
+    camera.aspect = W2/H2;
     camera.updateProjectionMatrix();
-    renderer.setSize(w, h);
+    renderer.setSize(W2, H2);
   };
-  window.addEventListener('resize', resizeRenderer);
-  // Re-check size after layout settles
-  requestAnimationFrame(resizeRenderer);
-  setTimeout(resizeRenderer, 300);
+  window.addEventListener('resize', resize);
 
-  animate(rotX, rotY);
-
-  function animate() {
-    requestAnimationFrame(animate);
-    earth.rotation.x = rotX;
-    earth.rotation.y = rotY;
-    if (!state.reduceMotion && !isDragging) rotY += 0.001;
-    neoMeshes.forEach(m => { m.rotation.y = rotY; m.rotation.x = rotX; });
+  // ── Animate ──
+  (function loop() {
+    requestAnimationFrame(loop);
+    if (!drag) ry += 0.001;
+    earth.rotation.set(rx, ry, 0);
+    neoMeshes.forEach(m => m.rotation.set(rx, ry, 0));
     checkHover(false);
     renderer.render(scene, camera);
-  }
+  })();
 }
 
-let hoveredNeo = null;
-function checkHover(isTap) {
-  raycaster.setFromCamera(mouse, camera);
-  const hits = raycaster.intersectObjects(neoMeshes);
-  const tooltip = $('#tooltip');
-  if (hits.length > 0) {
-    const obj = hits[0].object;
-    const neo = obj.userData;
-    if (hoveredNeo !== neo || isTap) {
-      hoveredNeo = neo;
-      showTooltip(neo);
-      announce(`${neo.name}, ${neo.hazardous ? 'hazardous' : 'safe'}, ${formatNum(neo.distanceLunar)} lunar distances`);
-    }
-  } else if (!isTap) {
-    hoveredNeo = null;
-    tooltip.classList.remove('visible');
-    tooltip.setAttribute('aria-hidden', 'true');
-  }
-}
-
-function showTooltip(neo) {
-  const tt = $('#tooltip');
-  $('#tt-name').textContent = neo.name;
-  $('#tt-date').textContent = neo.date;
-  const dist = state.useImperial ? formatNum(neo.distanceKm * 0.621371) + ' mi' : formatNum(neo.distanceKm) + ' km';
-  $('#tt-dist').textContent = dist + ` (${formatNum(neo.distanceLunar)} LD)`;
-  const vel = state.useImperial ? formatNum(neo.velocityKmh * 0.621371) + ' mph' : formatNum(neo.velocityKmh) + ' km/h';
-  $('#tt-vel').textContent = vel;
-  const diam = state.useImperial ? formatNum(neo.diameterMax * 3.28084) + ' ft' : formatNum(neo.diameterMax) + ' m';
-  $('#tt-diam').textContent = diam;
-  $('#tt-haz').textContent = neo.hazardous ? 'YES' : 'NO';
-  $('#tt-haz').className = neo.hazardous ? 'tt-hazard' : '';
-
-  if (state.scifiMode) {
-    const avgD = (neo.diameterMin + neo.diameterMax) / 2;
-    const mass = (4/3) * Math.PI * Math.pow(avgD/2,3) * 3000;
-    const energyJ = 0.5 * mass * (neo.velocityKms*1000)**2;
-    const mt = energyJ / 4.184e15;
-    const crater = 0.07 * Math.pow(mt, 0.29);
-    $('#tt-energy').textContent = formatNum(mt) + ' MT';
-    $('#tt-crater').textContent = formatNum(crater) + ' km';
-    $('#tt-energy-row').style.display = '';
-    $('#tt-crater-row').style.display = '';
-  } else {
-    $('#tt-energy-row').style.display = 'none';
-    $('#tt-crater-row').style.display = 'none';
-  }
-  tt.classList.add('visible');
-  tt.setAttribute('aria-hidden', 'false');
-
-  // Position near cursor
-  const updatePos = e => {
-    const x = (e.clientX || 0) + 15;
-    const y = (e.clientY || 0) + 15;
-    tt.style.left = Math.min(x, window.innerWidth - 250) + 'px';
-    tt.style.top = Math.min(y, window.innerHeight - 200) + 'px';
-  };
-  window.addEventListener('pointermove', updatePos, { once: false });
-  // clean up on hide
-  const obs = new MutationObserver(() => {
-    if (!tt.classList.contains('visible')) { window.removeEventListener('pointermove', updatePos); obs.disconnect(); }
-  });
-  obs.observe(tt, { attributes: true, attributeFilter: ['class'] });
-}
-
-function update3DObjects() {
+// ── NEO MESHES ───────────────────────────────────────────────────────────────
+function update3D() {
   neoMeshes.forEach(m => scene.remove(m));
   neoMeshes = [];
-  for (const neo of state.neos) {
-    const r = 1 + Math.min(neo.distanceLunar, 10) * 0.3;
-    const seed = parseInt(neo.id) || 0;
-    const theta = ((seed * 2654435761) % 6283) / 1000;
-    const phi = ((seed * 340573321) % 3141) / 1000 - Math.PI / 2;
-    const x = r * Math.cos(phi) * Math.cos(theta);
-    const y = r * Math.sin(phi);
-    const z = r * Math.cos(phi) * Math.sin(theta);
-    const size = Math.max(0.015, Math.min(0.06, neo.diameterMax / 3000));
-    const color = neo.hazardous ? 0xff3355 : neo.distanceLunar < 1 ? 0xff9922 : 0x22ff88;
-    // Use different geometries for accessibility distinction
-    let geo;
-    if (neo.hazardous) {
-      geo = new THREE.TetrahedronGeometry(size); // triangular = hazardous
-    } else if (neo.distanceLunar < 1) {
-      geo = new THREE.OctahedronGeometry(size); // diamond = close
-    } else {
-      geo = new THREE.SphereGeometry(size, 8, 8); // sphere = safe
-    }
-    const mat = new THREE.MeshBasicMaterial({ color });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.set(x, y, z);
-    mesh.userData = neo;
+  S.neos.forEach(n => {
+    const seed  = (parseInt(n.id)||0);
+    const theta = ((seed*2654435761)%6283)/1000;
+    const phi   = ((seed*340573321 )%3141)/1000 - Math.PI/2;
+    const r     = 1 + Math.min(n.distLD,10)*0.28;
+    const x=r*Math.cos(phi)*Math.cos(theta), y=r*Math.sin(phi), z=r*Math.cos(phi)*Math.sin(theta);
+    const size  = Math.max(0.018, Math.min(0.065, n.dMax/2800));
+    const color = n.haz ? 0xff3355 : n.distLD<1 ? 0xff9922 : 0x22ff88;
+    const geo   = n.haz ? new THREE.TetrahedronGeometry(size) : n.distLD<1 ? new THREE.OctahedronGeometry(size) : new THREE.SphereGeometry(size,8,8);
+    const mesh  = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({color}));
+    mesh.position.set(x,y,z);
+    mesh.userData = n;
     scene.add(mesh);
     neoMeshes.push(mesh);
-
-    // glow sprite
-    const glowMat = new THREE.SpriteMaterial({ color, transparent: true, opacity: 0.3 });
-    const glow = new THREE.Sprite(glowMat);
-    glow.scale.set(size * 4, size * 4, 1);
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({color, transparent:true, opacity:0.25}));
+    glow.scale.set(size*5, size*5, 1);
     mesh.add(glow);
-  }
+  });
 }
 
-// ── KEYBOARD NAV (Escape to close) ──
+// ── HOVER / TOOLTIP ──────────────────────────────────────────────────────────
+let hovered = null;
+function checkHover(isTap) {
+  if (!raycaster || S.view!=='globe') return;
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObjects(neoMeshes);
+  const tip  = $('#tip');
+  if (hits.length) {
+    const n = hits[0].object.userData;
+    if (hovered!==n || isTap) { hovered=n; showTip(n); }
+  } else if (!isTap) {
+    hovered=null; tip.classList.remove('show');
+  }
+}
+function showTip(n) {
+  $('#tip-name').textContent = n.name;
+  $('#tip-date').textContent = n.date;
+  $('#tip-dist').textContent = fmt(n.distLD)+' LD';
+  $('#tip-vel' ).textContent = n.velKms.toFixed(2)+' km/s';
+  $('#tip-diam').textContent = Math.round(n.dMin)+'–'+Math.round(n.dMax)+' m';
+  $('#tip-haz' ).textContent = n.haz ? '⚠ YES' : 'No';
+  const tip = $('#tip');
+  tip.classList.add('show');
+  const el  = renderer.domElement;
+  const r   = el.getBoundingClientRect();
+  const nx  = (mouse.x+1)/2*r.width  + r.left;
+  const ny  = (-mouse.y+1)/2*r.height + r.top;
+  tip.style.left = Math.min(nx+14, window.innerWidth -tip.offsetWidth -10)+'px';
+  tip.style.top  = Math.min(ny-10,  window.innerHeight-tip.offsetHeight-10)+'px';
+}
+
+// ── NASA API ─────────────────────────────────────────────────────────────────
+async function fetchNEOs(from, to) {
+  $('#loading').classList.add('show');
+  try {
+    const url  = `https://api.nasa.gov/neo/rest/v1/feed?start_date=${from}&end_date=${to}&api_key=${API_KEY}`;
+    const res  = await fetch(url);
+    const data = await res.json();
+    if (!res.ok || !data.near_earth_objects) throw new Error(data.error?.message || `HTTP ${res.status}`);
+    const list = [];
+    Object.keys(data.near_earth_objects).sort().forEach(dt => {
+      data.near_earth_objects[dt].forEach(o => {
+        const ca = o.close_approach_data[0];
+        list.push({
+          id:     o.id,
+          name:   o.name,
+          date:   dt,
+          haz:    o.is_potentially_hazardous_asteroid,
+          dMin:   o.estimated_diameter.meters.estimated_diameter_min,
+          dMax:   o.estimated_diameter.meters.estimated_diameter_max,
+          distKm: parseFloat(ca.miss_distance.kilometers),
+          distLD: parseFloat(ca.miss_distance.lunar),
+          velKmh: parseFloat(ca.relative_velocity.kilometers_per_hour),
+          velKms: parseFloat(ca.relative_velocity.kilometers_per_second),
+        });
+      });
+    });
+    S.neos = list;
+  } catch(e) {
+    console.warn('NASA API:', e.message, '— using demo data');
+    S.neos = DEMO;
+    showToast('⚠ API unavailable — showing demo data');
+  }
+  $('#loading').classList.remove('show');
+  updateHUD(); updateViews(); update3D();
+}
+
+// ── HUD ──────────────────────────────────────────────────────────────────────
+function updateHUD() {
+  $('#stat-total').textContent = S.neos.length || '—';
+  $('#stat-haz'  ).textContent = S.neos.filter(n=>n.haz).length || '0';
+  const closest = S.neos.reduce((m,n)=>Math.min(m,n.distLD), Infinity);
+  $('#stat-close').textContent = isFinite(closest) ? fmt(closest)+' LD' : '—';
+}
+
+// ── VIEW SWITCHING ────────────────────────────────────────────────────────────
+$$('.view-btns button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    $$('.view-btns button').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    S.view = btn.dataset.view;
+    const globeCanvas = renderer ? renderer.domElement : null;
+    if (globeCanvas) globeCanvas.style.display = S.view==='globe' ? 'block' : 'none';
+    $$('.view').forEach(v => v.classList.remove('show'));
+    if (S.view !== 'globe') {
+      const el = $(`#view-${S.view}`);
+      if (el) el.classList.add('show');
+      if (S.view==='map') drawMap();
+    }
+  });
+});
+
+// ── TABLE ─────────────────────────────────────────────────────────────────────
+function renderTable() {
+  let list = [...S.neos];
+  list.sort((a,b) => {
+    let va, vb;
+    switch(S.sortCol) {
+      case 'name': va=a.name; vb=b.name; break;
+      case 'date': va=a.date; vb=b.date; break;
+      case 'vel':  va=a.velKms; vb=b.velKms; break;
+      case 'diam': va=a.dMax; vb=b.dMax; break;
+      case 'haz':  va=a.haz?0:1; vb=b.haz?0:1; break;
+      default:     va=a.distLD; vb=b.distLD;
+    }
+    return (va<vb?-1:va>vb?1:0)*(S.sortDir==='asc'?1:-1);
+  });
+  const tb = $('#tbl-body');
+  tb.innerHTML = list.map(n=>`<tr>
+    <td>${n.name}</td><td>${n.date}</td>
+    <td class="${n.distLD<1?'warn':''}">${fmt(n.distLD)}</td>
+    <td>${n.velKms.toFixed(2)}</td>
+    <td>${Math.round(n.dMin)}–${Math.round(n.dMax)}</td>
+    <td class="${n.haz?'red':'safe'}">${n.haz?'⚠ YES':'—'}</td>
+  </tr>`).join('');
+}
+$$('#tbl th').forEach(th => {
+  th.addEventListener('click', () => {
+    const s = th.dataset.s;
+    S.sortDir = S.sortCol===s && S.sortDir==='asc' ? 'desc' : 'asc';
+    S.sortCol = s;
+    renderTable();
+  });
+});
+
+// ── TIMELINE ─────────────────────────────────────────────────────────────────
+function renderTimeline() {
+  const sorted = [...S.neos].sort((a,b)=>a.date.localeCompare(b.date));
+  $('#tl-body').innerHTML = sorted.map(n=>`
+    <div class="tl-item">
+      <span class="tl-date">${n.date}</span>
+      <span class="tl-name">${n.name}</span>
+      <span class="tl-badge ${n.haz?'haz':'safe'}">${n.haz?'HAZARDOUS':'SAFE'}</span>
+      <span style="font-family:var(--font-m);font-size:.68rem;color:var(--dim)">${fmt(n.distLD)} LD</span>
+    </div>`).join('');
+}
+
+// ── CARDS ─────────────────────────────────────────────────────────────────────
+function renderCards() {
+  $('#card-body').innerHTML = S.neos.map(n=>`
+    <div class="card${n.haz?' haz':''}">
+      <div class="card-name">${n.name}</div>
+      <div class="card-row"><span>Date</span><span>${n.date}</span></div>
+      <div class="card-row"><span>Miss dist</span><span>${fmt(n.distLD)} LD</span></div>
+      <div class="card-row"><span>Velocity</span><span>${n.velKms.toFixed(2)} km/s</span></div>
+      <div class="card-row"><span>Diameter</span><span>${Math.round(n.dMin)}–${Math.round(n.dMax)} m</span></div>
+      <div class="card-row"><span>Hazardous</span><span style="color:${n.haz?'var(--danger)':'var(--safe)'}">${n.haz?'⚠ YES':'—'}</span></div>
+    </div>`).join('');
+}
+
+// ── 2D MAP ────────────────────────────────────────────────────────────────────
+function drawMap() {
+  const canvas = $('#map-canvas');
+  const p = canvas.parentElement;
+  canvas.width  = p.clientWidth  || 800;
+  canvas.height = p.clientHeight || 500;
+  const ctx = canvas.getContext('2d'), w=canvas.width, h=canvas.height;
+  ctx.fillStyle='#000005'; ctx.fillRect(0,0,w,h);
+  ctx.strokeStyle='rgba(0,180,255,.1)'; ctx.lineWidth=1;
+  for(let i=0;i<=12;i++){ctx.beginPath();ctx.moveTo(i*w/12,0);ctx.lineTo(i*w/12,h);ctx.stroke();}
+  for(let i=0;i<=6;i++){ctx.beginPath();ctx.moveTo(0,i*h/6);ctx.lineTo(w,i*h/6);ctx.stroke();}
+  ctx.strokeStyle='rgba(0,180,255,.25)';ctx.beginPath();ctx.moveTo(0,h/2);ctx.lineTo(w,h/2);ctx.stroke();
+  S.neos.forEach(n => {
+    const s=(parseInt(n.id)||0);
+    const x=((s*2654435761)%w+w)%w, y=((s*340573321)%h+h)%h;
+    const r=Math.max(3,Math.min(10,n.dMax/50));
+    ctx.fillStyle=n.haz?'#ff3355':n.distLD<1?'#ff9922':'#22ff88';
+    ctx.globalAlpha=.85; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha=.2;  ctx.beginPath(); ctx.arc(x,y,r+5,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha=1;
+  });
+  ctx.fillStyle='rgba(0,180,255,.4)'; ctx.font='11px "Share Tech Mono"';
+  ctx.fillText('2D EQUIRECTANGULAR PROJECTION', 10, h-10);
+}
+
+function updateViews() {
+  renderTable(); renderTimeline(); renderCards();
+  if (S.view==='map') drawMap();
+}
+
+// ── DATE SCAN ────────────────────────────────────────────────────────────────
+$('#btn-scan').addEventListener('click', () => {
+  const f=$('#df').value, t=$('#dt').value;
+  if(f&&t) fetchNEOs(f,t);
+});
+
+// ── SCI-FI MODE ───────────────────────────────────────────────────────────────
+$('#scifi-btn').addEventListener('click', () => {
+  let totalCas=0;
+  const lines=[];
+  S.neos.forEach(n=>{
+    const r=(n.dMax/2), v=n.velKms*1000;
+    const vol=(4/3)*Math.PI*r*r*r, mass=vol*3000;
+    const ke=0.5*mass*v*v/1e15;
+    const crater=Math.round(0.07*Math.pow(ke,0.29)*1000);
+    const cas=Math.round(ke*4200);
+    totalCas+=cas;
+    lines.push(`<div class="log-line">${n.name} — ${ke.toFixed(1)} MT — crater ${crater} km — ${cas.toLocaleString()} est. casualties</div>`);
+  });
+  $('#sf-cas').textContent=totalCas.toLocaleString();
+  $('#sf-status').textContent='Earth Status: '+(totalCas>1e9?'☠ UNINHABITABLE':totalCas>1e6?'⚠ CATASTROPHIC':'SURVIVABLE');
+  $('#sf-log').innerHTML=lines.join('');
+  $('#scifi').classList.add('show');
+});
+$('#sf-close').addEventListener('click', ()=>$('#scifi').classList.remove('show'));
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+function showToast(msg) { $('#toast-msg').textContent=msg; $('#toast').classList.add('show'); }
+$('#toast-x').addEventListener('click', ()=>$('#toast').classList.remove('show'));
+
+// ── KEYBOARD ──────────────────────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') {
-    $('#tooltip').classList.remove('visible');
-    $('#scifi-overlay').classList.remove('active');
-    $('#settings-menu').classList.remove('active');
-    $('#toast').classList.remove('active');
-  }
+  if(e.key==='Escape'){ $('#scifi').classList.remove('show'); $('#toast').classList.remove('show'); }
 });
 
-// Observe map-view visibility to re-render canvas on show
-const mapObserver = new MutationObserver(() => {
-  if ($('#map-view').classList.contains('active')) updateMapView();
-});
-mapObserver.observe($('#map-view'), { attributes: true, attributeFilter: ['class'] });
+// ── MAP OBSERVER ─────────────────────────────────────────────────────────────
+new MutationObserver(()=>{ if($('#view-map').classList.contains('show')) drawMap(); })
+  .observe($('#view-map'),{attributes:true,attributeFilter:['class']});
 
-// ── STARTUP (placed last so all declarations above are initialized) ──
-const today = todayStr();
-$('#date-from').value = today;
-$('#date-to').value = addDays(today, 7);
-
-// Dismiss splash after 2s, or on click/touch
-function dismissSplash() {
-  const s = $('#splash');
-  if (!s || s.style.display === 'none') return;
-  s.classList.add('hidden');
-  setTimeout(() => { s.style.display = 'none'; }, 600);
+// ── SPLASH ────────────────────────────────────────────────────────────────────
+function dismiss() {
+  $('#splash').classList.add('fade');
+  setTimeout(()=>{ $('#splash').style.display='none'; }, 900);
 }
-$('#splash').addEventListener('click', dismissSplash);
-$('#splash').addEventListener('touchend', e => { e.preventDefault(); dismissSplash(); });
-setTimeout(dismissSplash, 2000);
+$('#splash').addEventListener('click',  dismiss);
+$('#splash').addEventListener('touchend', e=>{ e.preventDefault(); dismiss(); });
+setTimeout(dismiss, 2500);
 
-// Init 3D globe — all let/const declarations above are now initialized
-try {
-  init3D();
-} catch(err) {
-  const c = $('#globe-container');
-  c.style.cssText = 'display:flex;align-items:center;justify-content:center;padding:2rem;';
-  c.innerHTML = `<div style="color:#ff3355;font-family:monospace;font-size:0.85rem;max-width:420px;">
-    <b>⚠ 3D INIT FAILED: ${err.message}</b><br><br>
-    • WebGL may not be supported in this browser<br>
-    • Try Chrome or Firefox
-  </div>`;
-}
-
-fetchNEOs(today, addDays(today, 7));
-setTimeout(() => { $('#toast').classList.add('active'); }, 4000);
+// ── BOOTSTRAP ────────────────────────────────────────────────────────────────
+init3D();
+const t0=today(), t7=addDay(t0,7);
+$('#df').value=t0; $('#dt').value=t7;
+fetchNEOs(t0, t7);
 </script>
 </body>
 </html>
