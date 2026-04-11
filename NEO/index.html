@@ -378,26 +378,34 @@ function init3D() {
     sun.position.set(5, 3, 5);
     scene.add(sun);
 
-    // ── Earth core (ocean) ──
+    // ── Earth (textured) ──
+    const loader = new THREE.TextureLoader();
+    loader.crossOrigin = 'anonymous';
+    const BASE = 'https://threejs.org/examples/textures/planets/';
     const eg = new THREE.SphereGeometry(1, 64, 64);
     const em = new THREE.MeshPhongMaterial({
-      color:     0x1a6db5,
-      emissive:  0x06183a,
-      specular:  0x55aadd,
-      shininess: 60,
+      map:         loader.load(BASE + 'earth_atmos_2048.jpg'),
+      specularMap: loader.load(BASE + 'earth_specular_2048.jpg'),
+      normalMap:   loader.load(BASE + 'earth_normal_2048.jpg'),
+      specular:    new THREE.Color(0x4499bb),
+      shininess:   20,
     });
     earth = new THREE.Mesh(eg, em);
     scene.add(earth);
 
-    // ── Land mass tint ──
-    const lg = new THREE.SphereGeometry(1.002, 32, 32);
-    const lm = new THREE.MeshPhongMaterial({
-      color:       0x2e8b3a,
-      emissive:    0x071208,
-      transparent: true,
-      opacity:     0.45,
-    });
-    scene.add(new THREE.Mesh(lg, lm));
+    // ── Cloud layer (slowly rotates independently) ──
+    const clouds = new THREE.Mesh(
+      new THREE.SphereGeometry(1.012, 64, 64),
+      new THREE.MeshPhongMaterial({
+        map:         loader.load(BASE + 'earth_clouds_1024.png'),
+        transparent: true,
+        opacity:     0.55,
+        depthWrite:  false,
+      })
+    );
+    earth.add(clouds); // child of earth so it orbits with it
+    // Override cloud rotation slightly faster in the animate loop
+    clouds.userData.clouds = true;
 
     // ── Lat/lon grid ──
     const gg = new THREE.SphereGeometry(1.003, 18, 18);
@@ -458,6 +466,8 @@ function init3D() {
       requestAnimationFrame(loop);
       if (!drag) ry += 0.0008;
       earth.rotation.set(rx, ry, 0);
+      // Clouds drift slightly faster than Earth surface
+      if (clouds) clouds.rotation.y += 0.00004;
       neoMeshes.forEach(m => m.rotation.set(rx, ry, 0));
       checkHover(false);
       renderer.render(scene, camera);
