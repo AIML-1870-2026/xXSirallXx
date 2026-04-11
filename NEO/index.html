@@ -149,6 +149,30 @@ td.safe { color:var(--safe); }
 #toast.show { display:flex; }
 #toast button { background:none; border:none; color:var(--dim); cursor:pointer; font-size:1rem; line-height:1; flex-shrink:0; }
 
+/* SCI-FI PROMPT */
+#scifi-prompt {
+  position:fixed; inset:0; z-index:600; display:none;
+  align-items:center; justify-content:center;
+  background:rgba(0,0,0,.75); backdrop-filter:blur(6px);
+}
+#scifi-prompt.show { display:flex; }
+#scifi-prompt-box {
+  background:var(--panel); border:1px solid var(--danger);
+  border-radius:var(--r); padding:2rem; max-width:420px; width:90%;
+  box-shadow:0 0 40px rgba(255,51,85,.25);
+  font-family:var(--font-b);
+}
+#scifi-prompt-box h3 {
+  font-family:var(--font-d); font-size:1rem; color:var(--danger);
+  letter-spacing:.15em; margin-bottom:.75rem;
+  text-shadow:0 0 12px rgba(255,51,85,.5);
+}
+#scifi-prompt-box p {
+  font-size:.78rem; color:var(--dim); line-height:1.6; margin-bottom:1.25rem;
+}
+#scifi-prompt-box p strong { color:var(--text); }
+.scifi-prompt-btns { display:flex; gap:.6rem; justify-content:flex-end; }
+
 /* SCI-FI OVERLAY */
 #scifi {
   position:fixed; inset:0; z-index:500; display:none;
@@ -270,6 +294,27 @@ td.safe { color:var(--safe); }
 
 <!-- TOAST -->
 <div id="toast"><span id="toast-msg"></span><button id="toast-x">✕</button></div>
+
+<!-- SCI-FI PROMPT (auto-shown after 5 s) -->
+<div id="scifi-prompt">
+  <div id="scifi-prompt-box">
+    <h3>☢ SCI-FI MODE AVAILABLE</h3>
+    <p>
+      <strong>Sci-Fi Mode</strong> runs a fictional impact simulation on every
+      near-Earth object currently loaded. For each asteroid it calculates
+      estimated <strong>kinetic energy (megatons)</strong>, theoretical
+      <strong>crater diameter</strong>, and a dramatic
+      <strong>estimated casualty count</strong> — then renders a live threat
+      readout and an overall Earth status verdict.<br><br>
+      This is purely for entertainment. The physics are simplified and the
+      results are not real predictions.
+    </p>
+    <div class="scifi-prompt-btns">
+      <button class="btn" id="scifi-prompt-no">Maybe Later</button>
+      <button class="btn danger" id="scifi-prompt-yes">☄ Launch Simulation</button>
+    </div>
+  </div>
+</div>
 
 <!-- SCI-FI OVERLAY -->
 <div id="scifi">
@@ -737,7 +782,7 @@ $('#btn-scan').addEventListener('click', () => {
 });
 
 // ── SCI-FI MODE ───────────────────────────────────────────────────────────────
-$('#scifi-btn').addEventListener('click', () => {
+function runSciFi() {
   let totalCas = 0;
   const lines = [];
   S.neos.forEach(n => {
@@ -753,8 +798,17 @@ $('#scifi-btn').addEventListener('click', () => {
   $('#sf-status').textContent = 'Earth Status: ' + (totalCas > 1e9 ? '☠ UNINHABITABLE' : totalCas > 1e6 ? '⚠ CATASTROPHIC' : 'SURVIVABLE');
   $('#sf-log').innerHTML = lines.join('');
   $('#scifi').classList.add('show');
-});
+}
+$('#scifi-btn').addEventListener('click', runSciFi);
 $('#sf-close').addEventListener('click', () => $('#scifi').classList.remove('show'));
+
+// ── SCI-FI PROMPT (shown 5 s after page load) ─────────────────────────────────
+setTimeout(() => $('#scifi-prompt').classList.add('show'), 5000);
+$('#scifi-prompt-yes').addEventListener('click', () => {
+  $('#scifi-prompt').classList.remove('show');
+  runSciFi();
+});
+$('#scifi-prompt-no').addEventListener('click', () => $('#scifi-prompt').classList.remove('show'));
 
 // ── TOAST ─────────────────────────────────────────────────────────────────────
 function showToast(msg) { $('#toast-msg').textContent = msg; $('#toast').classList.add('show'); }
