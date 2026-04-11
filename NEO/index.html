@@ -356,7 +356,7 @@ const DEMO = [
 ];
 
 // ── THREE.JS GLOBALS ─────────────────────────────────────────────────────────
-let scene, camera, renderer, earth, neoMeshes=[], raycaster, mouse;
+let scene, camera, renderer, earth, neoGroup, neoMeshes=[], raycaster, mouse;
 let THREE = null;
 
 // ── LOAD THREE.JS WITH FALLBACK ──────────────────────────────────────────────
@@ -438,6 +438,10 @@ function init3D() {
     earth = new THREE.Mesh(eg, em);
     scene.add(earth);
 
+    // ── NEO group (rotates with Earth so dragging keeps NEOs in sync) ──
+    neoGroup = new THREE.Group();
+    scene.add(neoGroup);
+
     // ── Cloud layer (slowly rotates independently) ──
     const clouds = new THREE.Mesh(
       new THREE.SphereGeometry(1.012, 64, 64),
@@ -511,9 +515,10 @@ function init3D() {
       requestAnimationFrame(loop);
       if (!drag) ry += 0.0008;
       earth.rotation.set(rx, ry, 0);
+      if (neoGroup) neoGroup.rotation.set(rx, ry, 0);
       // Clouds drift slightly faster than Earth surface
       if (clouds) clouds.rotation.y += 0.00004;
-      // Each asteroid tumbles independently on its own axes
+      // Each asteroid tumbles on its own local axes within the group
       neoMeshes.forEach(m => {
         const d = m.userData;
         m.rotation.x += d._wx;
@@ -554,7 +559,7 @@ function makeAsteroidGeo(size, seed) {
 // ── NEO MESHES ───────────────────────────────────────────────────────────────
 function update3D() {
   if (!scene) return;
-  neoMeshes.forEach(m => scene.remove(m));
+  neoMeshes.forEach(m => (neoGroup || scene).remove(m));
   neoMeshes = [];
   S.neos.forEach(n => {
     const seed  = parseInt(n.id) || 0;
@@ -583,7 +588,7 @@ function update3D() {
     mesh.rotation.set(rng() * Math.PI * 2, rng() * Math.PI * 2, rng() * Math.PI * 2);
     // Store tumble speed (unique per NEO)
     mesh.userData = { ...n, _wx: (rng()-0.5)*0.012, _wy: (rng()-0.5)*0.012, _wz: (rng()-0.5)*0.008 };
-    scene.add(mesh);
+    (neoGroup || scene).add(mesh);
     neoMeshes.push(mesh);
 
     // Soft corona glow sprite
