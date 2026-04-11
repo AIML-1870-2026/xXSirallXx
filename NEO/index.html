@@ -181,14 +181,15 @@ td.safe { color:var(--safe); }
 }
 #impact-card.show { display:flex; }
 #impact-card-inner {
-  background:rgba(4,2,8,0.88); border:1px solid var(--danger);
-  border-radius:var(--r); padding:1.8rem 2.4rem; text-align:center;
-  box-shadow:0 0 60px rgba(255,51,85,.5), 0 0 120px rgba(255,51,85,.18);
-  animation:impact-in .25s ease-out;
-  max-width:400px;
+  background:rgba(4,2,8,0.92); border:1px solid var(--danger);
+  border-radius:var(--r); padding:2.2rem 3rem; text-align:center;
+  box-shadow:0 0 80px rgba(255,51,85,.75), 0 0 160px rgba(255,51,85,.3), inset 0 0 50px rgba(255,30,30,.08);
+  animation:impact-in .45s cubic-bezier(.175,.885,.32,1.275);
+  max-width:460px;
 }
 @keyframes impact-in {
-  from { transform:scale(0.7); opacity:0; }
+  from { transform:scale(0.3); opacity:0; }
+  60%  { transform:scale(1.06); opacity:1; }
   to   { transform:scale(1);   opacity:1; }
 }
 #impact-card-name { font-family:var(--font-d); font-size:1rem; color:#fff; letter-spacing:.12em; margin-bottom:.8rem; }
@@ -202,15 +203,43 @@ td.safe { color:var(--safe); }
 /* SHOCKWAVE FLASH */
 #shockwave {
   position:fixed; inset:0; z-index:505; pointer-events:none;
-  background:radial-gradient(circle at 50% 50%, rgba(255,180,80,.55) 0%, rgba(255,51,20,.25) 35%, transparent 70%);
+  background:radial-gradient(circle at 50% 50%, rgba(255,220,100,.75) 0%, rgba(255,80,20,.45) 30%, rgba(180,0,0,.2) 60%, transparent 80%);
   opacity:0;
 }
-#shockwave.flash { animation:shockwave .6s ease-out forwards; }
+#shockwave.flash { animation:shockwave 1.2s ease-out forwards; }
 @keyframes shockwave {
-  0%   { opacity:0;    transform:scale(0.3); }
-  18%  { opacity:1;    transform:scale(1);   }
-  100% { opacity:0;    transform:scale(1.6); }
+  0%   { opacity:0;    transform:scale(0.05); }
+  10%  { opacity:1;    transform:scale(0.8);  }
+  100% { opacity:0;    transform:scale(3.0);  }
 }
+
+/* CINEMATIC LETTERBOX */
+#letterbox-top, #letterbox-bot {
+  position:fixed; left:0; right:0; z-index:511;
+  background:#000; height:0;
+  transition:height 0.65s cubic-bezier(.4,0,.2,1);
+  pointer-events:none;
+}
+#letterbox-top { top:0; }
+#letterbox-bot { bottom:0; }
+#letterbox-top.open, #letterbox-bot.open { height:10vh; }
+
+/* RED VIGNETTE */
+#vignette {
+  position:fixed; inset:0; z-index:503; pointer-events:none;
+  background:radial-gradient(ellipse at 50% 50%, transparent 20%, rgba(160,0,0,0.85) 100%);
+  opacity:0; transition:opacity .45s;
+}
+#vignette.show { opacity:1; }
+
+/* IMPACT SEQUENCE COUNTER */
+#impact-counter {
+  position:fixed; top:12vh; left:50%; transform:translateX(-50%);
+  z-index:512; font-family:var(--font-m); font-size:.7rem; letter-spacing:.35em;
+  color:rgba(255,51,85,.85); display:none;
+  text-shadow:0 0 14px rgba(255,51,85,.7);
+}
+#impact-counter.show { display:block; }
 
 /* SCI-FI OVERLAY */
 #scifi {
@@ -354,6 +383,16 @@ td.safe { color:var(--safe); }
     </div>
   </div>
 </div>
+
+<!-- CINEMATIC LETTERBOX -->
+<div id="letterbox-top"></div>
+<div id="letterbox-bot"></div>
+
+<!-- RED VIGNETTE -->
+<div id="vignette"></div>
+
+<!-- IMPACT COUNTER -->
+<div id="impact-counter"></div>
 
 <!-- SHOCKWAVE FLASH -->
 <div id="shockwave"></div>
@@ -871,7 +910,31 @@ function zoomCamera(targetZ, durationMs) {
   });
 }
 
+// Camera screen shake
+function screenShake(durationMs, intensity) {
+  if (!camera) return;
+  const start = performance.now();
+  function shake(now) {
+    const elapsed = now - start;
+    if (elapsed >= durationMs) { camera.position.x = 0; camera.position.y = 0; return; }
+    const decay = 1 - elapsed / durationMs;
+    camera.position.x = (Math.random() - 0.5) * intensity * decay;
+    camera.position.y = (Math.random() - 0.5) * intensity * decay;
+    requestAnimationFrame(shake);
+  }
+  requestAnimationFrame(shake);
+}
+
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function resetCinematicUI() {
+  $('#letterbox-top').classList.remove('open');
+  $('#letterbox-bot').classList.remove('open');
+  $('#vignette').classList.remove('show');
+  $('#impact-counter').classList.remove('show');
+  $('#impact-card').classList.remove('show');
+  if (earth) { earth.material.emissive.setHex(0x000000); earth.material.emissiveIntensity = 0; }
+}
 
 async function runSciFi() {
   if (S.neos.length === 0) return;
@@ -880,20 +943,38 @@ async function runSciFi() {
   const totalCas = impacts.reduce((s, i) => s + i.cas, 0);
   const origZ = camera ? camera.position.z : 4;
 
-  // Sort most destructive last for maximum drama
+  // Sort least → most destructive — max drama at the end
   impacts.sort((a, b) => a.ke - b.ke);
 
-  for (const { n, ke, crater, cas } of impacts) {
-    // 1. Zoom in toward Earth
-    await zoomCamera(1.6, 900);
+  // Open cinematic letterbox bars
+  $('#letterbox-top').classList.add('open');
+  $('#letterbox-bot').classList.add('open');
+  await delay(700);
 
-    // 2. Shockwave flash
+  for (let idx = 0; idx < impacts.length; idx++) {
+    const { n, ke, crater, cas } = impacts[idx];
+
+    // Sequence counter
+    $('#impact-counter').textContent = `IMPACT ${idx + 1} / ${impacts.length}`;
+    $('#impact-counter').classList.add('show');
+
+    // 1. Slow, ominous zoom in — almost pressing face against Earth
+    await zoomCamera(1.08, 1400);
+    await delay(350);
+
+    // 2. Red vignette closes in
+    $('#vignette').classList.add('show');
+    await delay(200);
+
+    // 3. Explosion — shockwave + screen shake + Earth goes red
     const sw = $('#shockwave');
     sw.classList.remove('flash');
-    void sw.offsetWidth; // force reflow to restart animation
+    void sw.offsetWidth;
     sw.classList.add('flash');
+    screenShake(800, 0.13);
+    if (earth) { earth.material.emissive.setHex(0xaa1100); earth.material.emissiveIntensity = 0.4; }
 
-    // 3. Show impact card
+    // 4. Show impact card (animate in with bounce)
     $('#impact-card-name').textContent = n.name;
     $('#impact-card-ke'  ).textContent = ke >= 1 ? ke.toFixed(1) : ke.toFixed(3);
     $('#impact-crater'   ).textContent = crater >= 1000 ? (crater/1000).toFixed(1)+' km' : crater+' m';
@@ -901,15 +982,27 @@ async function runSciFi() {
     $('#impact-diam'     ).textContent = Math.round(n.dMin)+'–'+Math.round(n.dMax)+' m';
     $('#impact-card').classList.add('show');
 
-    await delay(2200);
+    // 5. Hold — let the weight sink in
+    await delay(3400);
 
-    // 4. Hide card, zoom back out
+    // 6. Dismiss and restore
     $('#impact-card').classList.remove('show');
-    await zoomCamera(origZ, 700);
-    await delay(300);
+    $('#vignette').classList.remove('show');
+    if (earth) { earth.material.emissive.setHex(0x000000); earth.material.emissiveIntensity = 0; }
+    await delay(250);
+
+    // 7. Slow zoom back out
+    await zoomCamera(origZ, 1200);
+    await delay(600);
   }
 
-  // 5. Show final summary overlay
+  // Close letterbox
+  $('#letterbox-top').classList.remove('open');
+  $('#letterbox-bot').classList.remove('open');
+  $('#impact-counter').classList.remove('show');
+  await delay(700);
+
+  // Final summary overlay
   const lines = impacts.map(({ n, ke, crater, cas }) =>
     `<div class="log-line">${n.name} — ${ke.toFixed(1)} MT — crater ${crater} km — ${cas.toLocaleString()} est. casualties</div>`
   );
@@ -922,7 +1015,7 @@ async function runSciFi() {
 $('#scifi-btn').addEventListener('click', runSciFi);
 $('#sf-close').addEventListener('click', () => {
   $('#scifi').classList.remove('show');
-  // Restore camera zoom in case user closed mid-sequence
+  resetCinematicUI();
   if (camera) zoomCamera(4, 600);
 });
 
