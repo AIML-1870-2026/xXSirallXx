@@ -932,7 +932,7 @@ function getNearSideImpactPos(seed) {
 }
 
 // Renders fireball + ring + white core on Earth's surface at localPos
-function showImpactEffect(localPos, ke) {
+function showImpactEffect(localPos, ke, totalMs = 3200) {
   if (!earth || !THREE) return;
   const maxS = Math.max(0.1, Math.min(0.30, Math.log10(ke + 1.5) * 0.13));
 
@@ -966,7 +966,6 @@ function showImpactEffect(localPos, ke) {
   ring.scale.set(0.01, 0.01, 1);
   earth.add(ring);
 
-  const totalMs = 3200;
   const start = performance.now();
   (function step(now) {
     const t = Math.min((now - start) / totalMs, 1);
@@ -1117,52 +1116,60 @@ async function runSciFi() {
   const impacts = S.neos.map(n => ({ n, ...impactData(n) }));
   const totalCas = impacts.reduce((s, i) => s + i.cas, 0);
   const origZ = camera ? camera.position.z : 4;
+  const n = impacts.length;
 
   impacts.sort((a, b) => a.ke - b.ke);
+
+  // Divide 10 s evenly: 600 ms overhead (letterbox open+close), rest split per impact
+  const perMs   = Math.floor(9400 / n);
+  const tZoom   = Math.max(60,  Math.floor(perMs * 0.24));
+  const tOut    = Math.max(60,  Math.floor(perMs * 0.24));
+  const tGap    = Math.max(20,  Math.floor(perMs * 0.05));
+  const tHold   = Math.max(80,  perMs - tZoom - tOut - tGap);
 
   $('#letterbox-top').classList.add('open');
   $('#letterbox-bot').classList.add('open');
   await delay(300);
 
-  for (let idx = 0; idx < impacts.length; idx++) {
-    const { n, ke, crater, cas } = impacts[idx];
+  for (let idx = 0; idx < n; idx++) {
+    const { n: neo, ke, crater, cas } = impacts[idx];
 
-    $('#impact-counter').textContent = `IMPACT ${idx + 1} / ${impacts.length}`;
+    $('#impact-counter').textContent = `IMPACT ${idx + 1} / ${n}`;
     $('#impact-counter').classList.add('show');
 
-    // Fast zoom in
-    await zoomCamera(1.15, 320);
+    await zoomCamera(1.15, tZoom);
 
-    // Compute impact position after zoom settles
-    const seed = parseInt(n.id) || idx + 1;
+    const seed = parseInt(neo.id) || idx + 1;
     const impactLocal = getNearSideImpactPos(seed);
 
-    // Vignette + explosion all at once
     $('#vignette').classList.add('show');
-    showImpactEffect(impactLocal, ke);
-    deformEarth(impactLocal, ke, 620);
+    showImpactEffect(impactLocal, ke, tHold + tOut);
+    deformEarth(impactLocal, ke, tHold);
+
+    // Scale shockwave animation to match hold time
     const sw = $('#shockwave');
-    sw.classList.remove('flash'); void sw.offsetWidth; sw.classList.add('flash');
-    screenShake(500, 0.13);
+    sw.style.animation = 'none';
+    void sw.offsetWidth;
+    sw.style.animation = `shockwave ${Math.min(900, tHold + tOut)}ms ease-out forwards`;
+
+    screenShake(Math.min(400, tHold), 0.13);
     if (earth) { earth.material.emissive.setHex(0xaa1100); earth.material.emissiveIntensity = 0.4; }
 
-    // Card
-    $('#impact-card-name').textContent = n.name;
+    $('#impact-card-name').textContent = neo.name;
     $('#impact-card-ke'  ).textContent = ke >= 1 ? ke.toFixed(1) : ke.toFixed(3);
     $('#impact-crater'   ).textContent = crater >= 1000 ? (crater/1000).toFixed(1)+' km' : crater+' m';
     $('#impact-cas'      ).textContent = cas >= 1e9 ? (cas/1e9).toFixed(1)+'B' : cas >= 1e6 ? (cas/1e6).toFixed(1)+'M' : cas.toLocaleString();
-    $('#impact-diam'     ).textContent = Math.round(n.dMin)+'–'+Math.round(n.dMax)+' m';
+    $('#impact-diam'     ).textContent = Math.round(neo.dMin)+'–'+Math.round(neo.dMax)+' m';
     $('#impact-card').classList.add('show');
 
-    await delay(750);
+    await delay(tHold);
 
     $('#impact-card').classList.remove('show');
     $('#vignette').classList.remove('show');
     if (earth) { earth.material.emissive.setHex(0x000000); earth.material.emissiveIntensity = 0; }
 
-    // Fast zoom out
-    await zoomCamera(origZ, 320);
-    await delay(80);
+    await zoomCamera(origZ, tOut);
+    await delay(tGap);
   }
 
   $('#letterbox-top').classList.remove('open');
@@ -1170,8 +1177,8 @@ async function runSciFi() {
   $('#impact-counter').classList.remove('show');
   await delay(300);
 
-  const lines = impacts.map(({ n, ke, crater, cas }) =>
-    `<div class="log-line">${n.name} — ${ke.toFixed(1)} MT — crater ${crater} km — ${cas.toLocaleString()} est. casualties</div>`
+  const lines = impacts.map(({ n: neo, ke, crater, cas }) =>
+    `<div class="log-line">${neo.name} — ${ke.toFixed(1)} MT — crater ${crater} km — ${cas.toLocaleString()} est. casualties</div>`
   );
   $('#sf-cas'   ).textContent = totalCas.toLocaleString();
   $('#sf-status').textContent = 'Earth Status: ' + (totalCas > 1e9 ? '☠ UNINHABITABLE' : totalCas > 1e6 ? '⚠ CATASTROPHIC' : 'SURVIVABLE');
