@@ -30,7 +30,7 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); col
   background:var(--bg);
   display:flex; flex-direction:column; align-items:center; justify-content:center;
   cursor:pointer;
-  transition:opacity 0.8s ease;
+  transition:opacity 0.9s ease;
 }
 #splash.fade { opacity:0; pointer-events:none; }
 #splash h1 { font-family:var(--font-d); font-size:clamp(2rem,6vw,4rem); font-weight:900; letter-spacing:.15em; color:var(--accent); text-shadow:0 0 40px rgba(0,180,255,.5); margin-bottom:.4em; }
@@ -72,18 +72,19 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); col
 .date-block input[type=date] { width:100%; background:rgba(0,0,0,.4); border:1px solid var(--border); border-radius:var(--r); color:var(--text); font-family:var(--font-m); font-size:.75rem; padding:.3rem .5rem; }
 .btn-scan { width:100%; margin-top:.3rem; padding:.45rem; font-size:.7rem; }
 
-/* GLOBE AREA */
+/* GLOBE AREA — canvas is injected here and takes natural renderer size */
 #globe-wrap {
   position:fixed;
   top:48px; left:240px; right:0; bottom:0;
-  background:#000;
+  background:#000008;
+  overflow:hidden;
 }
-#globe-wrap canvas { display:block; width:100% !important; height:100% !important; }
 
 /* ALT VIEWS */
 .view {
   position:absolute; inset:0; display:none;
   padding:1.5rem; overflow:auto; background:var(--bg);
+  z-index:10;
 }
 .view.show { display:block; }
 
@@ -161,6 +162,15 @@ td.safe { color:var(--safe); }
 #scifi .log { max-height:180px; overflow-y:auto; width:100%; max-width:480px; font-size:.68rem; color:var(--dim); margin-bottom:1.5rem; }
 .log-line { padding:.15rem 0; border-bottom:1px solid rgba(255,255,255,.04); }
 
+/* GLOBE ERROR */
+#globe-error {
+  position:absolute; inset:0; display:none;
+  align-items:center; justify-content:center;
+  flex-direction:column; gap:1rem;
+  color:#ff6644; font-family:monospace; font-size:.85rem; text-align:center; padding:2rem;
+}
+#globe-error.show { display:flex; }
+
 /* RESPONSIVE */
 @media(max-width:700px) {
   #hud { top:auto; bottom:0; left:0; right:0; width:100%; height:auto; max-height:38vh; flex-direction:row; flex-wrap:wrap; border-right:none; border-top:1px solid var(--border); }
@@ -222,9 +232,11 @@ td.safe { color:var(--safe); }
 
 <!-- GLOBE CONTAINER -->
 <div id="globe-wrap">
-  <!-- Three.js canvas injected here -->
-
-  <!-- ALT VIEWS inside same container -->
+  <div id="globe-error">
+    <div>⚠ 3D globe failed to load</div>
+    <div id="globe-error-msg" style="color:#888;font-size:.75rem"></div>
+  </div>
+  <!-- Alt views -->
   <div id="view-map" class="view"><canvas id="map-canvas"></canvas></div>
   <div id="view-table" class="view">
     <table id="tbl">
@@ -268,25 +280,23 @@ td.safe { color:var(--safe); }
   <button class="btn" id="sf-close">DISMISS</button>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 'use strict';
 
 // ── CONFIG ──────────────────────────────────────────────────────────────────
 const API_KEY = 'D36Q3kKCmVGaDcTt1sCY1WHCC94EJ51jHacDH7P9';
-const LUNAR   = 384400; // km
 
 // ── HELPERS ─────────────────────────────────────────────────────────────────
 const $  = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
-const fmt = n => n.toLocaleString(undefined, { maximumFractionDigits: 1 });
-const today  = () => { const d=new Date(); return d.toISOString().slice(0,10); };
+const fmt = n => Number(n).toLocaleString(undefined, { maximumFractionDigits: 1 });
+const today  = () => new Date().toISOString().slice(0,10);
 const addDay = (s,n) => { const d=new Date(s); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); };
 
 // ── STATE ────────────────────────────────────────────────────────────────────
 const S = { neos:[], view:'globe', sortCol:'dist', sortDir:'asc' };
 
-// ── FALLBACK DATA (shown if NASA API is unavailable) ─────────────────────────
+// ── FALLBACK DATA ────────────────────────────────────────────────────────────
 const DEMO = [
   {id:'54016382',name:'(2020 XL5)',  date:'2026-04-10',haz:false,dMin:210,dMax:470, distKm:4870000,distLD:12.67,velKmh:42300,velKms:11.75},
   {id:'54204856',name:'(2021 RB1)',  date:'2026-04-10',haz:true, dMin:140,dMax:320, distKm:980000, distLD:2.55, velKmh:68500,velKms:19.03},
@@ -302,136 +312,188 @@ const DEMO = [
 
 // ── THREE.JS GLOBALS ─────────────────────────────────────────────────────────
 let scene, camera, renderer, earth, neoMeshes=[], raycaster, mouse;
+let THREE = null;
+
+// ── LOAD THREE.JS WITH FALLBACK ──────────────────────────────────────────────
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload  = resolve;
+    s.onerror = () => reject(new Error('Failed: ' + src));
+    document.head.appendChild(s);
+  });
+}
+
+function showGlobeError(msg) {
+  $('#globe-error-msg').textContent = msg;
+  $('#globe-error').classList.add('show');
+}
 
 // ── INIT 3D ──────────────────────────────────────────────────────────────────
 function init3D() {
+  THREE = window.THREE;
+  if (!THREE) { showGlobeError('THREE is not defined'); return; }
+
   const wrap = $('#globe-wrap');
-  const W = wrap.clientWidth  || window.innerWidth  - 240;
-  const H = wrap.clientHeight || window.innerHeight - 48;
+  const W = wrap.clientWidth  || (window.innerWidth  - 240);
+  const H = wrap.clientHeight || (window.innerHeight - 48);
 
-  scene    = new THREE.Scene();
-  camera   = new THREE.PerspectiveCamera(45, W / H, 0.1, 500);
-  camera.position.z = 4;
+  if (W <= 0 || H <= 0) { showGlobeError('Globe container has zero size (W='+W+' H='+H+')'); return; }
 
-  renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  renderer.setSize(W, H);
-  renderer.setClearColor(0x000005);
-  wrap.prepend(renderer.domElement);
+  try {
+    scene  = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(45, W / H, 0.1, 500);
+    camera.position.z = 4;
 
-  // ── Stars ──
-  const pos = [];
-  for (let i=0; i<2500; i++) {
-    const th = Math.random()*Math.PI*2;
-    const ph = Math.acos(2*Math.random()-1);
-    const r  = 60 + Math.random()*30;
-    pos.push(r*Math.sin(ph)*Math.cos(th), r*Math.sin(ph)*Math.sin(th), r*Math.cos(ph));
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(W, H);
+    renderer.setClearColor(0x000008);
+
+    // Position canvas absolutely to fill container
+    const cv = renderer.domElement;
+    cv.style.position = 'absolute';
+    cv.style.top = '0';
+    cv.style.left = '0';
+    cv.style.width = W + 'px';
+    cv.style.height = H + 'px';
+    wrap.prepend(cv);
+
+    // ── Stars ──
+    const pos = [];
+    for (let i = 0; i < 3000; i++) {
+      const th = Math.random() * Math.PI * 2;
+      const ph = Math.acos(2 * Math.random() - 1);
+      const r  = 60 + Math.random() * 40;
+      pos.push(r*Math.sin(ph)*Math.cos(th), r*Math.sin(ph)*Math.sin(th), r*Math.cos(ph));
+    }
+    const sg = new THREE.BufferGeometry();
+    sg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    scene.add(new THREE.Points(sg, new THREE.PointsMaterial({ color:0xffffff, size:0.15 })));
+
+    // ── Lights ──
+    scene.add(new THREE.AmbientLight(0x334466, 1.5));
+    const sun = new THREE.DirectionalLight(0xffffff, 3.0);
+    sun.position.set(5, 3, 5);
+    scene.add(sun);
+
+    // ── Earth core (ocean) ──
+    const eg = new THREE.SphereGeometry(1, 64, 64);
+    const em = new THREE.MeshPhongMaterial({
+      color:     0x1a6db5,
+      emissive:  0x06183a,
+      specular:  0x55aadd,
+      shininess: 60,
+    });
+    earth = new THREE.Mesh(eg, em);
+    scene.add(earth);
+
+    // ── Land mass tint ──
+    const lg = new THREE.SphereGeometry(1.002, 32, 32);
+    const lm = new THREE.MeshPhongMaterial({
+      color:       0x2e8b3a,
+      emissive:    0x071208,
+      transparent: true,
+      opacity:     0.45,
+    });
+    scene.add(new THREE.Mesh(lg, lm));
+
+    // ── Lat/lon grid ──
+    const gg = new THREE.SphereGeometry(1.003, 18, 18);
+    const gm = new THREE.MeshBasicMaterial({ color:0x66ccff, wireframe:true, transparent:true, opacity:0.08 });
+    scene.add(new THREE.Mesh(gg, gm));
+
+    // ── Atmosphere halo ──
+    const ag = new THREE.SphereGeometry(1.15, 32, 32);
+    const am = new THREE.MeshBasicMaterial({ color:0x2299ff, transparent:true, opacity:0.09, side:THREE.BackSide });
+    scene.add(new THREE.Mesh(ag, am));
+
+    // ── Distance rings (1 LD, 5 LD, 10 LD) ──
+    [1, 5, 10].forEach((ld, i) => {
+      const r  = 1 + ld * 0.28;
+      const rg = new THREE.RingGeometry(r - 0.006, r + 0.006, 64);
+      const rm = new THREE.MeshBasicMaterial({ color:0x00b4ff, transparent:true, opacity:0.15 - i*0.03, side:THREE.DoubleSide });
+      const ring = new THREE.Mesh(rg, rm);
+      ring.rotation.x = Math.PI / 2;
+      scene.add(ring);
+    });
+
+    raycaster = new THREE.Raycaster();
+    mouse     = new THREE.Vector2(-9, -9);
+
+    // ── Drag rotation ──
+    let drag=false, px=0, py=0, rx=0, ry=0;
+    cv.addEventListener('pointerdown', e => { drag=true; px=e.clientX; py=e.clientY; cv.setPointerCapture(e.pointerId); });
+    cv.addEventListener('pointerup',   () => { drag=false; });
+    cv.addEventListener('pointermove', e => {
+      const r2 = cv.getBoundingClientRect();
+      mouse.x =  ((e.clientX - r2.left) / r2.width ) * 2 - 1;
+      mouse.y = -((e.clientY - r2.top ) / r2.height) * 2 + 1;
+      if (!drag) return;
+      ry += (e.clientX - px) * 0.005;
+      rx += (e.clientY - py) * 0.005;
+      rx = Math.max(-1.3, Math.min(1.3, rx));
+      px = e.clientX; py = e.clientY;
+    });
+    cv.addEventListener('wheel', e => {
+      camera.position.z = Math.max(2, Math.min(10, camera.position.z + e.deltaY * 0.004));
+      e.preventDefault();
+    }, { passive:false });
+    cv.addEventListener('click', () => checkHover(true));
+
+    // ── Resize ──
+    window.addEventListener('resize', () => {
+      const W2 = wrap.clientWidth  || (window.innerWidth  - 240);
+      const H2 = wrap.clientHeight || (window.innerHeight - 48);
+      camera.aspect = W2 / H2;
+      camera.updateProjectionMatrix();
+      renderer.setSize(W2, H2);
+      cv.style.width  = W2 + 'px';
+      cv.style.height = H2 + 'px';
+    });
+
+    // ── Animate ──
+    (function loop() {
+      requestAnimationFrame(loop);
+      if (!drag) ry += 0.0008;
+      earth.rotation.set(rx, ry, 0);
+      neoMeshes.forEach(m => m.rotation.set(rx, ry, 0));
+      checkHover(false);
+      renderer.render(scene, camera);
+    })();
+
+  } catch(err) {
+    showGlobeError('Three.js error: ' + err.message);
+    console.error(err);
   }
-  const sg = new THREE.BufferGeometry();
-  sg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  scene.add(new THREE.Points(sg, new THREE.PointsMaterial({color:0xffffff, size:0.12})));
-
-  // ── Lights ──
-  scene.add(new THREE.AmbientLight(0x223355, 1.2));
-  const sun = new THREE.DirectionalLight(0xffffff, 2.0);
-  sun.position.set(6, 3, 4);
-  scene.add(sun);
-
-  // ── Earth (ocean) ──
-  const eg = new THREE.SphereGeometry(1, 64, 64);
-  const em = new THREE.MeshPhongMaterial({ color:0x1155aa, emissive:0x040d20, specular:0x3377aa, shininess:40 });
-  earth = new THREE.Mesh(eg, em);
-  scene.add(earth);
-
-  // ── Land mass tint ──
-  const lg = new THREE.SphereGeometry(1.001, 32, 32);
-  const lm = new THREE.MeshPhongMaterial({ color:0x2d7a3a, emissive:0x050e07, transparent:true, opacity:0.5 });
-  scene.add(new THREE.Mesh(lg, lm));
-
-  // ── Lat/lon grid ──
-  const gg = new THREE.SphereGeometry(1.002, 18, 18);
-  const gm = new THREE.MeshBasicMaterial({ color:0x66bbff, wireframe:true, transparent:true, opacity:0.07 });
-  scene.add(new THREE.Mesh(gg, gm));
-
-  // ── Atmosphere halo ──
-  const ag = new THREE.SphereGeometry(1.14, 32, 32);
-  const am = new THREE.MeshBasicMaterial({ color:0x2299ff, transparent:true, opacity:0.07, side:THREE.BackSide });
-  scene.add(new THREE.Mesh(ag, am));
-
-  // ── Distance rings ──
-  [1, 5, 10].forEach((ld,i) => {
-    const r  = 1 + ld*0.28;
-    const rg = new THREE.RingGeometry(r-0.005, r+0.005, 64);
-    const rm = new THREE.MeshBasicMaterial({ color:0x00b4ff, transparent:true, opacity:0.14-i*0.03, side:THREE.DoubleSide });
-    const ring = new THREE.Mesh(rg, rm);
-    ring.rotation.x = Math.PI/2;
-    scene.add(ring);
-  });
-
-  raycaster = new THREE.Raycaster();
-  mouse     = new THREE.Vector2(-9,-9);
-
-  // ── Drag rotation ──
-  let drag=false, px=0, py=0, rx=0, ry=0;
-  const el = renderer.domElement;
-  el.addEventListener('pointerdown', e => { drag=true; px=e.clientX; py=e.clientY; });
-  window.addEventListener('pointerup',   () => { drag=false; });
-  window.addEventListener('pointermove', e => {
-    const r2 = el.getBoundingClientRect();
-    mouse.x =  ((e.clientX-r2.left)/r2.width )*2-1;
-    mouse.y = -((e.clientY-r2.top )/r2.height)*2+1;
-    if (!drag) return;
-    ry += (e.clientX-px)*0.005; rx += (e.clientY-py)*0.005;
-    rx = Math.max(-1.3, Math.min(1.3, rx));
-    px=e.clientX; py=e.clientY;
-  });
-  el.addEventListener('wheel', e => {
-    camera.position.z = Math.max(2, Math.min(10, camera.position.z + e.deltaY*0.004));
-    e.preventDefault();
-  }, {passive:false});
-  el.addEventListener('click', () => checkHover(true));
-
-  // ── Resize ──
-  const resize = () => {
-    const W2 = wrap.clientWidth  || window.innerWidth  - 240;
-    const H2 = wrap.clientHeight || window.innerHeight - 48;
-    camera.aspect = W2/H2;
-    camera.updateProjectionMatrix();
-    renderer.setSize(W2, H2);
-  };
-  window.addEventListener('resize', resize);
-
-  // ── Animate ──
-  (function loop() {
-    requestAnimationFrame(loop);
-    if (!drag) ry += 0.001;
-    earth.rotation.set(rx, ry, 0);
-    neoMeshes.forEach(m => m.rotation.set(rx, ry, 0));
-    checkHover(false);
-    renderer.render(scene, camera);
-  })();
 }
 
 // ── NEO MESHES ───────────────────────────────────────────────────────────────
 function update3D() {
+  if (!scene) return;
   neoMeshes.forEach(m => scene.remove(m));
   neoMeshes = [];
   S.neos.forEach(n => {
-    const seed  = (parseInt(n.id)||0);
-    const theta = ((seed*2654435761)%6283)/1000;
-    const phi   = ((seed*340573321 )%3141)/1000 - Math.PI/2;
-    const r     = 1 + Math.min(n.distLD,10)*0.28;
-    const x=r*Math.cos(phi)*Math.cos(theta), y=r*Math.sin(phi), z=r*Math.cos(phi)*Math.sin(theta);
-    const size  = Math.max(0.018, Math.min(0.065, n.dMax/2800));
-    const color = n.haz ? 0xff3355 : n.distLD<1 ? 0xff9922 : 0x22ff88;
-    const geo   = n.haz ? new THREE.TetrahedronGeometry(size) : n.distLD<1 ? new THREE.OctahedronGeometry(size) : new THREE.SphereGeometry(size,8,8);
-    const mesh  = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({color}));
-    mesh.position.set(x,y,z);
+    const seed  = parseInt(n.id) || 0;
+    const theta = ((seed * 2654435761) % 6283) / 1000;
+    const phi   = ((seed * 340573321)  % 3141) / 1000 - Math.PI / 2;
+    const r     = 1 + Math.min(n.distLD, 10) * 0.28;
+    const x = r*Math.cos(phi)*Math.cos(theta), y = r*Math.sin(phi), z = r*Math.cos(phi)*Math.sin(theta);
+    const size  = Math.max(0.02, Math.min(0.07, n.dMax / 2800));
+    const color = n.haz ? 0xff3355 : n.distLD < 1 ? 0xff9922 : 0x22ff88;
+    const geo   = n.haz
+      ? new THREE.TetrahedronGeometry(size)
+      : n.distLD < 1
+        ? new THREE.OctahedronGeometry(size)
+        : new THREE.SphereGeometry(size, 8, 8);
+    const mesh  = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color }));
+    mesh.position.set(x, y, z);
     mesh.userData = n;
     scene.add(mesh);
     neoMeshes.push(mesh);
-    const glow = new THREE.Sprite(new THREE.SpriteMaterial({color, transparent:true, opacity:0.25}));
-    glow.scale.set(size*5, size*5, 1);
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ color, transparent:true, opacity:0.3 }));
+    glow.scale.set(size * 6, size * 6, 1);
     mesh.add(glow);
   });
 }
@@ -439,32 +501,33 @@ function update3D() {
 // ── HOVER / TOOLTIP ──────────────────────────────────────────────────────────
 let hovered = null;
 function checkHover(isTap) {
-  if (!raycaster || S.view!=='globe') return;
+  if (!raycaster || S.view !== 'globe') return;
   raycaster.setFromCamera(mouse, camera);
   const hits = raycaster.intersectObjects(neoMeshes);
   const tip  = $('#tip');
   if (hits.length) {
     const n = hits[0].object.userData;
-    if (hovered!==n || isTap) { hovered=n; showTip(n); }
+    if (hovered !== n || isTap) { hovered = n; showTip(n); }
   } else if (!isTap) {
-    hovered=null; tip.classList.remove('show');
+    hovered = null;
+    tip.classList.remove('show');
   }
 }
 function showTip(n) {
   $('#tip-name').textContent = n.name;
   $('#tip-date').textContent = n.date;
-  $('#tip-dist').textContent = fmt(n.distLD)+' LD';
-  $('#tip-vel' ).textContent = n.velKms.toFixed(2)+' km/s';
-  $('#tip-diam').textContent = Math.round(n.dMin)+'–'+Math.round(n.dMax)+' m';
+  $('#tip-dist').textContent = fmt(n.distLD) + ' LD';
+  $('#tip-vel' ).textContent = n.velKms.toFixed(2) + ' km/s';
+  $('#tip-diam').textContent = Math.round(n.dMin) + '–' + Math.round(n.dMax) + ' m';
   $('#tip-haz' ).textContent = n.haz ? '⚠ YES' : 'No';
   const tip = $('#tip');
   tip.classList.add('show');
-  const el  = renderer.domElement;
-  const r   = el.getBoundingClientRect();
-  const nx  = (mouse.x+1)/2*r.width  + r.left;
-  const ny  = (-mouse.y+1)/2*r.height + r.top;
-  tip.style.left = Math.min(nx+14, window.innerWidth -tip.offsetWidth -10)+'px';
-  tip.style.top  = Math.min(ny-10,  window.innerHeight-tip.offsetHeight-10)+'px';
+  const cv  = renderer.domElement;
+  const r2  = cv.getBoundingClientRect();
+  const nx  = (mouse.x  + 1) / 2 * r2.width  + r2.left;
+  const ny  = (-mouse.y + 1) / 2 * r2.height + r2.top;
+  tip.style.left = Math.min(nx + 14, window.innerWidth  - tip.offsetWidth  - 10) + 'px';
+  tip.style.top  = Math.min(ny - 10, window.innerHeight - tip.offsetHeight - 10) + 'px';
 }
 
 // ── NASA API ─────────────────────────────────────────────────────────────────
@@ -506,9 +569,9 @@ async function fetchNEOs(from, to) {
 // ── HUD ──────────────────────────────────────────────────────────────────────
 function updateHUD() {
   $('#stat-total').textContent = S.neos.length || '—';
-  $('#stat-haz'  ).textContent = S.neos.filter(n=>n.haz).length || '0';
-  const closest = S.neos.reduce((m,n)=>Math.min(m,n.distLD), Infinity);
-  $('#stat-close').textContent = isFinite(closest) ? fmt(closest)+' LD' : '—';
+  $('#stat-haz'  ).textContent = S.neos.filter(n => n.haz).length || '0';
+  const closest = S.neos.reduce((m, n) => Math.min(m, n.distLD), Infinity);
+  $('#stat-close').textContent = isFinite(closest) ? fmt(closest) + ' LD' : '—';
 }
 
 // ── VIEW SWITCHING ────────────────────────────────────────────────────────────
@@ -517,45 +580,43 @@ $$('.view-btns button').forEach(btn => {
     $$('.view-btns button').forEach(b => b.classList.remove('on'));
     btn.classList.add('on');
     S.view = btn.dataset.view;
-    const globeCanvas = renderer ? renderer.domElement : null;
-    if (globeCanvas) globeCanvas.style.display = S.view==='globe' ? 'block' : 'none';
+    const cv = renderer ? renderer.domElement : null;
+    if (cv) cv.style.display = S.view === 'globe' ? 'block' : 'none';
     $$('.view').forEach(v => v.classList.remove('show'));
     if (S.view !== 'globe') {
       const el = $(`#view-${S.view}`);
       if (el) el.classList.add('show');
-      if (S.view==='map') drawMap();
+      if (S.view === 'map') drawMap();
     }
   });
 });
 
 // ── TABLE ─────────────────────────────────────────────────────────────────────
 function renderTable() {
-  let list = [...S.neos];
-  list.sort((a,b) => {
+  const list = [...S.neos].sort((a, b) => {
     let va, vb;
-    switch(S.sortCol) {
-      case 'name': va=a.name; vb=b.name; break;
-      case 'date': va=a.date; vb=b.date; break;
-      case 'vel':  va=a.velKms; vb=b.velKms; break;
-      case 'diam': va=a.dMax; vb=b.dMax; break;
+    switch (S.sortCol) {
+      case 'name': va=a.name;    vb=b.name;    break;
+      case 'date': va=a.date;    vb=b.date;    break;
+      case 'vel':  va=a.velKms;  vb=b.velKms;  break;
+      case 'diam': va=a.dMax;    vb=b.dMax;    break;
       case 'haz':  va=a.haz?0:1; vb=b.haz?0:1; break;
-      default:     va=a.distLD; vb=b.distLD;
+      default:     va=a.distLD;  vb=b.distLD;
     }
-    return (va<vb?-1:va>vb?1:0)*(S.sortDir==='asc'?1:-1);
+    return (va < vb ? -1 : va > vb ? 1 : 0) * (S.sortDir === 'asc' ? 1 : -1);
   });
-  const tb = $('#tbl-body');
-  tb.innerHTML = list.map(n=>`<tr>
+  $('#tbl-body').innerHTML = list.map(n => `<tr>
     <td>${n.name}</td><td>${n.date}</td>
-    <td class="${n.distLD<1?'warn':''}">${fmt(n.distLD)}</td>
+    <td class="${n.distLD < 1 ? 'warn' : ''}">${fmt(n.distLD)}</td>
     <td>${n.velKms.toFixed(2)}</td>
     <td>${Math.round(n.dMin)}–${Math.round(n.dMax)}</td>
-    <td class="${n.haz?'red':'safe'}">${n.haz?'⚠ YES':'—'}</td>
+    <td class="${n.haz ? 'red' : 'safe'}">${n.haz ? '⚠ YES' : '—'}</td>
   </tr>`).join('');
 }
 $$('#tbl th').forEach(th => {
   th.addEventListener('click', () => {
     const s = th.dataset.s;
-    S.sortDir = S.sortCol===s && S.sortDir==='asc' ? 'desc' : 'asc';
+    S.sortDir = S.sortCol === s && S.sortDir === 'asc' ? 'desc' : 'asc';
     S.sortCol = s;
     renderTable();
   });
@@ -563,26 +624,26 @@ $$('#tbl th').forEach(th => {
 
 // ── TIMELINE ─────────────────────────────────────────────────────────────────
 function renderTimeline() {
-  const sorted = [...S.neos].sort((a,b)=>a.date.localeCompare(b.date));
-  $('#tl-body').innerHTML = sorted.map(n=>`
+  const sorted = [...S.neos].sort((a, b) => a.date.localeCompare(b.date));
+  $('#tl-body').innerHTML = sorted.map(n => `
     <div class="tl-item">
       <span class="tl-date">${n.date}</span>
       <span class="tl-name">${n.name}</span>
-      <span class="tl-badge ${n.haz?'haz':'safe'}">${n.haz?'HAZARDOUS':'SAFE'}</span>
+      <span class="tl-badge ${n.haz ? 'haz' : 'safe'}">${n.haz ? 'HAZARDOUS' : 'SAFE'}</span>
       <span style="font-family:var(--font-m);font-size:.68rem;color:var(--dim)">${fmt(n.distLD)} LD</span>
     </div>`).join('');
 }
 
 // ── CARDS ─────────────────────────────────────────────────────────────────────
 function renderCards() {
-  $('#card-body').innerHTML = S.neos.map(n=>`
-    <div class="card${n.haz?' haz':''}">
+  $('#card-body').innerHTML = S.neos.map(n => `
+    <div class="card${n.haz ? ' haz' : ''}">
       <div class="card-name">${n.name}</div>
       <div class="card-row"><span>Date</span><span>${n.date}</span></div>
       <div class="card-row"><span>Miss dist</span><span>${fmt(n.distLD)} LD</span></div>
       <div class="card-row"><span>Velocity</span><span>${n.velKms.toFixed(2)} km/s</span></div>
       <div class="card-row"><span>Diameter</span><span>${Math.round(n.dMin)}–${Math.round(n.dMax)} m</span></div>
-      <div class="card-row"><span>Hazardous</span><span style="color:${n.haz?'var(--danger)':'var(--safe)'}">${n.haz?'⚠ YES':'—'}</span></div>
+      <div class="card-row"><span>Hazardous</span><span style="color:${n.haz ? 'var(--danger)' : 'var(--safe)'}">${n.haz ? '⚠ YES' : '—'}</span></div>
     </div>`).join('');
 }
 
@@ -592,83 +653,99 @@ function drawMap() {
   const p = canvas.parentElement;
   canvas.width  = p.clientWidth  || 800;
   canvas.height = p.clientHeight || 500;
-  const ctx = canvas.getContext('2d'), w=canvas.width, h=canvas.height;
-  ctx.fillStyle='#000005'; ctx.fillRect(0,0,w,h);
-  ctx.strokeStyle='rgba(0,180,255,.1)'; ctx.lineWidth=1;
-  for(let i=0;i<=12;i++){ctx.beginPath();ctx.moveTo(i*w/12,0);ctx.lineTo(i*w/12,h);ctx.stroke();}
-  for(let i=0;i<=6;i++){ctx.beginPath();ctx.moveTo(0,i*h/6);ctx.lineTo(w,i*h/6);ctx.stroke();}
-  ctx.strokeStyle='rgba(0,180,255,.25)';ctx.beginPath();ctx.moveTo(0,h/2);ctx.lineTo(w,h/2);ctx.stroke();
+  const ctx = canvas.getContext('2d'), w = canvas.width, h = canvas.height;
+  ctx.fillStyle = '#000008'; ctx.fillRect(0, 0, w, h);
+  ctx.strokeStyle = 'rgba(0,180,255,.1)'; ctx.lineWidth = 1;
+  for (let i=0; i<=12; i++) { ctx.beginPath(); ctx.moveTo(i*w/12,0); ctx.lineTo(i*w/12,h); ctx.stroke(); }
+  for (let i=0; i<=6;  i++) { ctx.beginPath(); ctx.moveTo(0,i*h/6); ctx.lineTo(w,i*h/6); ctx.stroke(); }
+  ctx.strokeStyle = 'rgba(0,180,255,.25)'; ctx.beginPath(); ctx.moveTo(0,h/2); ctx.lineTo(w,h/2); ctx.stroke();
   S.neos.forEach(n => {
-    const s=(parseInt(n.id)||0);
-    const x=((s*2654435761)%w+w)%w, y=((s*340573321)%h+h)%h;
-    const r=Math.max(3,Math.min(10,n.dMax/50));
-    ctx.fillStyle=n.haz?'#ff3355':n.distLD<1?'#ff9922':'#22ff88';
-    ctx.globalAlpha=.85; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
-    ctx.globalAlpha=.2;  ctx.beginPath(); ctx.arc(x,y,r+5,0,Math.PI*2); ctx.fill();
-    ctx.globalAlpha=1;
+    const s = parseInt(n.id) || 0;
+    const x = ((s*2654435761) % w + w) % w;
+    const y = ((s*340573321)  % h + h) % h;
+    const r = Math.max(3, Math.min(10, n.dMax / 50));
+    ctx.fillStyle = n.haz ? '#ff3355' : n.distLD < 1 ? '#ff9922' : '#22ff88';
+    ctx.globalAlpha = .85; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha = .2;  ctx.beginPath(); ctx.arc(x,y,r+5,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha = 1;
   });
-  ctx.fillStyle='rgba(0,180,255,.4)'; ctx.font='11px "Share Tech Mono"';
-  ctx.fillText('2D EQUIRECTANGULAR PROJECTION', 10, h-10);
+  ctx.fillStyle = 'rgba(0,180,255,.4)'; ctx.font = '11px "Share Tech Mono"';
+  ctx.fillText('2D EQUIRECTANGULAR PROJECTION', 10, h - 10);
 }
 
 function updateViews() {
   renderTable(); renderTimeline(); renderCards();
-  if (S.view==='map') drawMap();
+  if (S.view === 'map') drawMap();
 }
 
 // ── DATE SCAN ────────────────────────────────────────────────────────────────
 $('#btn-scan').addEventListener('click', () => {
-  const f=$('#df').value, t=$('#dt').value;
-  if(f&&t) fetchNEOs(f,t);
+  const f = $('#df').value, t = $('#dt').value;
+  if (f && t) fetchNEOs(f, t);
 });
 
 // ── SCI-FI MODE ───────────────────────────────────────────────────────────────
 $('#scifi-btn').addEventListener('click', () => {
-  let totalCas=0;
-  const lines=[];
-  S.neos.forEach(n=>{
-    const r=(n.dMax/2), v=n.velKms*1000;
-    const vol=(4/3)*Math.PI*r*r*r, mass=vol*3000;
-    const ke=0.5*mass*v*v/1e15;
-    const crater=Math.round(0.07*Math.pow(ke,0.29)*1000);
-    const cas=Math.round(ke*4200);
-    totalCas+=cas;
+  let totalCas = 0;
+  const lines = [];
+  S.neos.forEach(n => {
+    const r = n.dMax / 2, v = n.velKms * 1000;
+    const vol = (4/3) * Math.PI * r*r*r, mass = vol * 3000;
+    const ke = 0.5 * mass * v*v / 1e15;
+    const crater = Math.round(0.07 * Math.pow(ke, 0.29) * 1000);
+    const cas = Math.round(ke * 4200);
+    totalCas += cas;
     lines.push(`<div class="log-line">${n.name} — ${ke.toFixed(1)} MT — crater ${crater} km — ${cas.toLocaleString()} est. casualties</div>`);
   });
-  $('#sf-cas').textContent=totalCas.toLocaleString();
-  $('#sf-status').textContent='Earth Status: '+(totalCas>1e9?'☠ UNINHABITABLE':totalCas>1e6?'⚠ CATASTROPHIC':'SURVIVABLE');
-  $('#sf-log').innerHTML=lines.join('');
+  $('#sf-cas').textContent = totalCas.toLocaleString();
+  $('#sf-status').textContent = 'Earth Status: ' + (totalCas > 1e9 ? '☠ UNINHABITABLE' : totalCas > 1e6 ? '⚠ CATASTROPHIC' : 'SURVIVABLE');
+  $('#sf-log').innerHTML = lines.join('');
   $('#scifi').classList.add('show');
 });
-$('#sf-close').addEventListener('click', ()=>$('#scifi').classList.remove('show'));
+$('#sf-close').addEventListener('click', () => $('#scifi').classList.remove('show'));
 
 // ── TOAST ─────────────────────────────────────────────────────────────────────
-function showToast(msg) { $('#toast-msg').textContent=msg; $('#toast').classList.add('show'); }
-$('#toast-x').addEventListener('click', ()=>$('#toast').classList.remove('show'));
+function showToast(msg) { $('#toast-msg').textContent = msg; $('#toast').classList.add('show'); }
+$('#toast-x').addEventListener('click', () => $('#toast').classList.remove('show'));
 
 // ── KEYBOARD ──────────────────────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
-  if(e.key==='Escape'){ $('#scifi').classList.remove('show'); $('#toast').classList.remove('show'); }
+  if (e.key === 'Escape') { $('#scifi').classList.remove('show'); $('#toast').classList.remove('show'); }
 });
 
 // ── MAP OBSERVER ─────────────────────────────────────────────────────────────
-new MutationObserver(()=>{ if($('#view-map').classList.contains('show')) drawMap(); })
-  .observe($('#view-map'),{attributes:true,attributeFilter:['class']});
+new MutationObserver(() => {
+  if ($('#view-map').classList.contains('show')) drawMap();
+}).observe($('#view-map'), { attributes:true, attributeFilter:['class'] });
 
 // ── SPLASH ────────────────────────────────────────────────────────────────────
 function dismiss() {
   $('#splash').classList.add('fade');
-  setTimeout(()=>{ $('#splash').style.display='none'; }, 900);
+  setTimeout(() => { $('#splash').style.display = 'none'; }, 950);
 }
-$('#splash').addEventListener('click',  dismiss);
-$('#splash').addEventListener('touchend', e=>{ e.preventDefault(); dismiss(); });
+$('#splash').addEventListener('click', dismiss);
+$('#splash').addEventListener('touchend', e => { e.preventDefault(); dismiss(); });
 setTimeout(dismiss, 2500);
 
-// ── BOOTSTRAP ────────────────────────────────────────────────────────────────
-init3D();
-const t0=today(), t7=addDay(t0,7);
-$('#df').value=t0; $('#dt').value=t7;
-fetchNEOs(t0, t7);
+// ── BOOTSTRAP: load Three.js then start ──────────────────────────────────────
+const CDN1 = 'https://unpkg.com/three@0.128.0/build/three.min.js';
+const CDN2 = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+
+loadScript(CDN1)
+  .catch(() => loadScript(CDN2))
+  .then(() => {
+    // Give browser one frame to finish layout before measuring
+    requestAnimationFrame(() => {
+      init3D();
+      const t0 = today(), t7 = addDay(t0, 7);
+      $('#df').value = t0;
+      $('#dt').value = t7;
+      fetchNEOs(t0, t7);
+    });
+  })
+  .catch(err => {
+    showGlobeError('Could not load Three.js from any CDN. Check your internet connection. (' + err.message + ')');
+  });
 </script>
 </body>
 </html>
