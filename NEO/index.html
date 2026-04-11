@@ -483,7 +483,7 @@ function init3D() {
 
   try {
     scene  = new THREE.Scene();
-    camera = new THREE.PerspectiveCamera(45, W / H, 0.1, 500);
+    camera = new THREE.PerspectiveCamera(45, W / H, 0.02, 500);
     camera.position.z = 4;
 
     renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -1082,7 +1082,7 @@ async function runSciFi() {
     $('#impact-counter').classList.add('show');
 
     // 1. Slow, ominous zoom in — almost pressing face against Earth
-    await zoomCamera(1.08, 1400);
+    await zoomCamera(1.15, 1400);
     await delay(350);
 
     // Compute impact point on Earth's near side NOW (after zoom has settled)
