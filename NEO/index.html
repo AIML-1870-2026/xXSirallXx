@@ -468,7 +468,13 @@ function init3D() {
       earth.rotation.set(rx, ry, 0);
       // Clouds drift slightly faster than Earth surface
       if (clouds) clouds.rotation.y += 0.00004;
-      neoMeshes.forEach(m => m.rotation.set(rx, ry, 0));
+      // Each asteroid tumbles independently on its own axes
+      neoMeshes.forEach(m => {
+        const d = m.userData;
+        m.rotation.x += d._wx;
+        m.rotation.y += d._wy;
+        m.rotation.z += d._wz;
+      });
       checkHover(false);
       renderer.render(scene, camera);
     })();
@@ -479,6 +485,27 @@ function init3D() {
   }
 }
 
+// ── SEEDED PSEUDO-RNG (no Math.random — deterministic per NEO) ────────────────
+function lcg(seed) {
+  let s = seed >>> 0;
+  return () => { s = (Math.imul(1664525, s) + 1013904223) >>> 0; return s / 0xffffffff; };
+}
+
+// ── BUILD JAGGED ASTEROID GEOMETRY ───────────────────────────────────────────
+function makeAsteroidGeo(size, seed) {
+  const rng  = lcg(seed);
+  const base = new THREE.IcosahedronGeometry(size, 2); // 80 faces — enough detail
+  const pos  = base.attributes.position;
+  // Perturb each vertex outward/inward to create a lumpy rock shape
+  for (let i = 0; i < pos.count; i++) {
+    const jitter = 0.72 + rng() * 0.56; // scale 0.72–1.28
+    pos.setXYZ(i, pos.getX(i) * jitter, pos.getY(i) * jitter, pos.getZ(i) * jitter);
+  }
+  pos.needsUpdate = true;
+  base.computeVertexNormals();
+  return base;
+}
+
 // ── NEO MESHES ───────────────────────────────────────────────────────────────
 function update3D() {
   if (!scene) return;
@@ -486,24 +513,39 @@ function update3D() {
   neoMeshes = [];
   S.neos.forEach(n => {
     const seed  = parseInt(n.id) || 0;
+    const rng   = lcg(seed + 7);
     const theta = ((seed * 2654435761) % 6283) / 1000;
     const phi   = ((seed * 340573321)  % 3141) / 1000 - Math.PI / 2;
     const r     = 1 + Math.min(n.distLD, 10) * 0.28;
     const x = r*Math.cos(phi)*Math.cos(theta), y = r*Math.sin(phi), z = r*Math.cos(phi)*Math.sin(theta);
-    const size  = Math.max(0.02, Math.min(0.07, n.dMax / 2800));
-    const color = n.haz ? 0xff3355 : n.distLD < 1 ? 0xff9922 : 0x22ff88;
-    const geo   = n.haz
-      ? new THREE.TetrahedronGeometry(size)
-      : n.distLD < 1
-        ? new THREE.OctahedronGeometry(size)
-        : new THREE.SphereGeometry(size, 8, 8);
-    const mesh  = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color }));
+    const size  = Math.max(0.022, Math.min(0.075, n.dMax / 2600));
+
+    // Emissive color shows hazard level; surface is always dark rocky gray
+    const emissive = n.haz ? 0xcc1122 : n.distLD < 1 ? 0xcc6600 : 0x116633;
+    const glowColor = n.haz ? 0xff3355 : n.distLD < 1 ? 0xff9922 : 0x22ff88;
+
+    const geo  = makeAsteroidGeo(size, seed);
+    const mat  = new THREE.MeshStandardMaterial({
+      color:          0x5a5550,   // dark charcoal-brown rock
+      roughness:      0.92,
+      metalness:      0.08,
+      emissive:       new THREE.Color(emissive),
+      emissiveIntensity: n.haz ? 0.55 : 0.30,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(x, y, z);
-    mesh.userData = n;
+    // Random initial orientation per asteroid
+    mesh.rotation.set(rng() * Math.PI * 2, rng() * Math.PI * 2, rng() * Math.PI * 2);
+    // Store tumble speed (unique per NEO)
+    mesh.userData = { ...n, _wx: (rng()-0.5)*0.012, _wy: (rng()-0.5)*0.012, _wz: (rng()-0.5)*0.008 };
     scene.add(mesh);
     neoMeshes.push(mesh);
-    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ color, transparent:true, opacity:0.3 }));
-    glow.scale.set(size * 6, size * 6, 1);
+
+    // Soft corona glow sprite
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({
+      color: glowColor, transparent: true, opacity: n.haz ? 0.45 : 0.28,
+    }));
+    glow.scale.set(size * 7, size * 7, 1);
     mesh.add(glow);
   });
 }
