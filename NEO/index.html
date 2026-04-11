@@ -1004,6 +1004,58 @@ function showImpactEffect(localPos, ke) {
   })(start);
 }
 
+// Physically deforms Earth's sphere geometry at the impact point and restores it
+function deformEarth(impactLocalPos, ke, durationMs) {
+  if (!earth || !THREE) return;
+  const geo = earth.geometry;
+  const pos = geo.attributes.position;
+  const count = pos.count;
+  const orig = pos.array.slice(); // snapshot original positions
+
+  const impact = impactLocalPos.clone().normalize();
+  const coneAngle = 0.44; // ~25° cone radius on the sphere
+  const maxDepth  = Math.max(0.13, Math.min(0.28, Math.log10(ke + 1.5) * 0.11));
+
+  // Precompute which vertices fall inside the impact cone and their falloff weight
+  const affected = [];
+  for (let i = 0; i < count; i++) {
+    const ox = orig[i*3], oy = orig[i*3+1], oz = orig[i*3+2];
+    const len = Math.sqrt(ox*ox + oy*oy + oz*oz);
+    const nx = ox/len, ny = oy/len, nz = oz/len;
+    const dot = nx*impact.x + ny*impact.y + nz*impact.z;
+    const angle = Math.acos(Math.max(-1, Math.min(1, dot)));
+    if (angle < coneAngle) {
+      const w = 1 - angle / coneAngle;
+      affected.push({ i, ox, oy, oz, nx, ny, nz, len, w: w * w });
+    }
+  }
+
+  const start = performance.now();
+  (function step(now) {
+    const t = Math.min((now - start) / durationMs, 1);
+    // Fast strike (0–12%), hold crater (12–55%), spring back (55–100%)
+    let d;
+    if      (t < 0.12) d = -(t / 0.12) * maxDepth;
+    else if (t < 0.55) d = -maxDepth;
+    else               d = -maxDepth * (1 - (t - 0.55) / 0.45);
+
+    for (const { i, nx, ny, nz, len, w } of affected) {
+      const r = len + d * w;
+      pos.setXYZ(i, nx * r, ny * r, nz * r);
+    }
+    pos.needsUpdate = true;
+    geo.computeVertexNormals();
+
+    if (t < 1) {
+      requestAnimationFrame(step);
+    } else {
+      for (const { i, ox, oy, oz } of affected) pos.setXYZ(i, ox, oy, oz);
+      pos.needsUpdate = true;
+      geo.computeVertexNormals();
+    }
+  })(start);
+}
+
 // ── SCI-FI MODE ───────────────────────────────────────────────────────────────
 function impactData(n) {
   const r = n.dMax / 2, v = n.velKms * 1000;
@@ -1066,43 +1118,35 @@ async function runSciFi() {
   const totalCas = impacts.reduce((s, i) => s + i.cas, 0);
   const origZ = camera ? camera.position.z : 4;
 
-  // Sort least → most destructive — max drama at the end
   impacts.sort((a, b) => a.ke - b.ke);
 
-  // Open cinematic letterbox bars
   $('#letterbox-top').classList.add('open');
   $('#letterbox-bot').classList.add('open');
-  await delay(700);
+  await delay(300);
 
   for (let idx = 0; idx < impacts.length; idx++) {
     const { n, ke, crater, cas } = impacts[idx];
 
-    // Sequence counter
     $('#impact-counter').textContent = `IMPACT ${idx + 1} / ${impacts.length}`;
     $('#impact-counter').classList.add('show');
 
-    // 1. Slow, ominous zoom in — almost pressing face against Earth
-    await zoomCamera(1.15, 1400);
-    await delay(350);
+    // Fast zoom in
+    await zoomCamera(1.15, 320);
 
-    // Compute impact point on Earth's near side NOW (after zoom has settled)
+    // Compute impact position after zoom settles
     const seed = parseInt(n.id) || idx + 1;
     const impactLocal = getNearSideImpactPos(seed);
 
-    // 2. Red vignette closes in
+    // Vignette + explosion all at once
     $('#vignette').classList.add('show');
-    await delay(200);
-
-    // 3. Explosion — impact on Earth + shockwave + screen shake + Earth glow
-    showImpactEffect(impactLocal, ke); // fires concurrently — runs 3.2s
+    showImpactEffect(impactLocal, ke);
+    deformEarth(impactLocal, ke, 620);
     const sw = $('#shockwave');
-    sw.classList.remove('flash');
-    void sw.offsetWidth;
-    sw.classList.add('flash');
-    screenShake(800, 0.13);
+    sw.classList.remove('flash'); void sw.offsetWidth; sw.classList.add('flash');
+    screenShake(500, 0.13);
     if (earth) { earth.material.emissive.setHex(0xaa1100); earth.material.emissiveIntensity = 0.4; }
 
-    // 4. Show impact card (animate in with bounce)
+    // Card
     $('#impact-card-name').textContent = n.name;
     $('#impact-card-ke'  ).textContent = ke >= 1 ? ke.toFixed(1) : ke.toFixed(3);
     $('#impact-crater'   ).textContent = crater >= 1000 ? (crater/1000).toFixed(1)+' km' : crater+' m';
@@ -1110,27 +1154,22 @@ async function runSciFi() {
     $('#impact-diam'     ).textContent = Math.round(n.dMin)+'–'+Math.round(n.dMax)+' m';
     $('#impact-card').classList.add('show');
 
-    // 5. Hold — let the weight sink in
-    await delay(3400);
+    await delay(750);
 
-    // 6. Dismiss and restore
     $('#impact-card').classList.remove('show');
     $('#vignette').classList.remove('show');
     if (earth) { earth.material.emissive.setHex(0x000000); earth.material.emissiveIntensity = 0; }
-    await delay(250);
 
-    // 7. Slow zoom back out
-    await zoomCamera(origZ, 1200);
-    await delay(600);
+    // Fast zoom out
+    await zoomCamera(origZ, 320);
+    await delay(80);
   }
 
-  // Close letterbox
   $('#letterbox-top').classList.remove('open');
   $('#letterbox-bot').classList.remove('open');
   $('#impact-counter').classList.remove('show');
-  await delay(700);
+  await delay(300);
 
-  // Final summary overlay
   const lines = impacts.map(({ n, ke, crater, cas }) =>
     `<div class="log-line">${n.name} — ${ke.toFixed(1)} MT — crater ${crater} km — ${cas.toLocaleString()} est. casualties</div>`
   );
