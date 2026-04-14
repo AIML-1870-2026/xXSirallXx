@@ -204,15 +204,29 @@
       transition: opacity .15s;
     }
     .chip-x:hover { opacity: 1; }
+    @keyframes chipIn {
+      from { opacity: 0; transform: scale(.7); }
+      to   { opacity: 1; transform: scale(1);  }
+    }
+    .drug-chip { animation: chipIn .18s cubic-bezier(.34,1.56,.64,1) both; }
 
-    #drugInputWrap { position: relative; }
+    /* drug counter badge */
+    #drugCount {
+      font-family: 'Space Mono', monospace;
+      font-size: .65rem; color: rgba(224,240,255,.35);
+      white-space: nowrap; flex-shrink: 0;
+      transition: color .3s;
+    }
+    #drugCount.full { color: var(--accent); }
+
+    #drugInputWrap { position: relative; flex: 1; min-width: 100px; max-width: 280px; }
     #drugInput {
       background: rgba(255,255,255,.06);
       border: 1px solid rgba(255,255,255,.12);
       border-radius: 10px;
       color: #e0f0ff; font-family: 'Space Mono', monospace;
       font-size: .78rem; padding: 7px 11px; outline: none;
-      color-scheme: dark; width: 150px;
+      color-scheme: dark; width: 100%;
       transition: border-color .2s;
     }
     #drugInput:focus { border-color: var(--accent); }
@@ -241,11 +255,11 @@
     .ac-item:hover, .ac-item.active { background: var(--accent-bg); color: var(--accent); }
 
     #checkBtn {
-      padding: 8px 22px; border-radius: 12px;
+      padding: 9px 26px; border-radius: 12px;
       border: 1px solid var(--accent);
       background: var(--accent-bg);
       color: var(--accent); font-family: 'Space Grotesk', sans-serif;
-      font-size: .85rem; font-weight: 700; cursor: pointer;
+      font-size: .9rem; font-weight: 700; cursor: pointer;
       transition: background .2s, box-shadow .2s, border-color .4s, color .4s;
       white-space: nowrap;
     }
@@ -253,12 +267,12 @@
     #checkBtn:active { transform: scale(.97); }
 
     #discBtn {
-      padding: 8px 12px; border-radius: 12px;
+      padding: 9px 14px; border-radius: 12px;
       border: 1px solid rgba(255,214,0,.25);
       background: rgba(255,214,0,.04);
       color: rgba(255,214,0,.55);
-      font-family: 'Space Mono', monospace; font-size: .75rem;
-      cursor: pointer;
+      font-family: 'Space Mono', monospace; font-size: .7rem;
+      cursor: pointer; white-space: nowrap;
       transition: color .2s, border-color .2s, background .2s;
     }
     #discBtn:hover { color: #ffd600; border-color: rgba(255,214,0,.5); background: rgba(255,214,0,.08); }
@@ -275,6 +289,87 @@
       cursor: pointer; transition: all .2s; white-space: nowrap;
     }
     .ex-btn:hover { border-color: var(--accent-border); color: var(--accent); background: var(--accent-bg); }
+
+    /* ── EMPTY STATE ── */
+    #emptyState {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 10px; padding: 28px 16px; text-align: center;
+      font-family: 'Space Mono', monospace;
+      color: rgba(224,240,255,.28); font-size: .68rem; line-height: 1.7;
+    }
+    #emptyState .es-icon { font-size: 2rem; opacity: .4; }
+    #emptyState .es-title { font-size: .8rem; font-weight: 700; color: rgba(224,240,255,.4); }
+
+    /* ── HELP BUTTON ── */
+    .help-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 16px; height: 16px; border-radius: 50%;
+      border: 1px solid rgba(224,240,255,.2);
+      background: rgba(224,240,255,.05);
+      color: rgba(224,240,255,.45);
+      font-family: 'Space Grotesk', sans-serif; font-size: .65rem; font-weight: 700;
+      cursor: pointer; flex-shrink: 0;
+      transition: background .15s, border-color .15s, color .15s;
+      vertical-align: middle; line-height: 1;
+    }
+    .help-btn:hover { background: var(--accent-bg); border-color: var(--accent-border); color: var(--accent); }
+
+    /* ── EDUCATION POPUP ── */
+    #eduModal {
+      position: fixed; inset: 0; z-index: 90;
+      background: rgba(0,0,0,.72);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity .25s; cursor: pointer;
+    }
+    #eduModal.show { opacity: 1; pointer-events: all; }
+    #eduCard {
+      background: rgba(4,12,30,.97);
+      border: 1px solid rgba(0,229,255,.2);
+      border-radius: 22px; padding: 30px 34px;
+      max-width: 500px; width: 92%;
+      cursor: default; pointer-events: all;
+      box-shadow: 0 0 60px rgba(0,229,255,.08);
+    }
+    #eduCard h3 {
+      font-family: 'Space Mono', monospace;
+      font-size: .88rem; color: var(--accent);
+      margin-bottom: 14px; transition: color .4s;
+    }
+    #eduCard p, #eduCard li {
+      font-size: .84rem; line-height: 1.75;
+      color: rgba(224,240,255,.7);
+    }
+    #eduCard ul { padding-left: 1.2em; margin: 8px 0 12px; }
+    #eduCard li { margin-bottom: 5px; }
+    #eduCard .sev-row {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 8px; font-size: .82rem;
+    }
+    #eduCard .sev-dot {
+      width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+    }
+    #eduCard .edu-close {
+      margin-top: 20px; text-align: center;
+      font-family: 'Space Mono', monospace;
+      font-size: .68rem; color: rgba(224,240,255,.32); cursor: pointer;
+      letter-spacing: 1px; transition: color .15s;
+    }
+    #eduCard .edu-close:hover { color: rgba(224,240,255,.6); }
+    .edu-tabs {
+      display: flex; gap: 4px; margin-bottom: 18px;
+      border-bottom: 1px solid rgba(255,255,255,.08); padding-bottom: 12px;
+    }
+    .edu-tab {
+      padding: 5px 14px; border-radius: 8px;
+      border: 1px solid rgba(255,255,255,.08);
+      background: transparent;
+      font-family: 'Space Mono', monospace; font-size: .64rem;
+      color: rgba(224,240,255,.4); cursor: pointer;
+      transition: all .15s;
+    }
+    .edu-tab.active { background: var(--accent-bg); border-color: var(--accent-border); color: var(--accent); }
+    .edu-panel { display: none; }
+    .edu-panel.active { display: block; }
 
     /* ── TOOLTIP ── */
     #tooltip {
@@ -551,7 +646,9 @@
 
 <!-- SEVERITY LEGEND -->
 <div id="legend">
-  <div class="leg-title">SEVERITY</div>
+  <div class="leg-title" style="display:flex;align-items:center;gap:6px;">SEVERITY
+    <button class="help-btn" data-edu="severity" title="What do these levels mean?">?</button>
+  </div>
   <div class="leg-row"><div class="leg-dot" style="background:#ff1744"></div><span>Contraindicated</span></div>
   <div class="leg-row"><div class="leg-dot" style="background:#ff6d00"></div><span>Major</span></div>
   <div class="leg-row"><div class="leg-dot" style="background:#ffd600"></div><span>Moderate</span></div>
@@ -560,7 +657,13 @@
 </div>
 
 <!-- RESULTS PANEL -->
-<div id="resultsPanel"></div>
+<div id="resultsPanel">
+  <div id="emptyState">
+    <div class="es-icon">💊</div>
+    <div class="es-title">No results yet</div>
+    Add 2–5 drugs below, then click<br><strong style="color:rgba(224,240,255,.55)">CHECK</strong> to scan the FDA database.
+  </div>
+</div>
 
 <!-- TOOLTIP -->
 <div id="tooltip"></div>
@@ -569,7 +672,7 @@
 <div id="loadMsg"><div class="spin"></div>QUERYING FDA DATABASE…</div>
 
 <!-- HINT -->
-<div id="hint">TYPE A DRUG AND PRESS ENTER — ADD UP TO 5, THEN CLICK CHECK</div>
+<div id="hint">TYPE A DRUG → PRESS ENTER TO ADD → REPEAT UP TO 5 TIMES → PRESS ENTER OR CLICK CHECK</div>
 
 <!-- DISCLAIMER MODAL -->
 <div id="disclaimerModal">
@@ -609,18 +712,79 @@
   </div>
 </div>
 
+<!-- EDUCATION MODAL -->
+<div id="eduModal">
+  <div id="eduCard" onclick="event.stopPropagation()">
+    <h3 id="eduTitle">HOW TO USE RXCLASH</h3>
+    <div class="edu-tabs">
+      <button class="edu-tab active" data-panel="howto">How To Use</button>
+      <button class="edu-tab" data-panel="severity">Severity Levels</button>
+      <button class="edu-tab" data-panel="interactions">Drug Interactions</button>
+      <button class="edu-tab" data-panel="data">Data Source</button>
+    </div>
+
+    <div class="edu-panel active" id="panel-howto">
+      <p>RxClash checks the <strong style="color:#00e5ff">FDA drug label database</strong> for known interactions between medications.</p>
+      <ul>
+        <li>Type a drug name in the search box — autocomplete will suggest matches from RxNorm.</li>
+        <li>Press <strong style="color:#e0f0ff">Enter</strong> (or click a suggestion) to add it as a chip.</li>
+        <li>Add 2–5 drugs, then click <strong style="color:#e0f0ff">CHECK</strong> (or press Enter with an empty field).</li>
+        <li>Results appear on the right; hover nodes/edges on the graph for details.</li>
+        <li>Use the example presets at the bottom for quick demos.</li>
+      </ul>
+    </div>
+
+    <div class="edu-panel" id="panel-severity">
+      <p>Severity is derived from keywords found in FDA drug interaction text:</p>
+      <div style="margin:14px 0;">
+        <div class="sev-row"><div class="sev-dot" style="background:#ff1744"></div><strong style="color:#ff1744">Contraindicated</strong> — combination must never be used; risk of serious harm or death.</div>
+        <div class="sev-row"><div class="sev-dot" style="background:#ff6d00"></div><strong style="color:#ff6d00">Major</strong> — life-threatening or permanent damage possible; avoid unless no alternative.</div>
+        <div class="sev-row"><div class="sev-dot" style="background:#ffd600"></div><strong style="color:#ffd600">Moderate</strong> — may cause deterioration; monitoring or dose adjustment required.</div>
+        <div class="sev-row"><div class="sev-dot" style="background:#00e676"></div><strong style="color:#00e676">Minor</strong> — limited clinical significance; effects usually manageable.</div>
+        <div class="sev-row"><div class="sev-dot" style="background:rgba(224,240,255,.3)"></div><span style="color:rgba(224,240,255,.6)">No data</span> — drug label text found but no interaction keywords matched, <em>or</em> no label retrieved.</div>
+      </div>
+      <p style="font-size:.76rem;color:rgba(224,240,255,.45);">Note: severity detection is keyword-based and may not capture all nuances. Always verify with a pharmacist.</p>
+    </div>
+
+    <div class="edu-panel" id="panel-interactions">
+      <p>A <strong style="color:#e0f0ff">drug interaction</strong> occurs when one drug changes the way another drug works in the body. Common mechanisms:</p>
+      <ul>
+        <li><strong style="color:#e0f0ff">Pharmacokinetic</strong> — one drug affects how the body absorbs, distributes, metabolizes, or excretes another (e.g., CYP450 inhibition).</li>
+        <li><strong style="color:#e0f0ff">Pharmacodynamic</strong> — two drugs produce additive, synergistic, or antagonistic effects (e.g., two blood thinners increasing bleed risk).</li>
+        <li><strong style="color:#e0f0ff">Drug-food</strong> — not checked here, but grapefruit juice can block metabolism of many drugs.</li>
+      </ul>
+      <p style="font-size:.76rem;color:rgba(224,240,255,.45);">Over 1.5 million ER visits per year in the US are related to adverse drug events.</p>
+    </div>
+
+    <div class="edu-panel" id="panel-data">
+      <p>RxClash uses two public FDA APIs:</p>
+      <ul>
+        <li><strong style="color:#00e5ff">RxNorm (NLM)</strong> — provides drug name suggestions via approximate term matching.</li>
+        <li><strong style="color:#00e5ff">OpenFDA Drug Labels</strong> — retrieves the official FDA drug label text, from which the "Drug Interactions" section is extracted and analyzed.</li>
+      </ul>
+      <p>Labels are searched by both generic and brand name. Results are cached per session to reduce API calls.</p>
+      <p style="font-size:.76rem;color:rgba(224,240,255,.45);margin-top:10px;">Limitation: not all drugs have FDA labels in OpenFDA, and FAERS adverse event co-occurrence is not causation.</p>
+    </div>
+
+    <div class="edu-close" id="eduClose">[ CLICK TO CLOSE ]</div>
+  </div>
+</div>
+
 <!-- CONTROLS -->
 <div id="controls">
   <div id="drugRow">
     <span id="chips"></span>
     <div id="drugInputWrap">
-      <input id="drugInput" type="text" placeholder="add a drug…" autocomplete="off" spellcheck="false" />
+      <input id="drugInput" type="text" placeholder="type a drug name…" autocomplete="off" spellcheck="false" />
       <div id="autocomplete"></div>
     </div>
-    <button id="checkBtn">CHECK</button>
-    <button id="discBtn">⚠</button>
+    <span id="drugCount">0 / 5</span>
+    <button id="checkBtn" title="Check interactions (Enter)">CHECK</button>
+    <button id="discBtn" title="View disclaimer">⚠ DISCLAIMER</button>
+    <button class="help-btn" data-edu="howto" title="How to use RxClash" style="width:26px;height:26px;font-size:.8rem;">?</button>
   </div>
   <div id="exampleRow">
+    <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:rgba(224,240,255,.25);margin-right:2px;">TRY:</span>
     <button class="ex-btn" data-drugs="ibuprofen,acetaminophen,pseudoephedrine">Common Cold Kit</button>
     <button class="ex-btn" data-drugs="warfarin,aspirin,atorvastatin">Cardiac Cocktail</button>
     <button class="ex-btn" data-drugs="sildenafil,nitroglycerin">Classic Concern</button>
@@ -629,6 +793,30 @@
 </div>
 
 <script>
+// ── DRUG CLASS REFERENCE ───────────────────────────────────────────────────
+const DRUG_CLASS = {
+  warfarin:        { cls:'Anticoagulant',      note:'Narrow therapeutic index — bleeds easily.' },
+  aspirin:         { cls:'NSAID / Antiplatelet', note:'Inhibits COX-1/2; antiplatelet at low dose.' },
+  ibuprofen:       { cls:'NSAID',              note:'COX-1/2 inhibitor; avoid with anticoagulants.' },
+  acetaminophen:   { cls:'Analgesic / Antipyretic', note:'Max 4 g/day; hepatotoxic in overdose.' },
+  atorvastatin:    { cls:'Statin (HMG-CoA reductase inhibitor)', note:'CYP3A4 substrate; myopathy risk.' },
+  simvastatin:     { cls:'Statin',             note:'CYP3A4 substrate; strong inhibitors raise myopathy risk.' },
+  sildenafil:      { cls:'PDE5 inhibitor',     note:'Dangerous hypotension with nitrates.' },
+  nitroglycerin:   { cls:'Nitrate / Vasodilator', note:'Contraindicated with PDE5 inhibitors.' },
+  clarithromycin:  { cls:'Macrolide antibiotic', note:'Strong CYP3A4 inhibitor — many interactions.' },
+  pseudoephedrine: { cls:'Decongestant / Sympathomimetic', note:'Raises BP; avoid with MAOIs.' },
+  metformin:       { cls:'Biguanide (antidiabetic)', note:'Avoid with contrast dye; lactic acidosis risk.' },
+  metoprolol:      { cls:'Beta-1 blocker',     note:'Negative chronotrope; hypoglycemia masking.' },
+  lisinopril:      { cls:'ACE inhibitor',      note:'Hyperkalemia risk with K-sparing diuretics.' },
+  fluoxetine:      { cls:'SSRI antidepressant', note:'Serotonin syndrome risk with other serotonergics.' },
+  sertraline:      { cls:'SSRI antidepressant', note:'CYP2D6 inhibitor; serotonin syndrome risk.' },
+  clopidogrel:     { cls:'Antiplatelet (P2Y12 inhibitor)', note:'CYP2C19 prodrug; PPIs reduce efficacy.' },
+  omeprazole:      { cls:'Proton pump inhibitor', note:'CYP2C19 inhibitor; reduces clopidogrel efficacy.' },
+  amiodarone:      { cls:'Antiarrhythmic (Class III)', note:'Many interactions; long half-life.' },
+  digoxin:         { cls:'Cardiac glycoside',  note:'Narrow therapeutic index; renal clearance.' },
+  tramadol:        { cls:'Opioid analgesic',   note:'Serotonin syndrome risk; seizure threshold lowered.' },
+};
+
 // ── CONSTANTS ──────────────────────────────────────────────────────────────
 const RXNORM_APPROX = t =>
   `https://rxnav.nlm.nih.gov/REST/approximateTerm.json?term=${encodeURIComponent(t)}&maxEntries=7`;
@@ -901,8 +1089,11 @@ netCanvas.addEventListener('mousemove', e => {
   if (foundNode) {
     // Count interactions for this node
     const count = edges.filter(e => (e.a === nodes.indexOf(foundNode) || e.b === nodes.indexOf(foundNode)) && e.sev > SEV.NONE).length;
+    const cls   = DRUG_CLASS[foundNode.name.toLowerCase()];
     showTip(mx, my, `<div class="tt-name">${foundNode.name}</div>
-      <div class="tt-row">${count} interaction${count !== 1 ? 's' : ''} detected</div>`);
+      ${cls ? `<div class="tt-row" style="font-size:.72rem;color:rgba(224,240,255,.45)">${cls.cls}</div>` : ''}
+      <div class="tt-row">${count} interaction${count !== 1 ? 's' : ''} detected</div>
+      ${cls ? `<div class="tt-snip">${cls.note}</div>` : ''}`);
   } else if (foundEdge) {
     const col = SEV_COLOR[foundEdge.sev];
     const snip = foundEdge.text
@@ -932,6 +1123,8 @@ function showTip(x, y, html) {
 function hideTip() { tooltip.classList.remove('show'); }
 
 // ── CHIP MANAGEMENT ────────────────────────────────────────────────────────
+const drugCountEl = document.getElementById('drugCount');
+
 function renderChips() {
   chipsEl.innerHTML = '';
   for (const d of drugs) {
@@ -940,7 +1133,11 @@ function renderChips() {
     chip.innerHTML = `${d.name} <span class="chip-x" data-name="${d.name}">×</span>`;
     chipsEl.appendChild(chip);
   }
-  hintEl.style.opacity = drugs.length ? '0' : '';
+  const n = drugs.length;
+  drugCountEl.textContent = `${n} / 5`;
+  drugCountEl.classList.toggle('full', n >= 5);
+  hintEl.style.opacity = n ? '0' : '';
+  drugInput.placeholder = n >= 5 ? 'max 5 drugs' : n >= 2 ? 'add more or press Enter to check…' : 'type a drug name…';
   // Sync URL hash
   if (drugs.length) history.replaceState(null, '', '#drugs=' + drugs.map(d=>d.name).join(','));
   else history.replaceState(null, '', location.pathname);
@@ -1000,6 +1197,7 @@ drugInput.addEventListener('keydown', e => {
     e.preventDefault();
     if (acActive >= 0 && items[acActive]) addDrug(items[acActive].textContent);
     else if (drugInput.value.trim()) addDrug(drugInput.value);
+    else if (drugs.length >= 2) checkInteractions(); // empty input + Enter = check
   } else if (e.key === 'Escape') closeAc();
 });
 
@@ -1107,6 +1305,12 @@ async function checkInteractions() {
 }
 
 // ── RENDER RESULTS ──────────────────────────────────────────────────────────
+function drugClassTag(name) {
+  const info = DRUG_CLASS[name.toLowerCase()];
+  if (!info) return '';
+  return `<span style="font-family:'Space Mono',monospace;font-size:.58rem;color:rgba(224,240,255,.35);display:block;margin-bottom:2px;">${info.cls}</span>`;
+}
+
 function renderResults() {
   resultsEl.innerHTML = '';
   for (const ia of interactions) {
@@ -1115,8 +1319,13 @@ function renderResults() {
     const preview = ia.text
       ? ia.text.slice(0, 150) + (ia.text.length > 150 ? '…' : '')
       : 'No interaction found in FDA drug labels.';
+    const clsA = drugClassTag(ia.a);
+    const clsB = drugClassTag(ia.b);
     card.innerHTML = `
-      <div class="ic-pair"><strong>${ia.a}</strong> × <strong>${ia.b}</strong></div>
+      <div class="ic-pair">
+        <strong>${ia.a}</strong>${clsA ? ' ' : ''}× <strong>${ia.b}</strong>
+      </div>
+      ${clsA || clsB ? `<div style="margin-bottom:5px;">${clsA}${clsB}</div>` : ''}
       <span class="ic-badge ${SEV_CLASS[ia.sev]}">${SEV_LABEL[ia.sev]}</span>
       <div class="ic-text">${ia.text ? preview : `<em>${preview}</em>`}</div>`;
     resultsEl.appendChild(card);
@@ -1124,7 +1333,11 @@ function renderResults() {
 }
 
 function clearResults() {
-  resultsEl.innerHTML = '';
+  resultsEl.innerHTML = `<div id="emptyState">
+    <div class="es-icon">💊</div>
+    <div class="es-title">No results yet</div>
+    Add 2–5 drugs below, then click<br><strong style="color:rgba(224,240,255,.55)">CHECK</strong> to scan the FDA database.
+  </div>`;
   interactions = [];
   nodes = []; edges = [];
   sPairs.textContent    = '—';
@@ -1283,7 +1496,7 @@ function spinSlot() {
     const overlay = document.getElementById('introOverlay');
     if (overlay) {
       overlay.classList.add('hide');
-      overlay.addEventListener('animationend', () => overlay.remove(), { once: true });
+      overlay.addEventListener('animationend', () => { overlay.remove(); drugInput.focus(); }, { once: true });
       loadFromHash();
     }
   }, stopDelays[2] + 200);
@@ -1294,11 +1507,41 @@ document.getElementById('slotBtn').addEventListener('click', e => {
   spinSlot();
 });
 
+// ── EDUCATION MODAL ──────────────────────────────────────────────────────────
+const eduModal = document.getElementById('eduModal');
+
+function openEdu(tab) {
+  // activate the right tab
+  document.querySelectorAll('.edu-tab').forEach(t => t.classList.toggle('active', t.dataset.panel === tab));
+  document.querySelectorAll('.edu-panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + tab));
+  eduModal.classList.add('show');
+}
+
+eduModal.addEventListener('click', () => eduModal.classList.remove('show'));
+document.getElementById('eduCard').addEventListener('click', e => e.stopPropagation());
+document.getElementById('eduClose').addEventListener('click', () => eduModal.classList.remove('show'));
+
+document.querySelectorAll('.edu-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.edu-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.edu-panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.panel).classList.add('active');
+  });
+});
+
+document.querySelectorAll('.help-btn').forEach(btn => {
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    openEdu(btn.dataset.edu);
+  });
+});
+
 // ── INTRO ───────────────────────────────────────────────────────────────────
 const introOverlay = document.getElementById('introOverlay');
 introOverlay.addEventListener('click', () => {
   introOverlay.classList.add('hide');
-  introOverlay.addEventListener('animationend', () => introOverlay.remove(), { once: true });
+  introOverlay.addEventListener('animationend', () => { introOverlay.remove(); drugInput.focus(); }, { once: true });
   loadFromHash();
 });
 
