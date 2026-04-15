@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Product Review Generator</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<header>
+  <span class="logo-icon">⭐</span>
+  <span class="logo-text">Product<span>Review</span></span>
+</header>
+
+<main>
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+
+    <div class="field-group">
+      <label class="field-label" for="product-input">Product Name</label>
+      <input
+        type="text"
+        id="product-input"
+        placeholder="e.g. Sony WH-1000XM5"
+        autocomplete="off"
+        spellcheck="false"
+      />
+    </div>
+
+    <div class="field-group">
+      <label class="field-label" for="model-select">Model</label>
+      <div class="select-wrap">
+        <select id="model-select">
+          <option value="gpt-4o-mini" selected>gpt-4o-mini (fast, affordable)</option>
+          <option value="gpt-4o">gpt-4o (most capable)</option>
+          <option value="gpt-3.5-turbo">gpt-3.5-turbo (legacy)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label" for="api-key">OpenAI API Key</label>
+      <div class="key-row">
+        <input type="password" id="api-key" placeholder="sk-..." autocomplete="off" spellcheck="false" />
+        <button class="btn-icon" id="key-toggle" title="Show/hide key">👁</button>
+      </div>
+      <div class="key-status" id="key-status">Not loaded</div>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Load from .env</label>
+      <label class="upload-label">
+        📄 Upload .env file
+        <input type="file" id="env-upload" accept=".env,.txt,.csv" />
+      </label>
+    </div>
+
+    <button id="generate-btn">Generate Review</button>
+
+  </aside>
+
+  <!-- CONTENT -->
+  <section class="content">
+
+    <div id="error-box"></div>
+
+    <div id="loading">
+      <div class="spinner"></div>
+      <span class="loading-label">Generating review…</span>
+    </div>
+
+    <div id="meta-bar">
+      Model: <span id="meta-model">—</span>
+      &nbsp;·&nbsp;
+      <span id="meta-tokens">—</span>
+      &nbsp;·&nbsp;
+      <span id="meta-time">—</span>
+    </div>
+
+    <div id="review-output"></div>
+
+    <div class="empty-state" id="empty-state">
+      <div class="es-icon">📦</div>
+      <p>Enter a product name on the left and click <strong>Generate Review</strong> to get a detailed AI-written review.</p>
+    </div>
+
+  </section>
+</main>
+
+<footer>
+  Data from OpenAI's API — for educational use only. Keys are never stored.
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
