@@ -41,29 +41,38 @@
     </div>
 
     <div class="field-group">
-      <label class="field-label" for="tone-select">Tone</label>
-      <div class="select-wrap">
-        <select id="tone-select">
-          <option value="balanced" selected>Balanced</option>
-          <option value="positive">Positive</option>
-          <option value="negative">Negative</option>
-          <option value="critical">Critical</option>
-          <option value="heavily-critical">Heavily Critical</option>
-          <option value="comedic">Comedic</option>
-          <option value="enthusiastic">Enthusiastic</option>
-          <option value="professional">Professional</option>
-        </select>
+      <div class="slider-header">
+        <label class="field-label">Tone</label>
+        <span class="slider-current" id="tone-current">Balanced</span>
+      </div>
+      <input type="range" id="tone-slider" min="1" max="6" step="1" value="4">
+      <div class="slider-ends">
+        <span>Heavily Critical</span>
+        <span>Enthusiastic</span>
       </div>
     </div>
 
     <div class="field-group">
-      <label class="field-label" for="length-select">Review Length</label>
-      <div class="select-wrap">
-        <select id="length-select">
-          <option value="brief">Brief</option>
-          <option value="standard" selected>Standard</option>
-          <option value="detailed">Detailed</option>
-        </select>
+      <div class="slider-header">
+        <label class="field-label">Style</label>
+        <span class="slider-current" id="style-current">Neutral</span>
+      </div>
+      <input type="range" id="style-slider" min="1" max="5" step="1" value="3">
+      <div class="slider-ends">
+        <span>Comedic</span>
+        <span>Technical</span>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <div class="slider-header">
+        <label class="field-label">Length</label>
+        <span class="slider-current" id="length-current">Standard</span>
+      </div>
+      <input type="range" id="length-slider" min="1" max="3" step="1" value="2">
+      <div class="slider-ends">
+        <span>Brief</span>
+        <span>Detailed</span>
       </div>
     </div>
 

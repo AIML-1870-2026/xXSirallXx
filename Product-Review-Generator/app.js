@@ -1,70 +1,52 @@
 // ── SYSTEM PROMPT ────────────────────────────────────────────────────────────
-var TONE_PROMPTS = {
-  balanced:
-    'You are a fair and thorough product reviewer. Write a balanced review that covers both strengths and weaknesses honestly. ' +
-    'Include: a brief overview, key pros, key cons, a rating out of 5 stars that reflects the overall balance, and a recommendation. ' +
-    'Format in markdown with clear headings and bullet points.',
+// ── TONE axis (1 = Heavily Critical → 6 = Enthusiastic) ──────────────────────
+var TONE_LEVELS = [
+  { label: 'Heavily Critical', rating: '1 star (or 1.5 at most)',
+    focus: 'tear this product apart without mercy. Expose every flaw and failure in detail. Express outrage or disbelief. Make it absolutely clear no one should buy this.' },
+  { label: 'Negative',         rating: '1–2 stars',
+    focus: 'focus on the product\'s shortcomings and disappointments. Acknowledge any positives only reluctantly and briefly.' },
+  { label: 'Critical',         rating: '2–3 stars',
+    focus: 'scrutinize the product\'s flaws and missed opportunities. Be specific about what falls short and why it matters.' },
+  { label: 'Balanced',         rating: 'whatever the product honestly deserves',
+    focus: 'cover both strengths and weaknesses fairly and accurately.' },
+  { label: 'Positive',         rating: '4–5 stars',
+    focus: 'highlight the product\'s best features and benefits. Mention minor drawbacks briefly but do not dwell on them.' },
+  { label: 'Enthusiastic',     rating: '4.5–5 stars',
+    focus: 'express genuine excitement and passion. Use vivid language. Make the reader feel your enthusiasm and want to buy this immediately.' }
+];
 
-  positive:
-    'You are an optimistic product reviewer who focuses on what a product does well. Write an upbeat, encouraging review. ' +
-    'Highlight the best features and benefits. Mention minor drawbacks briefly but do not dwell on them. ' +
-    'Give a high rating (4–5 stars) that reflects genuine enthusiasm. ' +
-    'Include: a glowing overview, standout pros, any minor cons, your star rating, and a strong recommendation. ' +
-    'Format in markdown with clear headings and bullet points.',
+// ── STYLE axis (1 = Comedic → 5 = Technical) ─────────────────────────────────
+var STYLE_LEVELS = [
+  { label: 'Comedic',      voice: 'Write with humor, jokes, sarcasm, and wit throughout. Make it feel like a stand-up bit about the product. Use hyperbole and funny comparisons.' },
+  { label: 'Casual',       voice: 'Write in a relaxed, conversational tone like you\'re recommending (or warning) a friend.' },
+  { label: 'Neutral',      voice: 'Write in a clear, straightforward style — no strong personality, just honest information.' },
+  { label: 'Professional', voice: 'Write in a polished, professional tone suitable for a consumer publication.' },
+  { label: 'Technical',    voice: 'Write with technical precision. Reference specs, benchmarks, and industry standards where relevant.' }
+];
 
-  negative:
-    'You are a skeptical product reviewer who is hard to impress. Write a negative, doubtful review. ' +
-    'Focus on the product\'s shortcomings, limitations, and disappointments. Acknowledge positives only reluctantly. ' +
-    'Give a low rating (1–2 stars) that reflects your disappointment. ' +
-    'Include: a critical overview, major cons, any reluctant pros, your star rating, and a discouraging recommendation. ' +
-    'Format in markdown with clear headings and bullet points.',
-
-  critical:
-    'You are an analytical product critic who holds products to a high standard. Write a measured but critical review. ' +
-    'Scrutinize the product\'s flaws and missed opportunities. Be specific about what falls short and why. ' +
-    'Give a below-average rating (2–3 stars). ' +
-    'Include: a critical overview, detailed cons, limited pros, your star rating, and a lukewarm or negative recommendation. ' +
-    'Format in markdown with clear headings and bullet points.',
-
-  'heavily-critical':
-    'You are a brutally harsh product critic who tears apart products without mercy. Write a scathing, damning review. ' +
-    'Be ruthless — expose every flaw, failure, and design mistake in detail. Express genuine outrage or disbelief at the product\'s shortcomings. ' +
-    'Give a very low rating (1 star, or 1.5 at most) and make it clear why no one should buy this. ' +
-    'Include: a damning overview, an extensive list of serious flaws, any token positives (mentioned dismissively), your star rating, and a strong warning against purchasing. ' +
-    'Format in markdown with clear headings and bullet points.',
-
-  comedic:
-    'You are a comedic product reviewer who finds humor in everything. Write a funny, entertaining review full of jokes, sarcasm, and wit — while still conveying real information about the product. ' +
-    'Use hyperbole, puns, and comedic comparisons. The tone should feel like a stand-up bit about the product. ' +
-    'Include a humorous overview, comedic pros and cons, a joke-framed star rating, and a funny final verdict. ' +
-    'Format in markdown with clear headings and bullet points.',
-
-  enthusiastic:
-    'You are an extremely enthusiastic product reviewer who gets genuinely excited about products. Write an energetic, passionate review bursting with excitement. ' +
-    'Use vivid language and express how impressed you are. Make the reader feel your enthusiasm. ' +
-    'Give a high rating (4.5–5 stars). ' +
-    'Include: an excited overview, enthusiastic pros, minor cons brushed aside with optimism, your star rating, and an emphatic recommendation. ' +
-    'Format in markdown with clear headings and bullet points.',
-
-  professional:
-    'You are a professional product analyst writing for an industry publication. Write a formal, expert-level review with precise language and objective assessment. ' +
-    'Evaluate the product against industry benchmarks. Cite specific technical details where relevant. ' +
-    'Give a rating that reflects objective performance. ' +
-    'Include: an executive summary, technical strengths, technical weaknesses, a performance rating out of 5, and a professional recommendation. ' +
-    'Format in markdown with clear headings and bullet points.'
-};
-
-var LENGTH_MAP = {
-  brief:    'Keep the review concise — 2 to 3 paragraphs maximum.',
-  standard: '',
-  detailed: 'Make the review comprehensive and thorough, covering at least 5 distinct sections.'
-};
+// ── LENGTH axis (1 = Brief → 3 = Detailed) ───────────────────────────────────
+var LENGTH_LEVELS = [
+  { label: 'Brief',    instruction: 'Keep the review concise — 2 to 3 short paragraphs maximum.' },
+  { label: 'Standard', instruction: '' },
+  { label: 'Detailed', instruction: 'Make the review comprehensive, covering at least 5 distinct sections with depth.' }
+];
 
 function buildDefaultPrompt() {
-  var tone   = toneSelect   ? toneSelect.value   : 'balanced';
-  var length = lengthSelect ? lengthSelect.value : 'standard';
-  var prompt = TONE_PROMPTS[tone] || TONE_PROMPTS.balanced;
-  if (LENGTH_MAP[length]) prompt += '\n\n' + LENGTH_MAP[length];
+  var toneIdx   = toneSlider   ? (parseInt(toneSlider.value)   - 1) : 3;
+  var styleIdx  = styleSlider  ? (parseInt(styleSlider.value)  - 1) : 2;
+  var lengthIdx = lengthSlider ? (parseInt(lengthSlider.value) - 1) : 1;
+
+  var tone   = TONE_LEVELS[toneIdx];
+  var style  = STYLE_LEVELS[styleIdx];
+  var length = LENGTH_LEVELS[lengthIdx];
+
+  var prompt =
+    'You are a product reviewer. Your job is to ' + tone.focus + '\n\n' +
+    style.voice + '\n\n' +
+    'Give a rating of ' + tone.rating + '. Do not soften or adjust this rating — it must reflect the tone above.\n\n' +
+    'Structure the review with markdown headings and bullet points. Include: an overview, pros, cons, your star rating, and a final recommendation.';
+
+  if (length.instruction) prompt += '\n\n' + length.instruction;
   return prompt;
 }
 
@@ -75,8 +57,12 @@ var apiKey = '';
 var keyInput      = document.getElementById('api-key');
 var keyStatus     = document.getElementById('key-status');
 var modelSelect   = document.getElementById('model-select');
-var toneSelect    = document.getElementById('tone-select');
-var lengthSelect  = document.getElementById('length-select');
+var toneSlider    = document.getElementById('tone-slider');
+var toneCurrent   = document.getElementById('tone-current');
+var styleSlider   = document.getElementById('style-slider');
+var styleCurrent  = document.getElementById('style-current');
+var lengthSlider  = document.getElementById('length-slider');
+var lengthCurrent = document.getElementById('length-current');
 var systemPrompt  = document.getElementById('system-prompt');
 var resetPrompt   = document.getElementById('reset-prompt');
 var productInput  = document.getElementById('product-input');
@@ -91,15 +77,24 @@ var metaTokens    = document.getElementById('meta-tokens');
 var metaTime      = document.getElementById('meta-time');
 
 // ── CUSTOMIZATION CONTROLS ────────────────────────────────────────────────────
-// Initialise system prompt textarea on load
-systemPrompt.value = buildDefaultPrompt();
+function updateSliderLabels() {
+  toneCurrent.textContent   = TONE_LEVELS[parseInt(toneSlider.value)     - 1].label;
+  styleCurrent.textContent  = STYLE_LEVELS[parseInt(styleSlider.value)   - 1].label;
+  lengthCurrent.textContent = LENGTH_LEVELS[parseInt(lengthSlider.value) - 1].label;
+}
 
-// Rebuild prompt when tone or length changes (unless user has manually edited it)
-function onPresetChange() {
+function onSliderChange() {
+  updateSliderLabels();
   systemPrompt.value = buildDefaultPrompt();
 }
-toneSelect.addEventListener('change', onPresetChange);
-lengthSelect.addEventListener('change', onPresetChange);
+
+toneSlider.addEventListener('input', onSliderChange);
+styleSlider.addEventListener('input', onSliderChange);
+lengthSlider.addEventListener('input', onSliderChange);
+
+// Initialise on load
+updateSliderLabels();
+systemPrompt.value = buildDefaultPrompt();
 
 // Reset prompt button
 resetPrompt.addEventListener('click', function () {

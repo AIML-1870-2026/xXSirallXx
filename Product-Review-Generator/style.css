@@ -141,6 +141,53 @@ input::placeholder { color: var(--text-dim); }
 .upload-label:hover { border-color: var(--border-hover); color: var(--text); }
 .upload-label input { display: none; }
 
+/* Sliders */
+.slider-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.slider-current {
+  font-family: var(--mono);
+  font-size: .72rem;
+  color: var(--accent);
+}
+input[type="range"] {
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+  outline: none;
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+}
+input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: none;
+  cursor: pointer;
+}
+.slider-ends {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: .6rem;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+
 /* System prompt header row */
 .prompt-header {
   display: flex;
