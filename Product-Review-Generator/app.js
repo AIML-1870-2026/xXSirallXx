@@ -1,9 +1,13 @@
 // ── SYSTEM PROMPT ────────────────────────────────────────────────────────────
 var TONE_MAP = {
-  balanced:     'detailed, balanced',
-  critical:     'critical, analytical',
-  enthusiastic: 'enthusiastic, positive',
-  professional: 'professional, expert-level'
+  balanced:          'detailed, balanced',
+  positive:          'upbeat and positive',
+  negative:          'negative and skeptical',
+  critical:          'critical and analytical',
+  'heavily-critical':'brutally and heavily critical',
+  comedic:           'comedic and humorous',
+  enthusiastic:      'enthusiastic and energetic',
+  professional:      'professional and expert-level'
 };
 
 var LENGTH_MAP = {
@@ -36,8 +40,6 @@ var keyStatus     = document.getElementById('key-status');
 var modelSelect   = document.getElementById('model-select');
 var toneSelect    = document.getElementById('tone-select');
 var lengthSelect  = document.getElementById('length-select');
-var tempSlider    = document.getElementById('temp-slider');
-var tempVal       = document.getElementById('temp-val');
 var systemPrompt  = document.getElementById('system-prompt');
 var resetPrompt   = document.getElementById('reset-prompt');
 var productInput  = document.getElementById('product-input');
@@ -61,11 +63,6 @@ function onPresetChange() {
 }
 toneSelect.addEventListener('change', onPresetChange);
 lengthSelect.addEventListener('change', onPresetChange);
-
-// Temperature slider live display
-tempSlider.addEventListener('input', function () {
-  tempVal.textContent = parseFloat(tempSlider.value).toFixed(1);
-});
 
 // Reset prompt button
 resetPrompt.addEventListener('click', function () {
@@ -151,16 +148,15 @@ function generate() {
     return;
   }
 
-  var model       = modelSelect.value;
-  var temperature = parseFloat(tempSlider.value);
-  var prompt      = systemPrompt.value.trim() || buildDefaultPrompt();
-  var t0          = Date.now();
+  var model  = modelSelect.value;
+  var prompt = systemPrompt.value.trim() || buildDefaultPrompt();
+  var t0     = Date.now();
 
   setLoading(true);
   hideError();
   hideResults();
 
-  callOpenAI(apiKey, model, product, temperature, prompt)
+  callOpenAI(apiKey, model, product, prompt)
     .then(function (data) {
       var elapsed = ((Date.now() - t0) / 1000).toFixed(2);
       renderReview(data, elapsed);
@@ -174,10 +170,9 @@ function generate() {
 }
 
 // ── OPENAI API ────────────────────────────────────────────────────────────────
-function callOpenAI(key, model, product, temperature, prompt) {
+function callOpenAI(key, model, product, prompt) {
   var body = {
-    model:       model,
-    temperature: temperature,
+    model:    model,
     messages: [
       { role: 'system', content: prompt },
       { role: 'user',   content: product }

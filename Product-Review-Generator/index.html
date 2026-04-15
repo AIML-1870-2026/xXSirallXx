@@ -45,7 +45,11 @@
       <div class="select-wrap">
         <select id="tone-select">
           <option value="balanced" selected>Balanced</option>
+          <option value="positive">Positive</option>
+          <option value="negative">Negative</option>
           <option value="critical">Critical</option>
+          <option value="heavily-critical">Heavily Critical</option>
+          <option value="comedic">Comedic</option>
           <option value="enthusiastic">Enthusiastic</option>
           <option value="professional">Professional</option>
         </select>
@@ -64,15 +68,7 @@
     </div>
 
     <div class="field-group">
-      <div class="slider-header">
-        <label class="field-label" for="temp-slider">Temperature</label>
-        <span class="slider-val" id="temp-val">0.7</span>
-      </div>
-      <input type="range" id="temp-slider" min="0" max="1.5" step="0.1" value="0.7">
-    </div>
-
-    <div class="field-group">
-      <div class="slider-header">
+      <div class="prompt-header">
         <label class="field-label" for="system-prompt">System Prompt</label>
         <button class="btn-reset" id="reset-prompt">Reset</button>
       </div>
