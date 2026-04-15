@@ -1,30 +1,76 @@
 // ── SYSTEM PROMPT ────────────────────────────────────────────────────────────
-var SYSTEM_PROMPT =
-  'You are a helpful assistant that writes detailed, balanced product reviews. ' +
-  'When given a product name, write a review that includes:\n' +
-  '- A brief overview of the product\n' +
-  '- Key pros and cons\n' +
-  '- A rating out of 5 stars\n' +
-  '- A final recommendation\n\n' +
-  'Format your response in markdown with clear headings and bullet points.';
+var TONE_MAP = {
+  balanced:     'detailed, balanced',
+  critical:     'critical, analytical',
+  enthusiastic: 'enthusiastic, positive',
+  professional: 'professional, expert-level'
+};
+
+var LENGTH_MAP = {
+  brief:    'Keep the review concise — 2 to 3 paragraphs maximum.',
+  standard: '',
+  detailed: 'Make the review comprehensive and thorough, covering at least 5 distinct sections.'
+};
+
+function buildDefaultPrompt() {
+  var tone   = toneSelect   ? toneSelect.value   : 'balanced';
+  var length = lengthSelect ? lengthSelect.value : 'standard';
+  var prompt =
+    'You are a helpful assistant that writes ' + TONE_MAP[tone] + ' product reviews. ' +
+    'When given a product name, write a review that includes:\n' +
+    '- A brief overview of the product\n' +
+    '- Key pros and cons\n' +
+    '- A rating out of 5 stars\n' +
+    '- A final recommendation\n\n' +
+    'Format your response in markdown with clear headings and bullet points.';
+  if (LENGTH_MAP[length]) prompt += '\n\n' + LENGTH_MAP[length];
+  return prompt;
+}
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
 var apiKey = '';
 
 // ── DOM REFS ──────────────────────────────────────────────────────────────────
-var keyInput     = document.getElementById('api-key');
-var keyStatus    = document.getElementById('key-status');
-var modelSelect  = document.getElementById('model-select');
-var productInput = document.getElementById('product-input');
-var generateBtn  = document.getElementById('generate-btn');
-var loadingEl    = document.getElementById('loading');
-var errorBox     = document.getElementById('error-box');
-var metaBar      = document.getElementById('meta-bar');
-var reviewOutput = document.getElementById('review-output');
-var emptyState   = document.getElementById('empty-state');
-var metaModel    = document.getElementById('meta-model');
-var metaTokens   = document.getElementById('meta-tokens');
-var metaTime     = document.getElementById('meta-time');
+var keyInput      = document.getElementById('api-key');
+var keyStatus     = document.getElementById('key-status');
+var modelSelect   = document.getElementById('model-select');
+var toneSelect    = document.getElementById('tone-select');
+var lengthSelect  = document.getElementById('length-select');
+var tempSlider    = document.getElementById('temp-slider');
+var tempVal       = document.getElementById('temp-val');
+var systemPrompt  = document.getElementById('system-prompt');
+var resetPrompt   = document.getElementById('reset-prompt');
+var productInput  = document.getElementById('product-input');
+var generateBtn   = document.getElementById('generate-btn');
+var loadingEl     = document.getElementById('loading');
+var errorBox      = document.getElementById('error-box');
+var metaBar       = document.getElementById('meta-bar');
+var reviewOutput  = document.getElementById('review-output');
+var emptyState    = document.getElementById('empty-state');
+var metaModel     = document.getElementById('meta-model');
+var metaTokens    = document.getElementById('meta-tokens');
+var metaTime      = document.getElementById('meta-time');
+
+// ── CUSTOMIZATION CONTROLS ────────────────────────────────────────────────────
+// Initialise system prompt textarea on load
+systemPrompt.value = buildDefaultPrompt();
+
+// Rebuild prompt when tone or length changes (unless user has manually edited it)
+function onPresetChange() {
+  systemPrompt.value = buildDefaultPrompt();
+}
+toneSelect.addEventListener('change', onPresetChange);
+lengthSelect.addEventListener('change', onPresetChange);
+
+// Temperature slider live display
+tempSlider.addEventListener('input', function () {
+  tempVal.textContent = parseFloat(tempSlider.value).toFixed(1);
+});
+
+// Reset prompt button
+resetPrompt.addEventListener('click', function () {
+  systemPrompt.value = buildDefaultPrompt();
+});
 
 // ── API KEY ───────────────────────────────────────────────────────────────────
 keyInput.addEventListener('input', function () {
@@ -105,14 +151,16 @@ function generate() {
     return;
   }
 
-  var model = modelSelect.value;
-  var t0    = Date.now();
+  var model       = modelSelect.value;
+  var temperature = parseFloat(tempSlider.value);
+  var prompt      = systemPrompt.value.trim() || buildDefaultPrompt();
+  var t0          = Date.now();
 
   setLoading(true);
   hideError();
   hideResults();
 
-  callOpenAI(apiKey, model, product)
+  callOpenAI(apiKey, model, product, temperature, prompt)
     .then(function (data) {
       var elapsed = ((Date.now() - t0) / 1000).toFixed(2);
       renderReview(data, elapsed);
@@ -126,11 +174,12 @@ function generate() {
 }
 
 // ── OPENAI API ────────────────────────────────────────────────────────────────
-function callOpenAI(key, model, product) {
+function callOpenAI(key, model, product, temperature, prompt) {
   var body = {
-    model: model,
+    model:       model,
+    temperature: temperature,
     messages: [
-      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: prompt },
       { role: 'user',   content: product }
     ]
   };

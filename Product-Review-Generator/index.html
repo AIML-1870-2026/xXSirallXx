@@ -41,6 +41,45 @@
     </div>
 
     <div class="field-group">
+      <label class="field-label" for="tone-select">Tone</label>
+      <div class="select-wrap">
+        <select id="tone-select">
+          <option value="balanced" selected>Balanced</option>
+          <option value="critical">Critical</option>
+          <option value="enthusiastic">Enthusiastic</option>
+          <option value="professional">Professional</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label" for="length-select">Review Length</label>
+      <div class="select-wrap">
+        <select id="length-select">
+          <option value="brief">Brief</option>
+          <option value="standard" selected>Standard</option>
+          <option value="detailed">Detailed</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <div class="slider-header">
+        <label class="field-label" for="temp-slider">Temperature</label>
+        <span class="slider-val" id="temp-val">0.7</span>
+      </div>
+      <input type="range" id="temp-slider" min="0" max="1.5" step="0.1" value="0.7">
+    </div>
+
+    <div class="field-group">
+      <div class="slider-header">
+        <label class="field-label" for="system-prompt">System Prompt</label>
+        <button class="btn-reset" id="reset-prompt">Reset</button>
+      </div>
+      <textarea id="system-prompt" rows="7" spellcheck="false"></textarea>
+    </div>
+
+    <div class="field-group">
       <label class="field-label" for="api-key">OpenAI API Key</label>
       <div class="key-row">
         <input type="password" id="api-key" placeholder="sk-..." autocomplete="off" spellcheck="false" />
