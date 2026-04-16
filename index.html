@@ -1,0 +1,1576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blackjack AI Agent</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg:        #0f0f0f;
+            --bg-panel:  #161616;
+            --bg-card:   #1c1c1c;
+            --felt:      #1a4a2e;
+            --felt-mid:  #163d26;
+            --felt-dark: #0a2217;
+            --gold:      #d4a843;
+            --gold-dim:  #9a7a30;
+            --gold-glow: rgba(212,168,67,0.18);
+            --card-bg:   #f8f4e8;
+            --red:       #c0392b;
+            --text:      #e8dfc8;
+            --muted:     #6b6456;
+            --border:    rgba(212,168,67,0.25);
+            --border-bright: rgba(212,168,67,0.55);
+            --hit-bg:    rgba(192,57,43,0.18);
+            --hit-col:   #e87a5a;
+            --stand-bg:  rgba(39,174,96,0.18);
+            --stand-col: #7fe8b0;
+            --dbl-bg:    rgba(212,168,67,0.18);
+            --dbl-col:   #d4a843;
+            --transition: 0.22s ease;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* ── HEADER ── */
+        header {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 13px 28px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(0,0,0,.6);
+            backdrop-filter: blur(6px);
+            flex-wrap: wrap;
+            z-index: 10;
+        }
+        .logo {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.45rem;
+            font-weight: 900;
+            color: var(--gold);
+            letter-spacing: .04em;
+            text-shadow: 0 0 24px rgba(212,168,67,.4);
+            white-space: nowrap;
+        }
+        .logo span { font-style: italic; font-weight: 400; color: var(--text); font-size: .95rem; margin-left: 8px; }
+        .env-area {
+            display: flex; align-items: center; gap: 10px;
+            margin-left: auto; flex-wrap: wrap;
+        }
+        .env-label { font-size: .68rem; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; }
+        .api-key-input {
+            padding: 7px 12px;
+            border: 1px dashed var(--border-bright); border-radius: 6px;
+            font-size: .73rem; font-family: var(--font-mono);
+            color: var(--gold); background: rgba(212,168,67,.05);
+            outline: none; width: 220px;
+            transition: var(--transition);
+        }
+        .api-key-input::placeholder { color: var(--muted); font-family: var(--font-mono); }
+        .api-key-input:focus { border-color: var(--gold); background: rgba(212,168,67,.1); }
+        .api-key-input:hover { border-color: var(--gold); }
+        .status-badge {
+            display: flex; align-items: center; gap: 6px;
+            padding: 5px 12px; border-radius: 20px;
+            font-size: .68rem; font-weight: 600; letter-spacing: .07em; text-transform: uppercase;
+            transition: var(--transition);
+        }
+        .status-badge .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+        .status-badge.offline  { color: var(--muted); border: 1px solid #333; }
+        .status-badge.checking { color: #e6b84a; border: 1px solid rgba(230,184,74,.3); }
+        .status-badge.checking .dot { background: #e6b84a; animation: pulse 1s infinite; }
+        .status-badge.connected { color: #4caf7d; border: 1px solid rgba(76,175,125,.35); }
+        .status-badge.connected .dot { background: #4caf7d; }
+        .status-badge.error { color: #e05555; border: 1px solid rgba(224,85,85,.3); }
+        .status-badge.error .dot { background: #e05555; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+        /* ── MAIN LAYOUT ── */
+        main { display: flex; flex: 1; min-height: 0; }
+
+        /* ── TABLE AREA ── */
+        .table-wrap {
+            flex: 1; display: flex; flex-direction: column;
+            padding: 22px 26px 18px; gap: 14px;
+        }
+        .table-surface {
+            flex: 1;
+            background: radial-gradient(ellipse 80% 72% at 50% 45%, #1e5c38 0%, var(--felt-mid) 55%, var(--felt-dark) 100%);
+            border: 2px solid var(--border-bright);
+            border-radius: 100px;
+            display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+            padding: 36px 48px 26px;
+            position: relative;
+            box-shadow: 0 0 80px rgba(26,90,56,.55), inset 0 0 60px rgba(0,0,0,.35);
+            min-height: 360px;
+        }
+        .table-surface::before {
+            content: 'BLACKJACK PAYS 3 TO 2';
+            position: absolute; top: 22px;
+            font-family: 'Playfair Display', serif;
+            font-size: .72rem; letter-spacing: .22em;
+            color: rgba(212,168,67,.4); text-transform: uppercase;
+        }
+        .dealer-area, .player-area {
+            display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%;
+        }
+        .area-label { font-size: .62rem; letter-spacing: .18em; color: rgba(212,168,67,.5); text-transform: uppercase; }
+        .hand {
+            display: flex; gap: 9px; flex-wrap: wrap; justify-content: center;
+            min-height: 108px; align-items: center;
+        }
+        .score-badge {
+            font-family: 'JetBrains Mono', monospace; font-size: .78rem; font-weight: 600;
+            color: var(--gold); background: rgba(0,0,0,.45); border: 1px solid var(--border);
+            padding: 3px 12px; border-radius: 12px; min-width: 36px; text-align: center;
+        }
+        .score-badge.bust      { color: #e05555; border-color: rgba(224,85,85,.4); }
+        .score-badge.blackjack { color: #f5d060; border-color: rgba(245,208,96,.5); }
+        .table-divider {
+            width: 80%; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(212,168,67,.2), transparent);
+        }
+
+        /* ── CARDS ── */
+        .card {
+            width: 70px; height: 103px; border-radius: 8px;
+            border: 1.5px solid #ccc; background: var(--card-bg);
+            box-shadow: 3px 5px 14px rgba(0,0,0,.65), inset 0 0 0 1px rgba(255,255,255,.3);
+            display: flex; flex-direction: column; justify-content: space-between;
+            padding: 5px 6px; position: relative;
+            animation: dealIn .3s cubic-bezier(.2,.8,.3,1) both;
+            flex-shrink: 0; user-select: none;
+        }
+        @keyframes dealIn {
+            from { transform: translateY(-28px) scale(.85); opacity: 0; }
+            to   { transform: translateY(0) scale(1); opacity: 1; }
+        }
+        .card-corner { display: flex; flex-direction: column; align-items: center; line-height: 1.1; }
+        .card-corner.bottom { transform: rotate(180deg); }
+        .card-rank { font-size: .82rem; font-weight: 700; line-height: 1; }
+        .card-suit-small { font-size: .62rem; }
+        .card-center { position: absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size: 1.85rem; }
+        .card.red   { color: var(--red); }
+        .card.black { color: #1a1a1a; }
+        .card.face-down {
+            background: linear-gradient(135deg, #1a3a6e 0%, #0d2248 100%);
+            border-color: #2a4a8e;
+        }
+        .card.face-down::before {
+            content: '';
+            position: absolute; inset: 5px;
+            border: 1px solid rgba(100,140,220,.3); border-radius: 4px;
+            background: repeating-linear-gradient(
+                45deg, transparent, transparent 4px,
+                rgba(100,140,220,.08) 4px, rgba(100,140,220,.08) 8px
+            );
+        }
+        .card.reveal { animation: revealFlip .4s ease both; }
+        @keyframes revealFlip {
+            0%   { transform: rotateY(90deg) scale(.9); opacity:.5; }
+            100% { transform: rotateY(0deg)  scale(1);  opacity: 1; }
+        }
+
+        /* ── ACTION BAR ── */
+        .action-bar { display: flex; flex-direction: column; gap: 10px; }
+        .bet-row { display: flex; align-items: center; gap: 10px; justify-content: center; }
+        .bet-label { font-size: .65rem; color: var(--muted); letter-spacing: .12em; text-transform: uppercase; }
+        .bet-display { font-size: .95rem; font-weight: 600; color: var(--gold); min-width: 52px; text-align: center; }
+        .bet-input {
+            width: 72px; padding: 5px 8px; text-align: center;
+            background: rgba(212,168,67,.07); border: 1px solid var(--border-bright);
+            border-radius: 6px; color: var(--gold); font-family: var(--font-mono);
+            font-size: .9rem; font-weight: 600; outline: none; transition: var(--transition);
+        }
+        .bet-input:focus { border-color: var(--gold); background: rgba(212,168,67,.13); }
+        .bet-input:disabled { opacity: .4; cursor: not-allowed; }
+        .btn {
+            font-family: 'JetBrains Mono', monospace; font-size: .76rem; font-weight: 600;
+            letter-spacing: .06em; cursor: pointer; border: none; border-radius: 7px;
+            padding: 9px 18px; transition: var(--transition); text-transform: uppercase;
+        }
+        .btn:disabled { opacity: .32; cursor: not-allowed; }
+        .btn-ghost {
+            background: transparent; border: 1px solid var(--border-bright); color: var(--gold);
+        }
+        .btn-ghost:hover:not(:disabled) { background: var(--gold-glow); border-color: var(--gold); }
+        .btn-gold {
+            background: linear-gradient(135deg, #d4a843, #b8882a); color: #0f0f0f;
+            box-shadow: 0 3px 12px rgba(212,168,67,.3);
+        }
+        .btn-gold:hover:not(:disabled) {
+            background: linear-gradient(135deg, #e0b850, #c9952f);
+            box-shadow: 0 4px 18px rgba(212,168,67,.45); transform: translateY(-1px);
+        }
+        .btn-action {
+            background: rgba(212,168,67,.08); border: 1px solid rgba(212,168,67,.32); color: var(--text);
+        }
+        .btn-action:hover:not(:disabled) { background: rgba(212,168,67,.18); border-color: var(--gold); color: var(--gold); }
+        .btn-ai {
+            background: linear-gradient(135deg, rgba(80,60,160,.45), rgba(50,30,120,.45));
+            border: 1px solid rgba(130,100,220,.4); color: #c8b8f8;
+        }
+        .btn-ai:hover:not(:disabled) {
+            background: linear-gradient(135deg, rgba(90,70,180,.65), rgba(60,40,140,.65));
+            border-color: rgba(160,130,240,.7); box-shadow: 0 3px 14px rgba(100,70,200,.28);
+        }
+        .btn-execute {
+            background: linear-gradient(135deg, rgba(76,175,125,.28), rgba(40,130,85,.28));
+            border: 1px solid rgba(76,175,125,.45); color: #7fe8b0;
+        }
+        .btn-execute:hover:not(:disabled) {
+            background: linear-gradient(135deg, rgba(76,175,125,.5), rgba(40,130,85,.5));
+            box-shadow: 0 3px 14px rgba(76,175,125,.22);
+        }
+        .btn-sm { padding: 5px 10px; font-size: .7rem; }
+        .game-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+        .ai-btns   { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+
+        /* ── AI PANEL ── */
+        .ai-panel {
+            width: 340px; flex-shrink: 0;
+            background: var(--bg-panel); border-left: 1px solid var(--border);
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+        .ai-panel-header { padding: 16px 20px 10px; border-bottom: 1px solid var(--border); }
+        .ai-panel-title { font-family: 'Playfair Display', serif; font-size: .98rem; color: var(--gold); margin-bottom: 3px; }
+        .ai-panel-sub   { font-size: .62rem; color: var(--muted); letter-spacing: .07em; }
+
+        /* Panel tabs: Advisor | Analytics */
+        .panel-tabs {
+            display: flex; border-bottom: 1px solid var(--border);
+        }
+        .panel-tab {
+            flex: 1; padding: 9px 0; text-align: center;
+            font-family: inherit; font-size: .68rem; font-weight: 600;
+            letter-spacing: .08em; text-transform: uppercase;
+            background: transparent; border: none; cursor: pointer;
+            color: var(--muted); border-bottom: 2px solid transparent;
+            transition: var(--transition);
+        }
+        .panel-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+        .panel-tab:hover:not(.active) { color: var(--text); }
+
+        /* Advisor tab content */
+        .advisor-tab, .analytics-tab {
+            flex: 1; overflow-y: auto; display: flex; flex-direction: column;
+        }
+        .advisor-tab { gap: 0; }
+
+        .detail-toggle {
+            display: flex; padding: 10px 18px; gap: 0; border-bottom: 1px solid var(--border);
+        }
+        .detail-btn {
+            flex: 1; padding: 6px 0; text-align: center;
+            font-family: inherit; font-size: .63rem; font-weight: 600;
+            letter-spacing: .07em; text-transform: uppercase;
+            cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--muted);
+            transition: var(--transition);
+        }
+        .detail-btn:first-child { border-radius: 5px 0 0 5px; }
+        .detail-btn:last-child  { border-radius: 0 5px 5px 0; }
+        .detail-btn + .detail-btn { border-left: none; }
+        .detail-btn.active { background: var(--gold-glow); border-color: var(--gold); color: var(--gold); }
+
+        .ai-loading {
+            display: none; align-items: center; justify-content: center;
+            gap: 10px; padding: 20px; font-size: .76rem; color: var(--muted);
+        }
+        .ai-loading.visible { display: flex; }
+        .spinner {
+            width: 17px; height: 17px;
+            border: 2px solid rgba(212,168,67,.15); border-top-color: var(--gold);
+            border-radius: 50%; animation: spin .7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .ai-content { flex: 1; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+
+        .ai-placeholder {
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; gap: 10px; height: 100%;
+            color: var(--muted); font-size: .73rem; text-align: center; line-height: 1.6;
+        }
+        .ai-placeholder .icon { font-size: 2rem; opacity: .35; }
+
+        .rec-block { display: none; flex-direction: column; gap: 12px; }
+        .rec-block.visible { display: flex; }
+
+        .action-display {
+            text-align: center; padding: 13px; border-radius: 10px; border: 1px solid var(--border);
+        }
+        .action-display .action-label { font-size: .58rem; letter-spacing: .15em; color: var(--muted); text-transform: uppercase; margin-bottom: 3px; }
+        .action-display .action-value { font-family: 'Playfair Display', serif; font-size: 1.9rem; font-weight: 700; letter-spacing: .04em; }
+        .action-display.hit   { background: rgba(200,90,60,.07); border-color: rgba(200,90,60,.32); }
+        .action-display.hit   .action-value { color: #e87a5a; }
+        .action-display.stand { background: rgba(76,175,125,.07); border-color: rgba(76,175,125,.32); }
+        .action-display.stand .action-value { color: #7fe8b0; }
+
+        .confidence-wrap { display: flex; flex-direction: column; gap: 5px; }
+        .confidence-row  { display: flex; justify-content: space-between; align-items: baseline; }
+        .conf-label { font-size: .63rem; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; }
+        .conf-value { font-size: .83rem; font-weight: 600; color: var(--gold); }
+        .conf-bar-bg   { height: 5px; background: rgba(255,255,255,.06); border-radius: 4px; overflow: hidden; }
+        .conf-bar-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--gold-dim), var(--gold)); transition: width .5s ease; }
+
+        .reasoning-block { display: flex; flex-direction: column; gap: 5px; }
+        .reasoning-label { font-size: .63rem; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; }
+        .reasoning-text {
+            font-size: .75rem; line-height: 1.65; color: var(--text);
+            background: rgba(255,255,255,.03); border: 1px solid var(--border);
+            border-radius: 7px; padding: 9px 11px;
+        }
+
+        /* Probability Context (Full detail only) */
+        .prob-context { display: none; flex-direction: column; gap: 7px; }
+        .prob-context.visible { display: flex; }
+        .prob-label { font-size: .63rem; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 2px; }
+        .prob-row { display: flex; align-items: center; gap: 8px; font-size: .7rem; }
+        .prob-row span:first-child { flex: 1; color: var(--muted); }
+        .prob-row span:last-child { width: 34px; text-align: right; font-weight: 600; }
+        .prob-bar-bg { flex: 1.6; height: 5px; background: rgba(255,255,255,.06); border-radius: 3px; overflow: hidden; }
+        .prob-bar-fill { height: 100%; border-radius: 3px; transition: width .4s ease; }
+        .prob-bar-fill.bust   { background: linear-gradient(90deg, #a02020, #e05555); }
+        .prob-bar-fill.dealer { background: linear-gradient(90deg, #27ae60, #7fe8b0); }
+
+        .ai-accuracy {
+            display: flex; justify-content: space-between; font-size: .68rem;
+            color: var(--muted); padding-top: 8px; border-top: 1px solid var(--border);
+        }
+        .ai-accuracy span { color: var(--gold); font-weight: 600; }
+
+        /* ── STRATEGY MATRIX ── */
+        .strategy-section {
+            border-top: 1px solid var(--border); padding: 14px 18px;
+            display: flex; flex-direction: column; gap: 8px;
+        }
+        .strategy-hdr {
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .strategy-title { font-size: .63rem; color: var(--muted); letter-spacing: .12em; text-transform: uppercase; }
+        .strategy-type-badge {
+            font-size: .6rem; font-weight: 600; padding: 2px 8px; border-radius: 10px;
+            border: 1px solid var(--border-bright); color: var(--gold); background: var(--gold-glow);
+            letter-spacing: .06em;
+        }
+        .matrix-wrap { overflow-x: auto; }
+        table.strategy-matrix {
+            border-collapse: collapse; font-size: 8.5px; font-family: 'JetBrains Mono', monospace; font-weight: 600;
+        }
+        .strategy-matrix th, .strategy-matrix td {
+            width: 22px; height: 16px; text-align: center; border: 1px solid rgba(255,255,255,.04);
+            line-height: 16px; padding: 0;
+        }
+        .strategy-matrix th {
+            background: rgba(255,255,255,.04); color: var(--muted); font-size: 8px; font-weight: 400;
+        }
+        .strategy-matrix th.row-hdr { width: 28px; font-size: 7.5px; text-align: right; padding-right: 4px; color: var(--muted); }
+        .strategy-matrix td.hit   { background: var(--hit-bg);   color: var(--hit-col); }
+        .strategy-matrix td.stand { background: var(--stand-bg); color: var(--stand-col); }
+        .strategy-matrix td.dbl   { background: var(--dbl-bg);   color: var(--dbl-col); }
+        .strategy-matrix td.current {
+            outline: 2px solid var(--gold); outline-offset: -1px;
+            box-shadow: inset 0 0 8px rgba(212,168,67,.45); z-index: 1; position: relative;
+        }
+        .matrix-legend { display: flex; gap: 10px; }
+        .legend-item { display: flex; align-items: center; gap: 4px; font-size: .6rem; color: var(--muted); }
+        .legend-dot { width: 8px; height: 8px; border-radius: 2px; }
+        .legend-dot.hit   { background: var(--hit-bg); border: 1px solid var(--hit-col); }
+        .legend-dot.stand { background: var(--stand-bg); border: 1px solid var(--stand-col); }
+        .legend-dot.dbl   { background: var(--dbl-bg); border: 1px solid var(--dbl-col); }
+
+        /* ── ANALYTICS TAB ── */
+        .analytics-tab { padding: 16px 18px; gap: 18px; }
+        .chart-block { display: flex; flex-direction: column; gap: 6px; }
+        .chart-title { font-size: .63rem; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; }
+        .chart-canvas {
+            border-radius: 6px; background: rgba(255,255,255,.03);
+            border: 1px solid var(--border); display: block;
+        }
+        .dq-block { display: flex; flex-direction: column; gap: 9px; }
+        .dq-title { font-size: .63rem; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; }
+        .dq-row { display: flex; align-items: center; gap: 8px; font-size: .72rem; }
+        .dq-row .dq-label { flex: 1; color: var(--muted); }
+        .dq-row .dq-value { font-weight: 600; color: var(--text); min-width: 52px; text-align: right; }
+        .dq-row .dq-bar-bg { flex: 1; height: 5px; background: rgba(255,255,255,.06); border-radius: 3px; overflow: hidden; }
+        .dq-bar-fill { height: 100%; border-radius: 3px; transition: width .4s ease; }
+        .dq-bar-fill.ai     { background: linear-gradient(90deg, #7060d0, #c8b8f8); }
+        .dq-bar-fill.manual { background: linear-gradient(90deg, #606060, #a8a8a8); }
+        .analytics-placeholder {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 8px; padding: 40px 0; color: var(--muted); font-size: .73rem; text-align: center;
+        }
+        .analytics-placeholder .icon { font-size: 2rem; opacity: .3; }
+
+        /* ── FOOTER / STATS ── */
+        footer {
+            border-top: 1px solid var(--border); background: rgba(0,0,0,.55);
+            padding: 13px 28px; display: flex; align-items: center; gap: 26px; flex-wrap: wrap;
+        }
+        .balance-block { display: flex; flex-direction: column; }
+        .balance-label { font-size: .58rem; color: var(--muted); letter-spacing: .13em; text-transform: uppercase; }
+        .balance-value { font-family: 'Playfair Display', serif; font-size: 1.35rem; font-weight: 700; color: var(--gold); }
+        .stats-grid { display: flex; gap: 18px; flex-wrap: wrap; }
+        .stat-item { display: flex; flex-direction: column; align-items: center; }
+        .stat-val { font-size: .88rem; font-weight: 600; color: var(--text); }
+        .stat-lbl { font-size: .56rem; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; }
+        .sparkline-wrap { margin-left: auto; display: flex; flex-direction: column; gap: 3px; }
+        .sparkline-label { font-size: .56rem; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; }
+        #sparkline { display: block; border-radius: 4px; }
+
+        /* ── RESULT OVERLAY ── */
+        .round-result {
+            position: absolute; inset: 0;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: inherit; pointer-events: none;
+            opacity: 0; transition: opacity .3s;
+        }
+        .round-result.show { opacity: 1; }
+        .result-text {
+            font-family: 'Playfair Display', serif; font-size: 2.3rem; font-weight: 900;
+            letter-spacing: .06em; text-shadow: 0 0 30px currentColor;
+            animation: popIn .35s cubic-bezier(.2,1.4,.4,1) both;
+        }
+        @keyframes popIn { from{transform:scale(.5);opacity:0} to{transform:scale(1);opacity:1} }
+
+        /* ── TOAST ── */
+        .toast {
+            position: fixed; top: 68px; left: 50%;
+            transform: translateX(-50%) translateY(-10px);
+            background: var(--bg-card); border: 1px solid var(--border-bright);
+            border-radius: 8px; padding: 9px 20px; font-size: .78rem; color: var(--text);
+            opacity: 0; pointer-events: none; transition: opacity .28s, transform .28s;
+            z-index: 9999; max-width: 360px; text-align: center;
+        }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .toast.win  { border-color: rgba(76,175,125,.6);  color: #7fe8b0; }
+        .toast.lose { border-color: rgba(224,85,85,.5);   color: #e07070; }
+        .toast.push { border-color: rgba(212,168,67,.4);  color: var(--gold); }
+        .toast.bj   { border-color: rgba(245,208,96,.7);  color: #f5d060; font-size: .92rem; font-weight: 700; background: rgba(245,208,96,.05); }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 860px) {
+            main { flex-direction: column; }
+            .ai-panel { width: 100%; border-left: none; border-top: 1px solid var(--border); max-height: 500px; }
+            .table-surface { min-height: 300px; padding: 26px 18px 20px; border-radius: 50px; }
+            .table-surface::before { font-size: .58rem; top: 13px; }
+            .card { width: 58px; height: 86px; }
+            .card-center { font-size: 1.5rem; }
+            .sparkline-wrap { margin-left: 0; width: 100%; }
+        }
+        @media (max-width: 520px) {
+            header { padding: 10px 14px; gap: 10px; }
+            .logo { font-size: 1.1rem; }
+            .table-wrap { padding: 10px 10px 8px; }
+            footer { gap: 12px; padding: 11px 14px; }
+            .stats-grid { gap: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ══ HEADER ══ -->
+<header>
+    <div class="logo">Blackjack <span>AI Agent</span></div>
+    <div class="env-area">
+        <div class="env-label">OpenAI API Key</div>
+        <input
+            type="password"
+            id="apiKeyInput"
+            class="api-key-input"
+            placeholder="sk-..."
+            autocomplete="off"
+            spellcheck="false"
+        />
+        <div class="status-badge offline" id="statusBadge">
+            <div class="dot"></div>
+            <span id="statusText">No Key</span>
+        </div>
+    </div>
+</header>
+
+<!-- ══ MAIN ══ -->
+<main>
+
+    <!-- TABLE -->
+    <div class="table-wrap">
+        <div class="table-surface">
+            <div class="round-result" id="roundResult">
+                <div class="result-text" id="resultText"></div>
+            </div>
+
+            <div class="dealer-area">
+                <div class="area-label">Dealer</div>
+                <div class="hand" id="dealerHand"></div>
+                <div class="score-badge" id="dealerScore">—</div>
+            </div>
+
+            <div class="table-divider"></div>
+
+            <div class="player-area">
+                <div class="score-badge" id="playerScore">—</div>
+                <div class="hand" id="playerHand"></div>
+                <div class="area-label">Player</div>
+            </div>
+        </div>
+
+        <!-- ACTION BAR -->
+        <div class="action-bar">
+            <div class="bet-row">
+                <span class="bet-label">Bet</span>
+                <button class="btn btn-ghost btn-sm" id="betMinus" onclick="adjustBet(-5)">−5</button>
+                <input type="number" id="betInput" class="bet-input" value="10" min="5" step="1" />
+                <button class="btn btn-ghost btn-sm" id="betPlus"  onclick="adjustBet(+5)">+5</button>
+                <span class="bet-label" style="margin-left:10px">Bal:</span>
+                <div class="bet-display" id="balanceSmall">$1000</div>
+            </div>
+            <div class="game-btns">
+                <button class="btn btn-gold"   id="btnDeal"  onclick="dealRound()">Deal</button>
+                <button class="btn btn-action" id="btnHit"   onclick="playerHit()"   disabled>Hit</button>
+                <button class="btn btn-action" id="btnStand" onclick="playerStand()" disabled>Stand</button>
+            </div>
+            <div class="ai-btns">
+                <button class="btn btn-ai"      id="btnAdvice"  onclick="getAIAdvice()"           disabled>Get AI Advice</button>
+                <button class="btn btn-execute" id="btnExecute" onclick="executeRecommendation()" disabled>Execute</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI PANEL -->
+    <div class="ai-panel">
+        <div class="ai-panel-header">
+            <div class="ai-panel-title">AI Advisor</div>
+            <div class="ai-panel-sub">GPT-4o-mini · Basic Strategy Analysis</div>
+        </div>
+
+        <!-- Panel tabs -->
+        <div class="panel-tabs">
+            <button class="panel-tab active" data-tab="advisor"   onclick="switchTab('advisor')">Advisor</button>
+            <button class="panel-tab"        data-tab="analytics" onclick="switchTab('analytics')">Analytics</button>
+        </div>
+
+        <!-- ── ADVISOR TAB ── -->
+        <div class="advisor-tab" id="advisorTab">
+            <div class="detail-toggle">
+                <button class="detail-btn active" data-level="basic"    onclick="setDetailLevel('basic')">Basic</button>
+                <button class="detail-btn"        data-level="detailed" onclick="setDetailLevel('detailed')">Detailed</button>
+                <button class="detail-btn"        data-level="full"     onclick="setDetailLevel('full')">Full</button>
+            </div>
+
+            <div class="ai-loading" id="aiLoading">
+                <div class="spinner"></div><span>Consulting GPT-4o-mini…</span>
+            </div>
+
+            <div class="ai-content" id="aiContent">
+                <div class="ai-placeholder" id="aiPlaceholder">
+                    <div class="icon">🃏</div>
+                    <div>Enter your OpenAI API key above and deal a hand to activate the AI advisor.</div>
+                </div>
+
+                <div class="rec-block" id="recBlock">
+                    <div class="action-display" id="actionDisplay">
+                        <div class="action-label">Recommended Action</div>
+                        <div class="action-value" id="actionValue">—</div>
+                    </div>
+
+                    <div class="reasoning-block" id="reasoningBlock" style="display:none">
+                        <div class="reasoning-label">AI Analysis</div>
+                        <div class="reasoning-text" id="reasoningText">—</div>
+                    </div>
+
+                    <div class="confidence-wrap" id="confWrap" style="display:none">
+                        <div class="confidence-row">
+                            <span class="conf-label">Confidence</span>
+                            <span class="conf-value" id="confValue">—</span>
+                        </div>
+                        <div class="conf-bar-bg">
+                            <div class="conf-bar-fill" id="confBar" style="width:0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Probability context (Full detail only) -->
+                    <div class="prob-context" id="probContext">
+                        <div class="prob-label">Probability Context</div>
+                        <div class="prob-row">
+                            <span>Bust if you hit</span>
+                            <div class="prob-bar-bg"><div class="prob-bar-fill bust" id="bustBar" style="width:0%"></div></div>
+                            <span id="bustProbVal">—</span>
+                        </div>
+                        <div class="prob-row">
+                            <span>Dealer busts</span>
+                            <div class="prob-bar-bg"><div class="prob-bar-fill dealer" id="dealerBustBar" style="width:0%"></div></div>
+                            <span id="dealerBustVal">—</span>
+                        </div>
+                    </div>
+
+                    <div class="ai-accuracy">
+                        AI accuracy: <span id="aiAccuracy">—</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Strategy Matrix -->
+            <div class="strategy-section" id="strategySection">
+                <div class="strategy-hdr">
+                    <span class="strategy-title">Basic Strategy Matrix</span>
+                    <span class="strategy-type-badge" id="strategyTypeBadge">Hard</span>
+                </div>
+                <div class="matrix-wrap">
+                    <table class="strategy-matrix" id="strategyMatrix"></table>
+                </div>
+                <div class="matrix-legend">
+                    <div class="legend-item"><div class="legend-dot hit"></div>H = Hit</div>
+                    <div class="legend-item"><div class="legend-dot stand"></div>S = Stand</div>
+                    <div class="legend-item"><div class="legend-dot dbl"></div>D = Double</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── ANALYTICS TAB ── -->
+        <div class="analytics-tab" id="analyticsTab" style="display:none">
+            <div class="analytics-placeholder" id="analyticsPlaceholder">
+                <div class="icon">📊</div>
+                <div>Play a few hands to see performance analytics.</div>
+            </div>
+
+            <div id="analyticsContent" style="display:none; display:flex; flex-direction:column; gap:18px;">
+                <div class="chart-block">
+                    <div class="chart-title">Cumulative Win Rate</div>
+                    <canvas class="chart-canvas" id="winRateChart" width="300" height="90"></canvas>
+                </div>
+
+                <div class="chart-block">
+                    <div class="chart-title">Bankroll History</div>
+                    <canvas class="chart-canvas" id="bankrollChart" width="300" height="90"></canvas>
+                </div>
+
+                <div class="dq-block">
+                    <div class="dq-title">Decision Quality</div>
+                    <div class="dq-row">
+                        <span class="dq-label">Following AI</span>
+                        <div class="dq-bar-bg"><div class="dq-bar-fill ai" id="dqAIBar" style="width:0%"></div></div>
+                        <span class="dq-value" id="dqAIVal">—</span>
+                    </div>
+                    <div class="dq-row">
+                        <span class="dq-label">Not following AI</span>
+                        <div class="dq-bar-bg"><div class="dq-bar-fill manual" id="dqManualBar" style="width:0%"></div></div>
+                        <span class="dq-value" id="dqManualVal">—</span>
+                    </div>
+                    <div class="dq-row">
+                        <span class="dq-label">AI follow rate</span>
+                        <div class="dq-bar-bg"><div class="dq-bar-fill ai" id="dqFollowBar" style="width:0%"></div></div>
+                        <span class="dq-value" id="dqFollowVal">—</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /ai-panel -->
+
+</main>
+
+<!-- ══ FOOTER ══ -->
+<footer>
+    <div class="balance-block">
+        <div class="balance-label">Balance</div>
+        <div class="balance-value" id="balanceDisplay">$1,000</div>
+    </div>
+    <div class="stats-grid">
+        <div class="stat-item"><div class="stat-val" id="statHands">0</div><div class="stat-lbl">Hands</div></div>
+        <div class="stat-item"><div class="stat-val" id="statWins">0</div><div class="stat-lbl">Wins</div></div>
+        <div class="stat-item"><div class="stat-val" id="statLosses">0</div><div class="stat-lbl">Losses</div></div>
+        <div class="stat-item"><div class="stat-val" id="statPushes">0</div><div class="stat-lbl">Pushes</div></div>
+        <div class="stat-item"><div class="stat-val" id="statBJ">0</div><div class="stat-lbl">Blackjacks</div></div>
+        <div class="stat-item"><div class="stat-val" id="statWinRate">—</div><div class="stat-lbl">Win Rate</div></div>
+    </div>
+    <div class="sparkline-wrap">
+        <div class="sparkline-label">Bankroll</div>
+        <canvas id="sparkline" width="180" height="42"></canvas>
+    </div>
+</footer>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- ══ JAVASCRIPT ══ -->
+<script>
+'use strict';
+
+// ────────────────────────────────────────────────────────
+// CONFIG
+// ────────────────────────────────────────────────────────
+const CFG = {
+    STARTING_BALANCE: 1000,
+    DEFAULT_BET: 10,
+    BET_MIN: 5,
+    RESHUFFLE_AT: 15,
+    API_URL: 'https://api.openai.com/v1/chat/completions',
+    MODEL: 'gpt-4o-mini',
+};
+
+// ────────────────────────────────────────────────────────
+// BASIC STRATEGY TABLES
+// Cols index 0-9 → Dealer up card: 2,3,4,5,6,7,8,9,T,A
+// H=Hit, S=Stand, D=Double(→hit in this game)
+// ────────────────────────────────────────────────────────
+const DEALER_COLS = ['2','3','4','5','6','7','8','9','T','A'];
+
+const HARD_ROWS = ['≤8','9','10','11','12','13','14','15','16','17+'];
+const HARD_TABLE = [
+// 2    3    4    5    6    7    8    9    T    A
+  ['H','H','H','H','H','H','H','H','H','H'], // ≤8
+  ['H','D','D','D','D','H','H','H','H','H'], // 9
+  ['D','D','D','D','D','D','D','D','H','H'], // 10
+  ['D','D','D','D','D','D','D','D','D','H'], // 11
+  ['H','H','S','S','S','H','H','H','H','H'], // 12
+  ['S','S','S','S','S','H','H','H','H','H'], // 13
+  ['S','S','S','S','S','H','H','H','H','H'], // 14
+  ['S','S','S','S','S','H','H','H','H','H'], // 15
+  ['S','S','S','S','S','H','H','H','H','H'], // 16
+  ['S','S','S','S','S','S','S','S','S','S'], // 17+
+];
+
+const SOFT_ROWS = ['A+2','A+3','A+4','A+5','A+6','A+7','A+8','A+9+'];
+const SOFT_TABLE = [
+// 2    3    4    5    6    7    8    9    T    A
+  ['H','H','H','D','D','H','H','H','H','H'], // A+2 (soft 13)
+  ['H','H','H','D','D','H','H','H','H','H'], // A+3 (soft 14)
+  ['H','H','D','D','D','H','H','H','H','H'], // A+4 (soft 15)
+  ['H','H','D','D','D','H','H','H','H','H'], // A+5 (soft 16)
+  ['H','D','D','D','D','H','H','H','H','H'], // A+6 (soft 17)
+  ['S','D','D','D','D','S','S','H','H','S'], // A+7 (soft 18)
+  ['S','S','S','S','S','S','S','S','S','S'], // A+8 (soft 19)
+  ['S','S','S','S','S','S','S','S','S','S'], // A+9+ (soft 20)
+];
+
+// Probability tables
+const BUST_ON_HIT = {
+    4:0,5:0,6:0,7:0,8:0,9:0,10:0,11:0,
+    12:31,13:38,14:46,15:54,16:62,17:69,18:77,19:85,20:92,21:100
+};
+const DEALER_BUST = {
+    '2':35,'3':37,'4':40,'5':42,'6':42,
+    '7':26,'8':24,'9':23,'10':21,'J':21,'Q':21,'K':21,'A':11
+};
+
+// ────────────────────────────────────────────────────────
+// STATE
+// ────────────────────────────────────────────────────────
+const S = {
+    apiKey: null,
+    deck: [],
+    player: [],
+    dealer: [],
+    balance: CFG.STARTING_BALANCE,
+    bet: CFG.DEFAULT_BET,
+    phase: 'betting',        // betting | playing | dealer-turn | round-over
+    detailLevel: 'basic',
+    activeTab: 'advisor',
+    lastRec: null,           // { action, confidence, reasoning }
+    lastRecExecuted: false,
+    roundResult: null,
+    stats: { hands:0, wins:0, losses:0, pushes:0, blackjacks:0, aiRecs:0, aiWins:0 },
+    balanceHistory: [CFG.STARTING_BALANCE],
+    winHistory: [],          // 1=win, 0=loss/push per hand
+    handHistory: [],         // [{result, followedAI}]
+    aiAdvisedHands: 0,
+    aiFollowedHands: 0,
+    aiFollowedWins: 0,
+    aiNotFollowedHands: 0,
+    aiNotFollowedWins: 0,
+};
+
+// ────────────────────────────────────────────────────────
+// LOGGING
+// ────────────────────────────────────────────────────────
+function log(tag, msg, data) {
+    const ts = new Date().toISOString().slice(11,23);
+    const line = `[BLACKJACK][${ts}][${tag}] ${msg}`;
+    data !== undefined ? console.log(line, data) : console.log(line);
+}
+
+// ────────────────────────────────────────────────────────
+// DECK
+// ────────────────────────────────────────────────────────
+const SUITS = ['♠','♥','♦','♣'];
+const RANKS = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+
+function freshDeck() {
+    const d = [];
+    for (const suit of SUITS)
+        for (const rank of RANKS)
+            d.push({ rank, suit, hidden: false });
+    return d;
+}
+function shuffle(d) {
+    for (let i = d.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [d[i], d[j]] = [d[j], d[i]];
+    }
+    return d;
+}
+function ensureDeck() {
+    if (S.deck.length < CFG.RESHUFFLE_AT) {
+        S.deck = shuffle(freshDeck());
+        log('DECK', `Reshuffled. ${S.deck.length} cards remaining.`);
+    }
+}
+function pop(hidden = false) {
+    const c = S.deck.pop();
+    c.hidden = hidden;
+    return c;
+}
+
+// ────────────────────────────────────────────────────────
+// SCORING
+// ────────────────────────────────────────────────────────
+function score(hand) {
+    let total = 0, aces = 0;
+    for (const c of hand) {
+        if (c.hidden) continue;
+        if      (c.rank === 'A')                      { aces++; total += 11; }
+        else if (['J','Q','K'].includes(c.rank))      total += 10;
+        else                                           total += +c.rank;
+    }
+    while (total > 21 && aces > 0) { total -= 10; aces--; }
+    return total;
+}
+function isBust(hand)      { return score(hand) > 21; }
+function isBlackjack(hand) { return hand.length === 2 && score(hand) === 21; }
+function isSoft(hand) {
+    let total = 0, aces = 0;
+    for (const c of hand) {
+        if (c.hidden) continue;
+        if      (c.rank === 'A')                 { aces++; total += 11; }
+        else if (['J','Q','K'].includes(c.rank)) total += 10;
+        else                                      total += +c.rank;
+    }
+    return aces > 0 && total <= 21;
+}
+function dealerShouldHit(hand) { return score(hand) < 17; } // stands on all 17
+
+// ────────────────────────────────────────────────────────
+// STRATEGY HELPERS
+// ────────────────────────────────────────────────────────
+function dealerColIdx(rank) {
+    const map = {'2':0,'3':1,'4':2,'5':3,'6':4,'7':5,'8':6,'9':7,'10':8,'J':8,'Q':8,'K':8,'A':9};
+    return map[rank] ?? 0;
+}
+function hardRowIdx(s) {
+    if (s <= 8)  return 0;
+    if (s === 9) return 1;
+    if (s === 10) return 2;
+    if (s === 11) return 3;
+    if (s === 12) return 4;
+    if (s === 13) return 5;
+    if (s === 14) return 6;
+    if (s === 15) return 7;
+    if (s === 16) return 8;
+    return 9; // 17+
+}
+function softRowIdx(s) {
+    if (s <= 13) return 0;
+    if (s === 14) return 1;
+    if (s === 15) return 2;
+    if (s === 16) return 3;
+    if (s === 17) return 4;
+    if (s === 18) return 5;
+    if (s === 19) return 6;
+    return 7; // 20+
+}
+function optimalAction(playerHand, dealerUpCard) {
+    const ps  = score(playerHand);
+    const col = dealerColIdx(dealerUpCard.rank);
+    if (isSoft(playerHand) && ps >= 13) {
+        return SOFT_TABLE[softRowIdx(ps)]?.[col] || 'H';
+    }
+    return HARD_TABLE[hardRowIdx(ps)]?.[col] || 'H';
+}
+
+// ────────────────────────────────────────────────────────
+// GAME ENGINE
+// ────────────────────────────────────────────────────────
+function dealRound() {
+    if (S.phase !== 'betting') return;
+    if (S.balance < S.bet) { showToast('Insufficient balance!', ''); return; }
+    ensureDeck();
+    S.player = [pop(), pop()];
+    S.dealer = [pop(), pop(true)];
+    S.balance -= S.bet;
+    S.lastRec = null;
+    S.lastRecExecuted = false;
+    S.roundResult = null;
+    log('DEAL', 'Cards dealt', {
+        player: handStr(S.player), dealer: `${cardStr(S.dealer[0])} [hidden]`,
+        playerScore: score(S.player), balance: S.balance, bet: S.bet,
+    });
+    if (isBlackjack(S.player)) {
+        S.phase = 'playing';
+        render();
+        setTimeout(() => dealerTurn(true), 500);
+        return;
+    }
+    S.phase = 'playing';
+    render();
+}
+
+function playerHit() {
+    if (S.phase !== 'playing') return;
+    S.player.push(pop());
+    log('HIT', `Player drew ${cardStr(S.player.at(-1))}. Score: ${score(S.player)}`);
+    if (isBust(S.player)) { log('BUST', 'Player busted!'); endRound('lose'); return; }
+    render();
+    renderMatrix(); // update matrix highlight after new card
+}
+
+function playerStand() {
+    if (S.phase !== 'playing') return;
+    log('STAND', 'Player stands at ' + score(S.player));
+    S.phase = 'dealer-turn';
+    render();
+    setTimeout(dealerTurn, 500);
+}
+
+async function dealerTurn(playerBJ = false) {
+    S.dealer.forEach(c => { c.hidden = false; });
+    S.phase = 'dealer-turn';
+    render();
+    log('DEALER', 'Revealed hand', { hand: handStr(S.dealer), score: score(S.dealer) });
+
+    if (playerBJ) {
+        await pause(500);
+        endRound(isBlackjack(S.dealer) ? 'push' : 'blackjack');
+        return;
+    }
+    await pause(550);
+    while (dealerShouldHit(S.dealer)) {
+        S.dealer.push(pop());
+        log('DEALER-HIT', `Dealer drew ${cardStr(S.dealer.at(-1))}. Score: ${score(S.dealer)}`);
+        render();
+        await pause(600);
+    }
+    const ps = score(S.player), ds = score(S.dealer);
+    log('RESULT', `Player ${ps} vs Dealer ${ds}`);
+    if (isBust(S.dealer))  endRound('win');
+    else if (ps > ds)       endRound('win');
+    else if (ds > ps)       endRound('lose');
+    else                    endRound('push');
+}
+
+function endRound(result) {
+    S.phase = 'round-over';
+    S.roundResult = result;
+    let payout = 0;
+    switch (result) {
+        case 'blackjack': payout = S.bet + Math.floor(S.bet * 1.5); S.stats.blackjacks++; S.stats.wins++; break;
+        case 'win':       payout = S.bet * 2; S.stats.wins++;   break;
+        case 'lose':      payout = 0;          S.stats.losses++; break;
+        case 'push':      payout = S.bet;      S.stats.pushes++; break;
+    }
+    S.balance += payout;
+    S.stats.hands++;
+    S.balanceHistory.push(S.balance);
+    S.winHistory.push((result === 'win' || result === 'blackjack') ? 1 : 0);
+
+    // Decision quality tracking
+    const followedAI = S.lastRec && S.lastRecExecuted;
+    const hadAdvice  = !!S.lastRec;
+    const won = result === 'win' || result === 'blackjack';
+
+    S.handHistory.push({ result, followedAI, hadAdvice });
+
+    if (hadAdvice) {
+        if (followedAI) {
+            S.stats.aiRecs++;
+            if (won) S.stats.aiWins++;
+            S.aiFollowedHands++;
+            if (won) S.aiFollowedWins++;
+        } else {
+            S.aiAdvisedHands++;
+            S.aiNotFollowedHands++;
+            if (won) S.aiNotFollowedWins++;
+        }
+    }
+    S.aiAdvisedHands = S.aiFollowedHands + S.aiNotFollowedHands;
+
+    log('ROUND-END', `Result: ${result}. Payout: $${payout}. Balance: $${S.balance}`, { stats: {...S.stats} });
+
+    render();
+    const TOASTS = {
+        win: [`You win! +$${S.bet}`, 'win'],
+        blackjack: [`Blackjack! +$${Math.floor(S.bet*1.5)}`, 'bj'],
+        lose: [`Dealer wins. −$${S.bet}`, 'lose'],
+        push: ['Push — bet returned.', 'push'],
+    };
+    showToast(...TOASTS[result]);
+    showResultOverlay(result);
+}
+
+function resetRound() {
+    S.phase = 'betting';
+    S.player = [];
+    S.dealer = [];
+    S.lastRec = null;
+    S.lastRecExecuted = false;
+    S.roundResult = null;
+    hideResultOverlay();
+    render();
+}
+
+function pause(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ────────────────────────────────────────────────────────
+// BET
+// ────────────────────────────────────────────────────────
+function adjustBet(delta) {
+    if (S.phase !== 'betting') return;
+    const next = S.bet + delta;
+    if (next < CFG.BET_MIN) return;
+    S.bet = next;
+    updateBetUI();
+}
+
+document.getElementById('betInput').addEventListener('change', e => {
+    if (S.phase !== 'betting') { updateBetUI(); return; }
+    const val = Math.floor(Number(e.target.value));
+    if (!isFinite(val) || val < CFG.BET_MIN) { updateBetUI(); return; }
+    if (val > S.balance) { showToast('Bet exceeds balance!', ''); updateBetUI(); return; }
+    S.bet = val;
+    updateBetUI();
+});
+
+// ────────────────────────────────────────────────────────
+// AI AGENT
+// ────────────────────────────────────────────────────────
+function buildPrompt() {
+    const ps = score(S.player);
+    const upCard = S.dealer.find(c => !c.hidden);
+    const upStr  = upCard ? cardStr(upCard) : '?';
+    const soft   = isSoft(S.player) && ps >= 13;
+    let detail = '';
+    switch (S.detailLevel) {
+        case 'basic':    detail = 'Give a direct, brief recommendation.'; break;
+        case 'detailed': detail = 'State the action and give one sentence of reasoning referencing basic strategy.'; break;
+        case 'full':     detail = 'Provide comprehensive analysis: probability context, basic strategy justification, and why this is optimal.'; break;
+    }
+    return `You are an expert Blackjack strategist using perfect basic strategy for 6-deck, dealer stands on all 17s.
+
+Game State:
+- Player hand: ${handStr(S.player)} → score ${ps}${soft ? ' (soft)' : ''}
+- Dealer up card: ${upStr}
+- Bet: $${S.bet} | Balance: $${S.balance}
+- Remaining deck: ~${S.deck.length}
+
+${detail}
+
+Respond ONLY with valid JSON — no markdown fences, no extra text:
+{"action":"hit"|"stand","confidence":<0-100>,"reasoning":"<string>"}`;
+}
+
+async function getAIAdvice() {
+    if (!S.apiKey) { showToast('Enter your OpenAI API key first.', ''); return; }
+    if (S.phase !== 'playing') return;
+
+    const loading = document.getElementById('aiLoading');
+    const content = document.getElementById('aiContent');
+    loading.classList.add('visible');
+    content.style.visibility = 'hidden';
+    document.getElementById('btnAdvice').disabled  = true;
+    document.getElementById('btnExecute').disabled = true;
+
+    const prompt = buildPrompt();
+    const gameState = { player: handStr(S.player), dealer: handStr(S.dealer), score: score(S.player) };
+    log('AI-REQUEST', 'Sending to GPT-4o-mini', { prompt, gameState });
+
+    try {
+        const res = await fetch(CFG.API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${S.apiKey}` },
+            body: JSON.stringify({
+                model: CFG.MODEL,
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.2,
+                max_tokens: 350,
+            }),
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err?.error?.message || `HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        const raw  = data.choices[0]?.message?.content?.trim() ?? '';
+        log('AI-RESPONSE', 'Raw response', { raw, usage: data.usage });
+
+        const rec = JSON.parse(raw);
+        if (!['hit','stand'].includes(rec.action)) throw new Error('Invalid action in response');
+        S.lastRec = rec;
+        S.lastRecExecuted = false;
+        log('AI-PARSED', 'Recommendation', rec);
+
+        showRecommendation(rec);
+        document.getElementById('btnExecute').disabled = false;
+    } catch (err) {
+        log('AI-ERROR', err.message, err);
+        showToast(`AI Error: ${err.message}`, '');
+        document.getElementById('aiPlaceholder').style.display = 'flex';
+        document.getElementById('aiPlaceholder').querySelector('.icon').textContent = '⚠';
+        document.getElementById('aiPlaceholder').querySelector('div:last-child').textContent = err.message;
+    } finally {
+        loading.classList.remove('visible');
+        content.style.visibility = 'visible';
+        document.getElementById('btnAdvice').disabled = (S.phase !== 'playing');
+    }
+}
+
+function executeRecommendation() {
+    if (!S.lastRec || S.phase !== 'playing') return;
+    S.lastRecExecuted = true;
+    log('AI-EXECUTE', `Executing: ${S.lastRec.action}`);
+    document.getElementById('btnExecute').disabled = true;
+    if (S.lastRec.action === 'hit') playerHit();
+    else playerStand();
+}
+
+function showRecommendation(rec) {
+    document.getElementById('aiPlaceholder').style.display = 'none';
+    const rb = document.getElementById('recBlock');
+    rb.classList.add('visible');
+
+    const ad = document.getElementById('actionDisplay');
+    ad.className = `action-display ${rec.action}`;
+    document.getElementById('actionValue').textContent = rec.action === 'hit' ? 'Hit' : 'Stand';
+
+    const level = S.detailLevel;
+    const confWrap     = document.getElementById('confWrap');
+    const reasonBlock  = document.getElementById('reasoningBlock');
+    const probCtx      = document.getElementById('probContext');
+
+    confWrap.style.display    = (level === 'full') ? 'flex' : 'none';
+    reasonBlock.style.display = 'flex';
+    probCtx.classList.toggle('visible', level === 'full');
+
+    document.getElementById('reasoningText').textContent = rec.reasoning;
+    if (level === 'full') {
+        document.getElementById('confValue').textContent = `${rec.confidence}%`;
+        document.getElementById('confBar').style.width   = `${rec.confidence}%`;
+
+        // Probability context
+        const upCard = S.dealer.find(c => !c.hidden);
+        const ps     = score(S.player);
+        const bustP  = BUST_ON_HIT[ps] ?? 0;
+        const dealerBust = upCard ? (DEALER_BUST[upCard.rank] ?? 20) : 0;
+        document.getElementById('bustProbVal').textContent = `${bustP}%`;
+        document.getElementById('bustBar').style.width     = `${bustP}%`;
+        document.getElementById('dealerBustVal').textContent = `${dealerBust}%`;
+        document.getElementById('dealerBustBar').style.width = `${dealerBust}%`;
+    }
+
+    updateAIAccuracy();
+}
+
+function updateAIAccuracy() {
+    const acc = S.stats.aiRecs > 0
+        ? `${Math.round((S.stats.aiWins / S.stats.aiRecs) * 100)}% (${S.stats.aiWins}/${S.stats.aiRecs})`
+        : '—';
+    document.getElementById('aiAccuracy').textContent = acc;
+}
+
+// ────────────────────────────────────────────────────────
+// STRATEGY MATRIX RENDERING
+// ────────────────────────────────────────────────────────
+function buildMatrix() {
+    const tbl  = document.getElementById('strategyMatrix');
+    const soft = S.phase === 'playing' && isSoft(S.player) && score(S.player) >= 13;
+    const rows = soft ? SOFT_ROWS : HARD_ROWS;
+    const data = soft ? SOFT_TABLE : HARD_TABLE;
+    const badge = document.getElementById('strategyTypeBadge');
+    badge.textContent = soft ? 'Soft' : 'Hard';
+
+    let html = '<thead><tr><th class="row-hdr"></th>';
+    for (const d of DEALER_COLS) html += `<th>${d}</th>`;
+    html += '</tr></thead><tbody>';
+
+    const upCard = S.phase === 'playing' ? S.dealer.find(c => !c.hidden) : null;
+    const ps     = S.phase === 'playing' ? score(S.player) : -1;
+    const curRow = (S.phase === 'playing') ? (soft ? softRowIdx(ps) : hardRowIdx(ps)) : -1;
+    const curCol = upCard ? dealerColIdx(upCard.rank) : -1;
+
+    data.forEach((row, ri) => {
+        html += `<tr><th class="row-hdr">${rows[ri]}</th>`;
+        row.forEach((cell, ci) => {
+            const cls  = cell === 'H' ? 'hit' : cell === 'S' ? 'stand' : 'dbl';
+            const curr = (ri === curRow && ci === curCol) ? ' current' : '';
+            html += `<td class="${cls}${curr}">${cell}</td>`;
+        });
+        html += '</tr>';
+    });
+    html += '</tbody>';
+    tbl.innerHTML = html;
+}
+
+function renderMatrix() {
+    buildMatrix();
+}
+
+// ────────────────────────────────────────────────────────
+// API KEY INPUT
+// ────────────────────────────────────────────────────────
+let _keyDebounce = null;
+document.getElementById('apiKeyInput').addEventListener('input', e => {
+    const key = e.target.value.trim();
+    S.apiKey = null;
+    clearTimeout(_keyDebounce);
+    if (!key) { setStatus('offline', 'No Key'); render(); return; }
+    if (!key.startsWith('sk-')) { setStatus('error', 'Invalid format'); return; }
+    setStatus('checking', 'Verifying…');
+    _keyDebounce = setTimeout(async () => {
+        log('API-KEY', 'Verifying key with API…');
+        try {
+            const res = await fetch('https://api.openai.com/v1/models', {
+                headers: { 'Authorization': `Bearer ${key}` },
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            S.apiKey = key;
+            setStatus('connected', 'Connected');
+            log('API-KEY', 'Key verified.');
+            showToast('API key verified — AI advisor ready!', 'win');
+            render();
+        } catch (err) {
+            setStatus('error', 'Auth failed');
+            log('API-KEY-ERROR', 'Verification failed', err.message);
+            showToast(`Verification failed: ${err.message}`, '');
+        }
+    }, 600);
+});
+
+function setStatus(cls, text) {
+    document.getElementById('statusBadge').className = `status-badge ${cls}`;
+    document.getElementById('statusText').textContent = text;
+}
+
+// ────────────────────────────────────────────────────────
+// PANEL TABS
+// ────────────────────────────────────────────────────────
+function switchTab(tab) {
+    S.activeTab = tab;
+    document.querySelectorAll('.panel-tab').forEach(b => {
+        b.classList.toggle('active', b.dataset.tab === tab);
+    });
+    document.getElementById('advisorTab').style.display   = tab === 'advisor'   ? 'flex' : 'none';
+    document.getElementById('analyticsTab').style.display = tab === 'analytics' ? 'flex' : 'none';
+    if (tab === 'analytics') { updateAnalyticsTab(); }
+}
+
+// ────────────────────────────────────────────────────────
+// DETAIL LEVEL
+// ────────────────────────────────────────────────────────
+function setDetailLevel(level) {
+    S.detailLevel = level;
+    document.querySelectorAll('.detail-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.level === level);
+    });
+    if (S.lastRec) showRecommendation(S.lastRec);
+    log('DETAIL', `Level: ${level}`);
+}
+
+// ────────────────────────────────────────────────────────
+// RENDER
+// ────────────────────────────────────────────────────────
+function render() {
+    renderHand('playerHand', S.player);
+    renderHand('dealerHand', S.dealer);
+    updateScores();
+    updateButtons();
+    updateBetUI();
+    updateStatsUI();
+    updateSparkline();
+    buildMatrix();
+    if (S.activeTab === 'analytics') updateAnalyticsTab();
+}
+
+function renderHand(id, hand) {
+    const el = document.getElementById(id);
+    el.innerHTML = '';
+    for (const c of hand) el.appendChild(makeCardEl(c));
+}
+
+function makeCardEl(c) {
+    const div = document.createElement('div');
+    if (c.hidden) { div.className = 'card face-down'; return div; }
+    const isRed = c.suit === '♥' || c.suit === '♦';
+    div.className = `card ${isRed ? 'red' : 'black'}`;
+    div.innerHTML = `
+        <div class="card-corner">
+            <div class="card-rank">${c.rank}</div>
+            <div class="card-suit-small">${c.suit}</div>
+        </div>
+        <div class="card-center">${c.suit}</div>
+        <div class="card-corner bottom">
+            <div class="card-rank">${c.rank}</div>
+            <div class="card-suit-small">${c.suit}</div>
+        </div>`;
+    return div;
+}
+
+function updateScores() {
+    const ps = S.player.length ? score(S.player) : null;
+    const visDealer = S.dealer.filter(c => !c.hidden);
+    const ds = visDealer.length ? score(visDealer) : null;
+
+    const pEl = document.getElementById('playerScore');
+    const dEl = document.getElementById('dealerScore');
+
+    if (ps === null) { pEl.textContent = '—'; pEl.className = 'score-badge'; }
+    else {
+        pEl.textContent = ps;
+        pEl.className = 'score-badge' + (ps > 21 ? ' bust' : (isBlackjack(S.player) ? ' blackjack' : ''));
+    }
+    if (ds === null) { dEl.textContent = '—'; dEl.className = 'score-badge'; }
+    else {
+        dEl.textContent = ds;
+        dEl.className = 'score-badge' + (ds > 21 ? ' bust' : '');
+    }
+}
+
+function updateButtons() {
+    const playing = S.phase === 'playing';
+    const betting = S.phase === 'betting';
+    document.getElementById('btnHit').disabled   = !playing;
+    document.getElementById('btnStand').disabled = !playing;
+    document.getElementById('btnAdvice').disabled  = !playing || !S.apiKey;
+    document.getElementById('btnExecute').disabled = !(playing && S.lastRec && !S.lastRecExecuted);
+    document.getElementById('betMinus').disabled = !betting;
+    document.getElementById('betPlus').disabled  = !betting;
+    document.getElementById('betInput').disabled = !betting;
+
+    const dealBtn = document.getElementById('btnDeal');
+    if (S.phase === 'round-over') {
+        dealBtn.textContent = 'New Hand';
+        dealBtn.disabled = false;
+        dealBtn.onclick = resetRound;
+    } else {
+        dealBtn.textContent = 'Deal';
+        dealBtn.disabled = !betting;
+        dealBtn.onclick = dealRound;
+    }
+}
+
+function updateBetUI() {
+    document.getElementById('betInput').value            = S.bet;
+    document.getElementById('balanceSmall').textContent  = `$${S.balance.toLocaleString()}`;
+    document.getElementById('balanceDisplay').textContent = `$${S.balance.toLocaleString()}`;
+}
+
+function updateStatsUI() {
+    const st = S.stats;
+    document.getElementById('statHands').textContent  = st.hands;
+    document.getElementById('statWins').textContent   = st.wins;
+    document.getElementById('statLosses').textContent = st.losses;
+    document.getElementById('statPushes').textContent = st.pushes;
+    document.getElementById('statBJ').textContent     = st.blackjacks;
+    document.getElementById('statWinRate').textContent = st.hands > 0
+        ? `${Math.round((st.wins / st.hands) * 100)}%` : '—';
+}
+
+// ────────────────────────────────────────────────────────
+// SPARKLINE (footer)
+// ────────────────────────────────────────────────────────
+function updateSparkline() {
+    drawLineChart(document.getElementById('sparkline'), S.balanceHistory, '#d4a843', CFG.STARTING_BALANCE);
+}
+
+function drawLineChart(canvas, data, color, refLine) {
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0, 0, W, H);
+    if (data.length < 2) return;
+
+    const min = Math.min(...data, refLine ?? Infinity) - 20;
+    const max = Math.max(...data, refLine ?? -Infinity) + 20;
+    const range = max - min || 1;
+
+    const toY = v => H - ((v - min) / range) * (H - 6) - 3;
+    const toX = (i, len) => (i / (len - 1)) * W;
+    const pts = data.map((v, i) => ({ x: toX(i, data.length), y: toY(v) }));
+
+    // Reference line
+    if (refLine !== undefined) {
+        const ry = toY(refLine);
+        ctx.beginPath(); ctx.moveTo(0, ry); ctx.lineTo(W, ry);
+        ctx.strokeStyle = 'rgba(255,255,255,.1)'; ctx.lineWidth = 1; ctx.setLineDash([4,4]);
+        ctx.stroke(); ctx.setLineDash([]);
+    }
+    // Fill
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, H);
+    for (const p of pts) ctx.lineTo(p.x, p.y);
+    ctx.lineTo(pts.at(-1).x, H); ctx.closePath();
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, color.replace(')', ',.3)').replace('rgb', 'rgba'));
+    grad.addColorStop(1, color.replace(')', ',0)').replace('rgb', 'rgba'));
+    ctx.fillStyle = color + '4d'; // ~30% alpha
+    ctx.fill();
+    // Line
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (const p of pts.slice(1)) ctx.lineTo(p.x, p.y);
+    ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.lineJoin = 'round'; ctx.stroke();
+    // End dot
+    const last = pts.at(-1);
+    ctx.beginPath(); ctx.arc(last.x, last.y, 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = color; ctx.fill();
+}
+
+// ────────────────────────────────────────────────────────
+// ANALYTICS TAB
+// ────────────────────────────────────────────────────────
+function updateAnalyticsTab() {
+    const placeholder = document.getElementById('analyticsPlaceholder');
+    const content     = document.getElementById('analyticsContent');
+
+    if (S.stats.hands < 2) {
+        placeholder.style.display = 'flex';
+        content.style.display     = 'none';
+        return;
+    }
+    placeholder.style.display = 'none';
+    content.style.display     = 'flex';
+
+    // Win rate chart — cumulative win rate per hand
+    const wrData = S.winHistory.map((_, i) => {
+        const slice = S.winHistory.slice(0, i + 1);
+        return Math.round((slice.reduce((a, b) => a + b, 0) / slice.length) * 100);
+    });
+    drawWinRateChart(wrData);
+
+    // Bankroll chart
+    const bkCanvas = document.getElementById('bankrollChart');
+    drawLineChart(bkCanvas, S.balanceHistory, '#d4a843', CFG.STARTING_BALANCE);
+
+    // Decision quality
+    const aiFollowRate = S.aiAdvisedHands > 0
+        ? Math.round((S.aiFollowedHands / S.aiAdvisedHands) * 100) : 0;
+    const aiWinPct = S.aiFollowedHands > 0
+        ? Math.round((S.aiFollowedWins / S.aiFollowedHands) * 100) : null;
+    const manWinPct = S.aiNotFollowedHands > 0
+        ? Math.round((S.aiNotFollowedWins / S.aiNotFollowedHands) * 100) : null;
+
+    document.getElementById('dqAIVal').textContent      = aiWinPct   !== null ? `${aiWinPct}%`   : '—';
+    document.getElementById('dqManualVal').textContent  = manWinPct  !== null ? `${manWinPct}%`  : '—';
+    document.getElementById('dqFollowVal').textContent  = S.aiAdvisedHands > 0 ? `${aiFollowRate}%` : '—';
+
+    document.getElementById('dqAIBar').style.width      = aiWinPct   !== null ? `${aiWinPct}%`   : '0%';
+    document.getElementById('dqManualBar').style.width  = manWinPct  !== null ? `${manWinPct}%`  : '0%';
+    document.getElementById('dqFollowBar').style.width  = `${aiFollowRate}%`;
+}
+
+function drawWinRateChart(data) {
+    const canvas = document.getElementById('winRateChart');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0, 0, W, H);
+    if (data.length < 2) return;
+
+    // 50% reference line
+    const toY = v => H - (v / 100) * (H - 8) - 4;
+    const toX = (i) => (i / (data.length - 1)) * W;
+    const pts = data.map((v, i) => ({ x: toX(i), y: toY(v) }));
+
+    // 50% line
+    const ry = toY(50);
+    ctx.beginPath(); ctx.moveTo(0, ry); ctx.lineTo(W, ry);
+    ctx.strokeStyle = 'rgba(255,255,255,.1)'; ctx.lineWidth = 1; ctx.setLineDash([4,4]);
+    ctx.stroke(); ctx.setLineDash([]);
+
+    // Axis label 50%
+    ctx.fillStyle = 'rgba(255,255,255,.2)'; ctx.font = '7px JetBrains Mono'; ctx.textAlign = 'left';
+    ctx.fillText('50%', 2, ry - 2);
+
+    // Color: above 50% = green, below = red
+    // We'll just use a fixed teal color for the line
+    const last = data.at(-1);
+    const lineColor = last >= 50 ? '#7fe8b0' : '#e87a5a';
+
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, H);
+    for (const p of pts) ctx.lineTo(p.x, p.y);
+    ctx.lineTo(pts.at(-1).x, H); ctx.closePath();
+    ctx.fillStyle = last >= 50 ? 'rgba(127,232,176,.15)' : 'rgba(232,122,90,.12)';
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (const p of pts.slice(1)) ctx.lineTo(p.x, p.y);
+    ctx.strokeStyle = lineColor; ctx.lineWidth = 1.5; ctx.lineJoin = 'round'; ctx.stroke();
+
+    const lp = pts.at(-1);
+    ctx.beginPath(); ctx.arc(lp.x, lp.y, 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = lineColor; ctx.fill();
+
+    // Current value label
+    ctx.fillStyle = lineColor; ctx.font = 'bold 8px JetBrains Mono'; ctx.textAlign = 'right';
+    ctx.fillText(`${last}%`, W - 2, lp.y - 4);
+}
+
+// ────────────────────────────────────────────────────────
+// RESULT OVERLAY
+// ────────────────────────────────────────────────────────
+const RESULT_INFO = {
+    win:       { text: 'You Win',     color: '#7fe8b0' },
+    lose:      { text: 'Dealer Wins', color: '#e07070' },
+    push:      { text: 'Push',        color: '#d4a843' },
+    blackjack: { text: 'Blackjack!',  color: '#f5d060' },
+};
+function showResultOverlay(r) {
+    const t = document.getElementById('resultText');
+    t.textContent = RESULT_INFO[r].text;
+    t.style.color = RESULT_INFO[r].color;
+    document.getElementById('roundResult').classList.add('show');
+}
+function hideResultOverlay() {
+    document.getElementById('roundResult').classList.remove('show');
+}
+
+// ────────────────────────────────────────────────────────
+// TOAST
+// ────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg, cls) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = `toast ${cls} show`;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.className = `toast ${cls}`; }, 2800);
+}
+
+// ────────────────────────────────────────────────────────
+// HELPERS
+// ────────────────────────────────────────────────────────
+function cardStr(c)  { return `${c.rank}${c.suit}`; }
+function handStr(h)  { return h.map(c => c.hidden ? '[?]' : cardStr(c)).join(' '); }
+
+// ────────────────────────────────────────────────────────
+// INIT
+// ────────────────────────────────────────────────────────
+(function init() {
+    S.deck = shuffle(freshDeck());
+    log('INIT', `Game initialized. Balance: $${S.balance}. Deck: ${S.deck.length} cards.`);
+    buildMatrix();
+    render();
+})();
+</script>
+</body>
+</html>
