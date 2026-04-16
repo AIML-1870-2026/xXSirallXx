@@ -781,6 +781,7 @@ const S = {
     activeTab: 'advisor',
     lastRec: null,           // { action, confidence, reasoning }
     lastRecExecuted: false,
+    autoAdvice: false,       // keep advising automatically each turn
     roundResult: null,
     stats: { hands:0, wins:0, losses:0, pushes:0, blackjacks:0, aiRecs:0, aiWins:0 },
     balanceHistory: [CFG.STARTING_BALANCE],
@@ -912,6 +913,7 @@ function dealRound() {
     S.balance -= S.bet;
     S.lastRec = null;
     S.lastRecExecuted = false;
+    S.autoAdvice = false;
     S.roundResult = null;
     log('DEAL', 'Cards dealt', {
         player: handStr(S.player), dealer: `${cardStr(S.dealer[0])} [hidden]`,
@@ -934,6 +936,7 @@ function playerHit() {
     if (isBust(S.player)) { log('BUST', 'Player busted!'); endRound('lose'); return; }
     render();
     renderMatrix(); // update matrix highlight after new card
+    if (S.autoAdvice) getAIAdvice();
 }
 
 function playerStand() {
@@ -1083,6 +1086,7 @@ Respond ONLY with valid JSON — no markdown fences, no extra text:
 async function getAIAdvice() {
     if (!S.apiKey) { showToast('Enter your OpenAI API key first.', ''); return; }
     if (S.phase !== 'playing') return;
+    S.autoAdvice = true;
 
     const loading = document.getElementById('aiLoading');
     const content = document.getElementById('aiContent');
