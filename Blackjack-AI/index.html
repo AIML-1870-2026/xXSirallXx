@@ -913,7 +913,6 @@ function dealRound() {
     S.balance -= S.bet;
     S.lastRec = null;
     S.lastRecExecuted = false;
-    S.autoAdvice = false;
     S.roundResult = null;
     log('DEAL', 'Cards dealt', {
         player: handStr(S.player), dealer: `${cardStr(S.dealer[0])} [hidden]`,
@@ -927,6 +926,7 @@ function dealRound() {
     }
     S.phase = 'playing';
     render();
+    if (S.autoAdvice) getAIAdvice();
 }
 
 function playerHit() {
