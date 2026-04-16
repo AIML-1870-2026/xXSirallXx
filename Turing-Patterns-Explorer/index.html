@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beta-Oxidation Pathway Simulator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --fatty-acyl: #FF6B6B;
+            --enoyl: #FFA94D;
+            --hydroxy: #FFE066;
+            --keto: #69DB7C;
+            --acetyl: #4DABF7;
+            --energy: #DA77F2;
+            --background: #1A1B26;
+            --panel: #24283B;
+            --panel-light: #2F3549;
+            --accent: #7AA2F7;
+            --text: #C0CAF5;
+            --text-dim: #565F89;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--background);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        header {
+            background: var(--panel);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--panel-light);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .icon-btn {
+            background: var(--panel-light);
+            border: none;
+            color: var(--text);
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+
+        .icon-btn:hover {
+            background: var(--accent);
+            color: var(--background);
+        }
+
+        main {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 1rem;
+            padding: 1rem;
+            height: calc(100vh - 70px);
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            overflow-y: auto;
+        }
+
+        .panel {
+            background: var(--panel);
+            border-radius: 12px;
+            padding: 1rem;
+        }
+
+        .panel-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-dim);
+            margin-bottom: 0.75rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .pathway-diagram {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.15rem;
+        }
+
+        .metabolite {
+            background: var(--panel-light);
+            padding: 0.4rem 0.75rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            width: 100%;
+            text-align: center;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .metabolite:hover {
+            transform: scale(1.02);
+        }
+
+        .metabolite.active {
+            box-shadow: 0 0 15px currentColor;
+        }
+
+        .metabolite-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .metabolite-name {
+            flex: 1;
+            text-align: left;
+        }
+
+        .metabolite-value {
+            font-family: monospace;
+            font-size: 0.7rem;
+            opacity: 0.7;
+            min-width: 45px;
+            text-align: right;
+        }
+
+        .metabolite.fatty-acyl { border-left: 3px solid var(--fatty-acyl); }
+        .metabolite.enoyl { border-left: 3px solid var(--enoyl); }
+        .metabolite.hydroxy { border-left: 3px solid var(--hydroxy); }
+        .metabolite.keto { border-left: 3px solid var(--keto); }
+        .metabolite.acetyl { border-left: 3px solid var(--acetyl); }
+        .metabolite.energy { border-left: 3px solid var(--energy); }
+
+        .enzyme-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.2rem 0;
+            width: 100%;
+        }
+
+        .enzyme {
+            background: var(--panel-light);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .enzyme:hover {
+            background: var(--accent);
+            color: var(--background);
+        }
+
+        .enzyme.active {
+            background: var(--accent);
+            color: var(--background);
+            box-shadow: 0 0 10px var(--accent);
+        }
+
+        .arrow {
+            color: var(--text-dim);
+            font-size: 0.8rem;
+        }
+
+        .cofactor {
+            font-size: 0.6rem;
+            color: var(--energy);
+            opacity: 0.8;
+        }
+
+        .canvas-container {
+            position: relative;
+            background: var(--panel);
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .canvas-tabs {
+            display: flex;
+            gap: 0.25rem;
+            padding: 0.5rem;
+            background: var(--panel-light);
+            border-radius: 8px 8px 0 0;
+            margin: 0.5rem 0.5rem 0 0.5rem;
+        }
+
+        .canvas-tab {
+            background: transparent;
+            border: none;
+            color: var(--text-dim);
+            padding: 0.4rem 0.75rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: all 0.2s;
+        }
+
+        .canvas-tab:hover {
+            background: var(--panel);
+            color: var(--text);
+        }
+
+        .canvas-tab.active {
+            background: var(--panel);
+            color: var(--accent);
+        }
+
+        .canvas-wrapper {
+            flex: 1;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.5rem;
+        }
+
+        #simulation-canvas {
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+            image-rendering: pixelated;
+            border-radius: 8px;
+        }
+
+        .canvas-overlay {
+            position: absolute;
+            bottom: 1rem;
+            left: 1rem;
+            right: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: none;
+        }
+
+        .stats {
+            background: rgba(26, 27, 38, 0.9);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            font-family: monospace;
+        }
+
+        .controls-bar {
+            position: absolute;
+            top: 4rem;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 0.5rem;
+            background: rgba(26, 27, 38, 0.9);
+            padding: 0.5rem;
+            border-radius: 12px;
+            pointer-events: auto;
+        }
+
+        .control-btn {
+            background: var(--panel-light);
+            border: none;
+            color: var(--text);
+            padding: 0.4rem 0.75rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .control-btn:hover {
+            background: var(--accent);
+            color: var(--background);
+        }
+
+        .presets {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.4rem;
+        }
+
+        .preset-btn {
+            background: var(--panel-light);
+            border: 1px solid transparent;
+            color: var(--text);
+            padding: 0.35rem 0.3rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.65rem;
+            transition: all 0.2s;
+            text-align: center;
+            line-height: 1.2;
+        }
+
+        .preset-btn:hover {
+            border-color: var(--accent);
+            background: var(--panel-light);
+        }
+
+        .preset-btn.active {
+            background: var(--accent);
+            color: var(--background);
+            border-color: var(--accent);
+        }
+
+        .preset-btn[title]:hover::after {
+            content: attr(title);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--panel);
+            border: 1px solid var(--accent);
+            padding: 0.5rem;
+            border-radius: 6px;
+            font-size: 0.65rem;
+            white-space: nowrap;
+            z-index: 100;
+            max-width: 200px;
+            white-space: normal;
+        }
+
+        .slider-group {
+            margin-bottom: 0.75rem;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            margin-bottom: 0.2rem;
+        }
+
+        .slider-value {
+            color: var(--accent);
+            font-family: monospace;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
+            border-radius: 2px;
+            background: var(--panel-light);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+        }
+
+        .color-legend {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.4rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.65rem;
+        }
+
+        .legend-color {
+            width: 10px;
+            height: 10px;
+            border-radius: 2px;
+        }
+
+        .tooltip {
+            position: fixed;
+            background: var(--panel);
+            border: 1px solid var(--accent);
+            padding: 0.75rem;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            max-width: 280px;
+            pointer-events: none;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.2s;
+            line-height: 1.4;
+        }
+
+        .tooltip.visible {
+            opacity: 1;
+        }
+
+        .tooltip-title {
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: 0.3rem;
+        }
+
+        .inject-selector {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.3rem;
+        }
+
+        .inject-btn {
+            background: var(--panel-light);
+            border: 2px solid transparent;
+            color: var(--text);
+            padding: 0.3rem 0.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.65rem;
+            transition: all 0.2s;
+        }
+
+        .inject-btn:hover {
+            opacity: 0.8;
+        }
+
+        .inject-btn.active {
+            border-color: currentColor;
+        }
+
+        .inject-btn.fatty-acyl { background: var(--fatty-acyl); color: #000; }
+        .inject-btn.enoyl { background: var(--enoyl); color: #000; }
+        .inject-btn.hydroxy { background: var(--hydroxy); color: #000; }
+        .inject-btn.keto { background: var(--keto); color: #000; }
+        .inject-btn.acetyl { background: var(--acetyl); color: #000; }
+
+        @media (max-width: 900px) {
+            main {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr;
+            }
+            .sidebar {
+                flex-direction: row;
+                overflow-x: auto;
+            }
+            .panel {
+                min-width: 250px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <span>&#129516;</span>
+            <span>Beta-Oxidation Pathway Simulator</span>
+        </div>
+        <div class="header-actions">
+            <button class="icon-btn" id="help-btn" title="Help">?</button>
+            <button class="icon-btn" id="share-btn" title="Share">&#8599;</button>
+        </div>
+    </header>
+
+    <main>
+        <aside class="sidebar">
+            <div class="panel">
+                <div class="panel-title">
+                    <span>Beta-Oxidation Pathway</span>
+                    <span style="font-size:0.6rem; color:var(--text-dim)">Live Concentrations</span>
+                </div>
+                <div class="pathway-diagram">
+                    <!-- Fatty Acyl-CoA -->
+                    <div class="metabolite fatty-acyl" data-metabolite="fattyAcyl" data-info="Fatty Acyl-CoA|Long-chain fatty acid (C16) activated with Coenzyme A. This is the substrate that enters the mitochondrial matrix for oxidation.">
+                        <div class="metabolite-color" style="background: var(--fatty-acyl)"></div>
+                        <span class="metabolite-name">Fatty Acyl-CoA</span>
+                        <span class="metabolite-value" id="val-fattyAcyl">0.00</span>
+                    </div>
+
+                    <div class="enzyme-row">
+                        <span class="arrow">&#8595;</span>
+                        <button class="enzyme" data-enzyme="ACAD" data-info="Acyl-CoA Dehydrogenase|Catalyzes the first step: introduces a trans double bond between C2 and C3. Uses FAD as cofactor, producing FADH2.">ACAD</button>
+                        <span class="cofactor">+FAD &#8594; FADH&#8322;</span>
+                    </div>
+
+                    <!-- Enoyl-CoA -->
+                    <div class="metabolite enoyl" data-metabolite="enoyl" data-info="trans-&#916;&#178;-Enoyl-CoA|First intermediate with a trans double bond between carbons 2 and 3. Ready for hydration.">
+                        <div class="metabolite-color" style="background: var(--enoyl)"></div>
+                        <span class="metabolite-name">Enoyl-CoA</span>
+                        <span class="metabolite-value" id="val-enoyl">0.00</span>
+                    </div>
+
+                    <div class="enzyme-row">
+                        <span class="arrow">&#8595;</span>
+                        <button class="enzyme" data-enzyme="ECH" data-info="Enoyl-CoA Hydratase|Adds water across the double bond (hydration). Stereospecific: produces L-3-hydroxyacyl-CoA.">ECH</button>
+                        <span class="cofactor">+H&#8322;O</span>
+                    </div>
+
+                    <!-- Hydroxyacyl-CoA -->
+                    <div class="metabolite hydroxy" data-metabolite="hydroxy" data-info="L-3-Hydroxyacyl-CoA|Hydroxylated intermediate. The hydroxyl group on C3 will be oxidized in the next step.">
+                        <div class="metabolite-color" style="background: var(--hydroxy)"></div>
+                        <span class="metabolite-name">3-Hydroxyacyl-CoA</span>
+                        <span class="metabolite-value" id="val-hydroxy">0.00</span>
+                    </div>
+
+                    <div class="enzyme-row">
+                        <span class="arrow">&#8595;</span>
+                        <button class="enzyme" data-enzyme="HADH" data-info="3-Hydroxyacyl-CoA Dehydrogenase|Oxidizes the hydroxyl group to a ketone. Uses NAD+ as cofactor, producing NADH.">HADH</button>
+                        <span class="cofactor">+NAD&#8314; &#8594; NADH</span>
+                    </div>
+
+                    <!-- Ketoacyl-CoA -->
+                    <div class="metabolite keto" data-metabolite="keto" data-info="3-Ketoacyl-CoA|Has a ketone group on C3. This activates the molecule for thiolytic cleavage.">
+                        <div class="metabolite-color" style="background: var(--keto)"></div>
+                        <span class="metabolite-name">3-Ketoacyl-CoA</span>
+                        <span class="metabolite-value" id="val-keto">0.00</span>
+                    </div>
+
+                    <div class="enzyme-row">
+                        <span class="arrow">&#8595;</span>
+                        <button class="enzyme" data-enzyme="KAT" data-info="3-Ketoacyl-CoA Thiolase|Cleaves the molecule using CoA-SH. Releases one Acetyl-CoA and a shortened Acyl-CoA (2 carbons less).">KAT</button>
+                        <span class="cofactor">+CoA-SH</span>
+                    </div>
+
+                    <!-- Acetyl-CoA -->
+                    <div class="metabolite acetyl" data-metabolite="acetyl" data-info="Acetyl-CoA|2-carbon unit that enters the Citric Acid Cycle (Krebs cycle) for complete oxidation to CO2, generating more ATP.">
+                        <div class="metabolite-color" style="background: var(--acetyl)"></div>
+                        <span class="metabolite-name">Acetyl-CoA</span>
+                        <span class="metabolite-value" id="val-acetyl">0.00</span>
+                    </div>
+
+                    <!-- Energy Output -->
+                    <div class="metabolite energy" data-metabolite="energy" data-info="Energy Carriers (FADH2 + NADH)|Each cycle produces 1 FADH2 (~1.5 ATP) and 1 NADH (~2.5 ATP). These enter the electron transport chain.">
+                        <div class="metabolite-color" style="background: var(--energy)"></div>
+                        <span class="metabolite-name">Energy (FADH&#8322;+NADH)</span>
+                        <span class="metabolite-value" id="val-energy">0.00</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">Inject Metabolite</div>
+                <div class="inject-selector">
+                    <button class="inject-btn fatty-acyl active" data-inject="fattyAcyl">Fatty Acyl</button>
+                    <button class="inject-btn enoyl" data-inject="enoyl">Enoyl</button>
+                    <button class="inject-btn hydroxy" data-inject="hydroxy">Hydroxy</button>
+                    <button class="inject-btn keto" data-inject="keto">Keto</button>
+                    <button class="inject-btn acetyl" data-inject="acetyl">Acetyl</button>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">Metabolic States</div>
+                <div class="presets">
+                    <button class="preset-btn active" data-preset="fedState" title="Post-meal: normal substrate availability, balanced enzyme activity">Fed State</button>
+                    <button class="preset-btn" data-preset="fasting" title="Prolonged fasting: upregulated enzymes, high fatty acid mobilization">Fasting</button>
+                    <button class="preset-btn" data-preset="mcadDeficiency" title="MCAD deficiency: impaired medium-chain oxidation, substrate accumulation">MCAD Deficiency</button>
+                    <button class="preset-btn" data-preset="carnitineBlock" title="CPT-II/Carnitine deficiency: blocked fatty acid entry into mitochondria">Carnitine Block</button>
+                    <button class="preset-btn" data-preset="ketogenesis" title="Diabetic ketoacidosis: excess acetyl-CoA, impaired TCA entry">Ketogenesis</button>
+                    <button class="preset-btn" data-preset="exercise" title="Intense exercise: maximal flux, high ATP demand">Exercise</button>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">Enzyme Activity (Vmax)</div>
+                <div class="slider-group">
+                    <div class="slider-label">
+                        <span>ACAD</span>
+                        <span class="slider-value" id="vmax-acad">1.00</span>
+                    </div>
+                    <input type="range" id="slider-acad" min="0" max="2" step="0.01" value="1">
+                </div>
+                <div class="slider-group">
+                    <div class="slider-label">
+                        <span>ECH</span>
+                        <span class="slider-value" id="vmax-ech">1.00</span>
+                    </div>
+                    <input type="range" id="slider-ech" min="0" max="2" step="0.01" value="1">
+                </div>
+                <div class="slider-group">
+                    <div class="slider-label">
+                        <span>HADH</span>
+                        <span class="slider-value" id="vmax-hadh">1.00</span>
+                    </div>
+                    <input type="range" id="slider-hadh" min="0" max="2" step="0.01" value="1">
+                </div>
+                <div class="slider-group">
+                    <div class="slider-label">
+                        <span>KAT</span>
+                        <span class="slider-value" id="vmax-kat">1.00</span>
+                    </div>
+                    <input type="range" id="slider-kat" min="0" max="2" step="0.01" value="1">
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">Simulation</div>
+                <div class="slider-group">
+                    <div class="slider-label">
+                        <span>Substrate Input Rate</span>
+                        <span class="slider-value" id="val-feed">0.02</span>
+                    </div>
+                    <input type="range" id="slider-feed" min="0" max="0.1" step="0.001" value="0.02">
+                </div>
+                <div class="slider-group">
+                    <div class="slider-label">
+                        <span>Product Removal Rate</span>
+                        <span class="slider-value" id="val-removal">0.02</span>
+                    </div>
+                    <input type="range" id="slider-removal" min="0" max="0.1" step="0.001" value="0.02">
+                </div>
+            </div>
+        </aside>
+
+        <div class="canvas-container">
+            <div class="canvas-tabs">
+                <button class="canvas-tab active" data-view="composite">All Metabolites</button>
+                <button class="canvas-tab" data-view="fattyAcyl">Fatty Acyl</button>
+                <button class="canvas-tab" data-view="enoyl">Enoyl</button>
+                <button class="canvas-tab" data-view="hydroxy">Hydroxy</button>
+                <button class="canvas-tab" data-view="keto">Keto</button>
+                <button class="canvas-tab" data-view="acetyl">Acetyl</button>
+                <button class="canvas-tab" data-view="energy">Energy</button>
+            </div>
+            <div class="canvas-wrapper">
+                <canvas id="simulation-canvas"></canvas>
+                <div class="controls-bar">
+                    <button class="control-btn" id="play-btn">
+                        <span id="play-icon">&#9616;&#9616;</span>
+                        <span id="play-text">Pause</span>
+                    </button>
+                    <button class="control-btn" id="reset-btn">&#8634; Reset</button>
+                    <button class="control-btn" id="clear-btn">&#9723; Clear</button>
+                </div>
+                <div class="canvas-overlay">
+                    <div class="stats">
+                        <span id="fps-counter">60 FPS</span> |
+                        <span id="iteration-counter">0 cycles</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        // ============================================
+        // BETA-OXIDATION PATHWAY SIMULATOR
+        // Multi-species reaction-diffusion model
+        // ============================================
+
+        const canvas = document.getElementById('simulation-canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Simulation grid size
+        const W = 200;
+        const H = 200;
+
+        // Metabolite species (6 total)
+        const SPECIES = ['fattyAcyl', 'enoyl', 'hydroxy', 'keto', 'acetyl', 'energy'];
+
+        // Concentration grids for each species
+        let grids = {};
+        let nextGrids = {};
+
+        // Diffusion coefficients (larger molecules diffuse slower)
+        const DIFFUSION = {
+            fattyAcyl: 0.08,  // Large molecule, slow diffusion
+            enoyl: 0.10,
+            hydroxy: 0.10,
+            keto: 0.10,
+            acetyl: 0.15,     // Small, diffuses faster
+            energy: 0.20      // Small carriers, fast diffusion
+        };
+
+        // Colors for each metabolite (RGB)
+        const COLORS = {
+            fattyAcyl: [255, 107, 107],  // Coral red
+            enoyl: [255, 169, 77],       // Orange
+            hydroxy: [255, 224, 102],    // Yellow
+            keto: [105, 219, 124],       // Green
+            acetyl: [77, 171, 247],      // Blue
+            energy: [218, 119, 242]      // Purple
+        };
+
+        // Enzyme kinetics parameters
+        let enzymes = {
+            ACAD: { vmax: 1.0, km: 0.3 },   // Fatty Acyl -> Enoyl + Energy
+            ECH: { vmax: 1.0, km: 0.2 },    // Enoyl -> Hydroxy
+            HADH: { vmax: 1.0, km: 0.25 },  // Hydroxy -> Keto + Energy
+            KAT: { vmax: 1.0, km: 0.3 }     // Keto -> Acetyl (+ recycle to Fatty Acyl)
+        };
+
+        // Simulation parameters
+        let params = {
+            feedRate: 0.02,      // Rate of fatty acid input
+            removalRate: 0.02,  // Rate of acetyl-CoA removal (entering TCA)
+            dt: 0.5              // Time step
+        };
+
+        // Presets for different metabolic states
+        // Each preset represents a clinically/physiologically relevant condition
+        const presets = {
+            // Fed State: Post-meal, normal insulin signaling
+            // Balanced flux, fatty acids available but not prioritized
+            fedState: {
+                ACAD: 1.0, ECH: 1.0, HADH: 1.0, KAT: 1.0,
+                feedRate: 0.02, removalRate: 0.025,
+                description: "Post-meal state with balanced substrate flow"
+            },
+            // Fasting: 12-24h without food
+            // PPAR-alpha activation upregulates all beta-oxidation enzymes
+            // High lipolysis provides abundant fatty acids
+            fasting: {
+                ACAD: 1.6, ECH: 1.3, HADH: 1.4, KAT: 1.5,
+                feedRate: 0.06, removalRate: 0.015,
+                description: "Prolonged fasting with upregulated enzymes"
+            },
+            // MCAD Deficiency: Medium-Chain Acyl-CoA Dehydrogenase deficiency
+            // Most common inherited fatty acid oxidation disorder
+            // Cannot process C6-C12 fatty acids efficiently
+            mcadDeficiency: {
+                ACAD: 0.15, ECH: 1.0, HADH: 1.0, KAT: 0.8,
+                feedRate: 0.035, removalRate: 0.02,
+                description: "MCAD deficiency: toxic accumulation of medium-chain acyl-CoAs"
+            },
+            // Carnitine Shuttle Block: CPT-II deficiency or carnitine deficiency
+            // Fatty acids cannot enter mitochondrial matrix
+            // Starves beta-oxidation of substrate
+            carnitineBlock: {
+                ACAD: 1.0, ECH: 1.0, HADH: 1.0, KAT: 1.0,
+                feedRate: 0.005, removalRate: 0.03,
+                description: "CPT-II/Carnitine deficiency: blocked mitochondrial entry"
+            },
+            // Ketogenesis: Diabetic ketoacidosis or prolonged starvation
+            // Acetyl-CoA accumulates faster than TCA can consume
+            // Drives ketone body synthesis
+            ketogenesis: {
+                ACAD: 1.4, ECH: 1.2, HADH: 1.3, KAT: 1.6,
+                feedRate: 0.07, removalRate: 0.008,
+                description: "Excess acetyl-CoA accumulation, ketone body formation"
+            },
+            // Exercise: High-intensity physical activity
+            // Maximum flux through pathway, high ATP demand
+            // Electron transport chain rapidly consumes NADH/FADH2
+            exercise: {
+                ACAD: 1.9, ECH: 1.6, HADH: 1.7, KAT: 1.9,
+                feedRate: 0.085, removalRate: 0.07,
+                description: "Maximal oxidative flux during intense exercise"
+            }
+        };
+
+        let isRunning = true;
+        let iterations = 0;
+        let lastTime = performance.now();
+        let frameCount = 0;
+        let currentView = 'composite';
+        let injectSpecies = 'fattyAcyl';
+
+        // Initialize grids
+        function initGrids() {
+            SPECIES.forEach(species => {
+                grids[species] = [];
+                nextGrids[species] = [];
+                for (let y = 0; y < H; y++) {
+                    grids[species][y] = new Float32Array(W);
+                    nextGrids[species][y] = new Float32Array(W);
+                }
+            });
+
+            // Add initial fatty acyl-CoA in center region
+            addMetabolite('fattyAcyl', W/2, H/2, 30, 1.0);
+
+            // Add some scattered seeds
+            for (let i = 0; i < 8; i++) {
+                const x = 30 + Math.random() * (W - 60);
+                const y = 30 + Math.random() * (H - 60);
+                addMetabolite('fattyAcyl', x, y, 10 + Math.random() * 15, 0.8);
+            }
+
+            iterations = 0;
+        }
+
+        function addMetabolite(species, cx, cy, radius, amount) {
+            for (let dy = -radius; dy <= radius; dy++) {
+                for (let dx = -radius; dx <= radius; dx++) {
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < radius) {
+                        const px = Math.floor(cx + dx);
+                        const py = Math.floor(cy + dy);
+                        if (px >= 0 && px < W && py >= 0 && py < H) {
+                            const falloff = 1 - dist / radius;
+                            grids[species][py][px] = Math.min(1, grids[species][py][px] + amount * falloff);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Laplacian for diffusion (5-point stencil)
+        function laplacian(grid, x, y) {
+            const xp = (x + 1) % W;
+            const xm = (x - 1 + W) % W;
+            const yp = (y + 1) % H;
+            const ym = (y - 1 + H) % H;
+            return grid[y][xp] + grid[y][xm] + grid[yp][x] + grid[ym][x] - 4 * grid[y][x];
+        }
+
+        // Michaelis-Menten kinetics
+        function mmRate(substrate, vmax, km) {
+            return vmax * substrate / (km + substrate);
+        }
+
+        // Simulation step
+        function simulate() {
+            const dt = params.dt;
+
+            for (let y = 0; y < H; y++) {
+                for (let x = 0; x < W; x++) {
+                    // Get current concentrations
+                    const fattyAcyl = grids.fattyAcyl[y][x];
+                    const enoyl = grids.enoyl[y][x];
+                    const hydroxy = grids.hydroxy[y][x];
+                    const keto = grids.keto[y][x];
+                    const acetyl = grids.acetyl[y][x];
+                    const energy = grids.energy[y][x];
+
+                    // Calculate reaction rates (Michaelis-Menten)
+                    const r1 = mmRate(fattyAcyl, enzymes.ACAD.vmax, enzymes.ACAD.km);  // ACAD
+                    const r2 = mmRate(enoyl, enzymes.ECH.vmax, enzymes.ECH.km);        // ECH
+                    const r3 = mmRate(hydroxy, enzymes.HADH.vmax, enzymes.HADH.km);    // HADH
+                    const r4 = mmRate(keto, enzymes.KAT.vmax, enzymes.KAT.km);         // KAT
+
+                    // Calculate diffusion (Laplacian)
+                    const lapFattyAcyl = laplacian(grids.fattyAcyl, x, y);
+                    const lapEnoyl = laplacian(grids.enoyl, x, y);
+                    const lapHydroxy = laplacian(grids.hydroxy, x, y);
+                    const lapKeto = laplacian(grids.keto, x, y);
+                    const lapAcetyl = laplacian(grids.acetyl, x, y);
+                    const lapEnergy = laplacian(grids.energy, x, y);
+
+                    // Update concentrations
+                    // Fatty Acyl-CoA: input - consumed by ACAD + recycled from KAT (shortened chain)
+                    let newFattyAcyl = fattyAcyl + dt * (
+                        DIFFUSION.fattyAcyl * lapFattyAcyl
+                        - r1                           // consumed by ACAD
+                        + r4 * 0.3                     // partial recycle from KAT (shorter chain)
+                        + params.feedRate * (1 - fattyAcyl)  // feed
+                    );
+
+                    // Enoyl-CoA: produced by ACAD, consumed by ECH
+                    let newEnoyl = enoyl + dt * (
+                        DIFFUSION.enoyl * lapEnoyl
+                        + r1                           // produced by ACAD
+                        - r2                           // consumed by ECH
+                    );
+
+                    // Hydroxyacyl-CoA: produced by ECH, consumed by HADH
+                    let newHydroxy = hydroxy + dt * (
+                        DIFFUSION.hydroxy * lapHydroxy
+                        + r2                           // produced by ECH
+                        - r3                           // consumed by HADH
+                    );
+
+                    // Ketoacyl-CoA: produced by HADH, consumed by KAT
+                    let newKeto = keto + dt * (
+                        DIFFUSION.keto * lapKeto
+                        + r3                           // produced by HADH
+                        - r4                           // consumed by KAT
+                    );
+
+                    // Acetyl-CoA: produced by KAT, removed (enters TCA cycle)
+                    let newAcetyl = acetyl + dt * (
+                        DIFFUSION.acetyl * lapAcetyl
+                        + r4                           // produced by KAT
+                        - params.removalRate * acetyl  // enters TCA cycle
+                    );
+
+                    // Energy (FADH2 + NADH): produced by ACAD and HADH, consumed by ETC
+                    let newEnergy = energy + dt * (
+                        DIFFUSION.energy * lapEnergy
+                        + r1 * 0.5                     // FADH2 from ACAD
+                        + r3 * 0.5                     // NADH from HADH
+                        - 0.05 * energy                // consumed by electron transport chain
+                    );
+
+                    // Clamp values
+                    nextGrids.fattyAcyl[y][x] = Math.max(0, Math.min(1, newFattyAcyl));
+                    nextGrids.enoyl[y][x] = Math.max(0, Math.min(1, newEnoyl));
+                    nextGrids.hydroxy[y][x] = Math.max(0, Math.min(1, newHydroxy));
+                    nextGrids.keto[y][x] = Math.max(0, Math.min(1, newKeto));
+                    nextGrids.acetyl[y][x] = Math.max(0, Math.min(1, newAcetyl));
+                    nextGrids.energy[y][x] = Math.max(0, Math.min(1, newEnergy));
+                }
+            }
+
+            // Swap buffers
+            SPECIES.forEach(species => {
+                [grids[species], nextGrids[species]] = [nextGrids[species], grids[species]];
+            });
+
+            iterations++;
+        }
+
+        // Render
+        function render() {
+            canvas.width = canvas.clientWidth;
+            canvas.height = canvas.clientHeight;
+
+            const imageData = ctx.createImageData(W, H);
+            const data = imageData.data;
+
+            for (let y = 0; y < H; y++) {
+                for (let x = 0; x < W; x++) {
+                    const idx = (y * W + x) * 4;
+
+                    if (currentView === 'composite') {
+                        // Composite view: blend all metabolites
+                        let r = 26, g = 27, b = 38;  // Background
+
+                        SPECIES.forEach(species => {
+                            const conc = grids[species][y][x];
+                            const col = COLORS[species];
+                            r += conc * col[0] * 0.5;
+                            g += conc * col[1] * 0.5;
+                            b += conc * col[2] * 0.5;
+                        });
+
+                        data[idx] = Math.min(255, r);
+                        data[idx + 1] = Math.min(255, g);
+                        data[idx + 2] = Math.min(255, b);
+                    } else {
+                        // Single metabolite view
+                        const conc = grids[currentView][y][x];
+                        const col = COLORS[currentView];
+
+                        data[idx] = 26 + conc * (col[0] - 26);
+                        data[idx + 1] = 27 + conc * (col[1] - 27);
+                        data[idx + 2] = 38 + conc * (col[2] - 38);
+                    }
+
+                    data[idx + 3] = 255;
+                }
+            }
+
+            // Scale to canvas
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = W;
+            tempCanvas.height = H;
+            tempCanvas.getContext('2d').putImageData(imageData, 0, 0);
+
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(tempCanvas, 0, 0, canvas.width, canvas.height);
+        }
+
+        // Update pathway diagram values
+        function updatePathwayDisplay() {
+            let totals = {};
+            SPECIES.forEach(species => {
+                let sum = 0;
+                for (let y = 0; y < H; y++) {
+                    for (let x = 0; x < W; x++) {
+                        sum += grids[species][y][x];
+                    }
+                }
+                totals[species] = sum / (W * H);
+                const el = document.getElementById(`val-${species}`);
+                if (el) el.textContent = totals[species].toFixed(2);
+            });
+
+            // Highlight active reactions
+            document.querySelectorAll('.metabolite').forEach(el => {
+                const species = el.dataset.metabolite;
+                if (totals[species] > 0.1) {
+                    el.classList.add('active');
+                } else {
+                    el.classList.remove('active');
+                }
+            });
+        }
+
+        // Animation loop
+        function animate(currentTime) {
+            if (isRunning) {
+                for (let i = 0; i < 5; i++) {
+                    simulate();
+                }
+            }
+
+            render();
+            updatePathwayDisplay();
+
+            // FPS counter
+            frameCount++;
+            if (currentTime - lastTime >= 1000) {
+                document.getElementById('fps-counter').textContent = `${frameCount} FPS`;
+                frameCount = 0;
+                lastTime = currentTime;
+            }
+            document.getElementById('iteration-counter').textContent = `${iterations} cycles`;
+
+            requestAnimationFrame(animate);
+        }
+
+        // Click handler
+        function handleClick(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / rect.width * W);
+            const y = Math.floor((e.clientY - rect.top) / rect.height * H);
+            addMetabolite(injectSpecies, x, y, 15, 1.0);
+        }
+
+        // Event listeners
+        function setupEventListeners() {
+            let isDragging = false;
+
+            canvas.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                handleClick(e);
+            });
+            canvas.addEventListener('mousemove', (e) => {
+                if (isDragging) handleClick(e);
+            });
+            canvas.addEventListener('mouseup', () => isDragging = false);
+            canvas.addEventListener('mouseleave', () => isDragging = false);
+
+            // Touch
+            canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                handleClick({ clientX: e.touches[0].clientX, clientY: e.touches[0].clientY });
+            });
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                handleClick({ clientX: e.touches[0].clientX, clientY: e.touches[0].clientY });
+            });
+
+            // Controls
+            document.getElementById('play-btn').addEventListener('click', () => {
+                isRunning = !isRunning;
+                document.getElementById('play-icon').textContent = isRunning ? '\u2016\u2016' : '\u25B6';
+                document.getElementById('play-text').textContent = isRunning ? 'Pause' : 'Play';
+            });
+
+            document.getElementById('reset-btn').addEventListener('click', initGrids);
+
+            document.getElementById('clear-btn').addEventListener('click', () => {
+                SPECIES.forEach(species => {
+                    for (let y = 0; y < H; y++) {
+                        grids[species][y].fill(0);
+                    }
+                });
+                iterations = 0;
+            });
+
+            // View tabs
+            document.querySelectorAll('.canvas-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.canvas-tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    currentView = tab.dataset.view;
+                });
+            });
+
+            // Inject selector
+            document.querySelectorAll('.inject-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.inject-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    injectSpecies = btn.dataset.inject;
+                });
+            });
+
+            // Presets
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+
+                    const preset = presets[btn.dataset.preset];
+                    enzymes.ACAD.vmax = preset.ACAD;
+                    enzymes.ECH.vmax = preset.ECH;
+                    enzymes.HADH.vmax = preset.HADH;
+                    enzymes.KAT.vmax = preset.KAT;
+                    params.feedRate = preset.feedRate;
+                    params.removalRate = preset.removalRate;
+
+                    updateSliders();
+                });
+            });
+
+            // Enzyme sliders
+            ['acad', 'ech', 'hadh', 'kat'].forEach(enzyme => {
+                const slider = document.getElementById(`slider-${enzyme}`);
+                slider.addEventListener('input', () => {
+                    const val = parseFloat(slider.value);
+                    enzymes[enzyme.toUpperCase()].vmax = val;
+                    document.getElementById(`vmax-${enzyme}`).textContent = val.toFixed(2);
+                });
+            });
+
+            // Feed/removal sliders
+            document.getElementById('slider-feed').addEventListener('input', (e) => {
+                params.feedRate = parseFloat(e.target.value);
+                document.getElementById('val-feed').textContent = params.feedRate.toFixed(3);
+            });
+
+            document.getElementById('slider-removal').addEventListener('input', (e) => {
+                params.removalRate = parseFloat(e.target.value);
+                document.getElementById('val-removal').textContent = params.removalRate.toFixed(3);
+            });
+
+            // Tooltips
+            const tooltip = document.getElementById('tooltip');
+            document.querySelectorAll('[data-info]').forEach(el => {
+                el.addEventListener('mouseenter', (e) => {
+                    const [title, desc] = el.dataset.info.split('|');
+                    tooltip.innerHTML = `<div class="tooltip-title">${title}</div>${desc}`;
+                    tooltip.style.left = Math.min(e.pageX + 15, window.innerWidth - 300) + 'px';
+                    tooltip.style.top = e.pageY + 15 + 'px';
+                    tooltip.classList.add('visible');
+                });
+                el.addEventListener('mouseleave', () => tooltip.classList.remove('visible'));
+            });
+
+            // Keyboard
+            document.addEventListener('keydown', (e) => {
+                if (e.target.tagName === 'INPUT') return;
+                if (e.key === ' ') {
+                    e.preventDefault();
+                    document.getElementById('play-btn').click();
+                } else if (e.key.toLowerCase() === 'r') {
+                    initGrids();
+                }
+            });
+        }
+
+        function updateSliders() {
+            document.getElementById('slider-acad').value = enzymes.ACAD.vmax;
+            document.getElementById('vmax-acad').textContent = enzymes.ACAD.vmax.toFixed(2);
+            document.getElementById('slider-ech').value = enzymes.ECH.vmax;
+            document.getElementById('vmax-ech').textContent = enzymes.ECH.vmax.toFixed(2);
+            document.getElementById('slider-hadh').value = enzymes.HADH.vmax;
+            document.getElementById('vmax-hadh').textContent = enzymes.HADH.vmax.toFixed(2);
+            document.getElementById('slider-kat').value = enzymes.KAT.vmax;
+            document.getElementById('vmax-kat').textContent = enzymes.KAT.vmax.toFixed(2);
+            document.getElementById('slider-feed').value = params.feedRate;
+            document.getElementById('val-feed').textContent = params.feedRate.toFixed(3);
+            document.getElementById('slider-removal').value = params.removalRate;
+            document.getElementById('val-removal').textContent = params.removalRate.toFixed(3);
+        }
+
+        // Start
+        initGrids();
+        setupEventListeners();
+        requestAnimationFrame(animate);
+
+        console.log('Beta-Oxidation Pathway Simulator initialized');
+    </script>
+</body>
+</html>

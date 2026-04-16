@@ -1,0 +1,1914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Decision Neuron - Advice Selector</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #e0e0e0;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            color: #00d9ff;
+            text-shadow: 0 0 20px rgba(0, 217, 255, 0.5);
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 30px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 200px 1fr;
+            gap: 30px;
+            align-items: center;
+        }
+
+        /* Input Factors Panel */
+        .factors-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .factors-panel h2 {
+            color: #ff6b6b;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+        }
+
+        .factor-group {
+            margin-bottom: 25px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            border-left: 3px solid #ff6b6b;
+        }
+
+        .factor-group h3 {
+            font-size: 0.9rem;
+            color: #ffd93d;
+            margin-bottom: 10px;
+        }
+
+        .factor-slider {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+        }
+
+        .factor-slider label {
+            width: 80px;
+            font-size: 0.85rem;
+        }
+
+        .factor-slider input[type="range"] {
+            flex: 1;
+            margin: 0 10px;
+            -webkit-appearance: none;
+            height: 6px;
+            border-radius: 3px;
+            background: #333;
+        }
+
+        .factor-slider input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #00d9ff;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 217, 255, 0.5);
+        }
+
+        .factor-slider .value {
+            width: 30px;
+            text-align: right;
+            font-size: 0.85rem;
+            color: #00d9ff;
+        }
+
+        /* Neuron Visualization */
+        .neuron-viz {
+            position: relative;
+            height: 500px;
+        }
+
+        .neuron-core {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(circle, #00d9ff 0%, #0066ff 100%);
+            border-radius: 50%;
+            box-shadow: 0 0 40px rgba(0, 217, 255, 0.6),
+                        0 0 80px rgba(0, 217, 255, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.8rem;
+            text-align: center;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.05); }
+        }
+
+        .input-node {
+            position: absolute;
+            left: 10px;
+            width: 60px;
+            height: 60px;
+            background: radial-gradient(circle, #ff6b6b 0%, #c92a2a 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.65rem;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(255, 107, 107, 0.5);
+        }
+
+        .input-node:nth-child(1) { top: 50px; }
+        .input-node:nth-child(2) { top: 150px; }
+        .input-node:nth-child(3) { top: 250px; }
+        .input-node:nth-child(4) { top: 350px; }
+
+        .output-node {
+            position: absolute;
+            right: 10px;
+            width: 70px;
+            height: 70px;
+            background: radial-gradient(circle, #51cf66 0%, #2b8a3e 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            font-size: 0.75rem;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(81, 207, 102, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        .output-node:nth-child(6) { top: 80px; }
+        .output-node:nth-child(7) { top: 180px; }
+        .output-node:nth-child(8) { top: 280px; }
+        .output-node:nth-child(9) { top: 380px; }
+
+        .output-node.winner {
+            transform: scale(1.2);
+            box-shadow: 0 0 40px rgba(81, 207, 102, 0.8),
+                        0 0 60px rgba(255, 217, 61, 0.5);
+            background: radial-gradient(circle, #ffd93d 0%, #f59f00 100%);
+        }
+
+        .output-node .score {
+            font-size: 0.65rem;
+            opacity: 0.8;
+        }
+
+        /* SVG Connections */
+        .connections {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .connections line {
+            stroke-width: 2;
+            opacity: 0.6;
+        }
+
+        /* Output Panel */
+        .output-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .output-panel h2 {
+            color: #51cf66;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+        }
+
+        .person-card {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 3px solid #51cf66;
+            transition: all 0.3s ease;
+        }
+
+        .person-card.winner {
+            border-left-color: #ffd93d;
+            background: rgba(255, 217, 61, 0.1);
+            transform: scale(1.02);
+        }
+
+        .person-card h3 {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .person-card h3 span:first-child {
+            color: #fff;
+        }
+
+        .person-card .activation {
+            color: #00d9ff;
+            font-size: 1.1rem;
+        }
+
+        .score-bar {
+            height: 8px;
+            background: #333;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .score-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00d9ff, #51cf66);
+            transition: width 0.3s ease;
+        }
+
+        .person-card.winner .score-bar-fill {
+            background: linear-gradient(90deg, #ffd93d, #ff6b6b);
+        }
+
+        .breakdown {
+            margin-top: 10px;
+            font-size: 0.75rem;
+            color: #888;
+        }
+
+        .decision-banner {
+            text-align: center;
+            padding: 20px;
+            margin-top: 20px;
+            background: linear-gradient(135deg, rgba(255, 217, 61, 0.2), rgba(255, 107, 107, 0.2));
+            border-radius: 10px;
+            border: 2px solid #ffd93d;
+        }
+
+        .decision-banner h3 {
+            color: #ffd93d;
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+        }
+
+        .decision-banner p {
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+
+        /* Custom Factor Input */
+        .add-custom {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .add-custom input {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            background: rgba(0, 0, 0, 0.3);
+            color: #fff;
+            margin-bottom: 10px;
+        }
+
+        .add-custom button {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            background: #ff6b6b;
+            color: #fff;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .add-custom button:hover {
+            background: #ff8787;
+        }
+
+        .weight-importance {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0, 217, 255, 0.1);
+            border-radius: 10px;
+            border: 1px solid rgba(0, 217, 255, 0.3);
+        }
+
+        .weight-importance h3 {
+            color: #00d9ff;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+        }
+
+        /* Scenario Section */
+        .scenario-section {
+            max-width: 1200px;
+            margin: 0 auto 30px auto;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .scenario-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .scenario-header h2 {
+            color: #ffd93d;
+            font-size: 1.2rem;
+        }
+
+        .scenario-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #ffd93d, #ff6b6b);
+            color: #1a1a2e;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .scenario-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(255, 217, 61, 0.5);
+        }
+
+        .scenario-display {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            border-left: 4px solid #ffd93d;
+        }
+
+        .scenario-display h3 {
+            color: #fff;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .scenario-display p {
+            color: #aaa;
+            line-height: 1.6;
+        }
+
+        .person-roles {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .person-role {
+            background: rgba(0, 217, 255, 0.1);
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .person-role strong {
+            color: #00d9ff;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .person-role span {
+            color: #888;
+            font-size: 0.85rem;
+        }
+
+        /* Decision Explanation */
+        .explanation-section {
+            max-width: 1200px;
+            margin: 30px auto 0 auto;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .explanation-section h2 {
+            color: #51cf66;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        .explanation-content {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            border-left: 4px solid #51cf66;
+        }
+
+        .explanation-content p {
+            color: #e0e0e0;
+            line-height: 1.8;
+            margin-bottom: 15px;
+        }
+
+        .explanation-content p:last-child {
+            margin-bottom: 0;
+        }
+
+        .highlight-winner {
+            color: #ffd93d;
+            font-weight: bold;
+        }
+
+        .highlight-factor {
+            color: #00d9ff;
+        }
+
+        .highlight-person {
+            color: #ff6b6b;
+        }
+
+        .reasoning-step {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 12px;
+            padding: 10px;
+            background: rgba(0, 217, 255, 0.05);
+            border-radius: 8px;
+        }
+
+        .step-number {
+            background: #00d9ff;
+            color: #1a1a2e;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.8rem;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+
+        .step-text {
+            color: #e0e0e0;
+            line-height: 1.5;
+        }
+
+        .final-verdict {
+            background: linear-gradient(135deg, rgba(255, 217, 61, 0.2), rgba(81, 207, 102, 0.2));
+            border: 2px solid #ffd93d;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .final-verdict p {
+            color: #fff;
+            font-size: 1.1rem;
+            margin: 0;
+        }
+
+        /* Welcome Overlay */
+        .welcome-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
+
+        .welcome-overlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .welcome-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+        }
+
+        .welcome-title {
+            font-size: 2.5rem;
+            color: #00d9ff;
+            text-shadow: 0 0 30px rgba(0, 217, 255, 0.5);
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .welcome-prompt {
+            font-size: 1.3rem;
+            color: #e0e0e0;
+            margin-bottom: 40px;
+            text-align: center;
+            max-width: 600px;
+            line-height: 1.6;
+        }
+
+        .search-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .search-bar {
+            width: 100%;
+            padding: 18px 25px;
+            padding-left: 55px;
+            font-size: 1.1rem;
+            border: 2px solid rgba(0, 217, 255, 0.3);
+            border-radius: 50px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            outline: none;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .search-bar::placeholder {
+            color: #888;
+        }
+
+        .search-bar:focus {
+            border-color: #00d9ff;
+            box-shadow: 0 0 30px rgba(0, 217, 255, 0.3);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.3rem;
+            color: #00d9ff;
+        }
+
+        .recommendations {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin-top: 10px;
+            background: rgba(30, 30, 50, 0.95);
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(0, 217, 255, 0.2);
+            max-height: 350px;
+            overflow-y: auto;
+        }
+
+        .recommendations.hidden {
+            display: none;
+        }
+
+        .recommendation-item {
+            padding: 15px 25px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: background 0.2s ease;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .recommendation-item:last-child {
+            border-bottom: none;
+        }
+
+        .recommendation-item:hover {
+            background: rgba(0, 217, 255, 0.15);
+        }
+
+        .recommendation-item.selected {
+            background: rgba(0, 217, 255, 0.2);
+        }
+
+        .rec-icon {
+            font-size: 1.5rem;
+            width: 40px;
+            text-align: center;
+        }
+
+        .rec-content {
+            flex: 1;
+        }
+
+        .rec-title {
+            color: #fff;
+            font-weight: 500;
+            margin-bottom: 3px;
+        }
+
+        .rec-description {
+            color: #888;
+            font-size: 0.85rem;
+        }
+
+        .rec-arrow {
+            color: #00d9ff;
+            font-size: 1.2rem;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .recommendation-item:hover .rec-arrow {
+            opacity: 1;
+        }
+
+        .search-hint {
+            text-align: center;
+            color: #666;
+            font-size: 0.85rem;
+            margin-top: 20px;
+        }
+
+        .search-hint kbd {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 3px 8px;
+            border-radius: 4px;
+            margin: 0 3px;
+        }
+
+        /* Main content initially hidden */
+        .main-content {
+            opacity: 1;
+            transition: opacity 0.3s ease;
+        }
+
+        .main-content.hidden {
+            opacity: 0;
+        }
+
+        /* How It Works Button */
+        .how-it-works-btn {
+            margin-top: 25px;
+            padding: 12px 28px;
+            background: transparent;
+            border: 2px solid rgba(0, 217, 255, 0.5);
+            border-radius: 25px;
+            color: #00d9ff;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .how-it-works-btn:hover {
+            background: rgba(0, 217, 255, 0.1);
+            border-color: #00d9ff;
+            box-shadow: 0 0 20px rgba(0, 217, 255, 0.3);
+        }
+
+        /* Methodology Modal */
+        .methodology-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            padding: 20px;
+        }
+
+        .methodology-modal.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #1e1e30, #252545);
+            border-radius: 20px;
+            max-width: 800px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 40px;
+            position: relative;
+            border: 1px solid rgba(0, 217, 255, 0.3);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 2rem;
+            color: #888;
+            cursor: pointer;
+            transition: color 0.2s;
+            background: none;
+            border: none;
+        }
+
+        .modal-close:hover {
+            color: #ff6b6b;
+        }
+
+        .modal-title {
+            color: #00d9ff;
+            font-size: 1.8rem;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        .method-section {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            border-left: 4px solid #ffd93d;
+        }
+
+        .method-section h3 {
+            color: #ffd93d;
+            font-size: 1.1rem;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .method-section p {
+            color: #ccc;
+            line-height: 1.7;
+            margin-bottom: 10px;
+        }
+
+        .method-section p:last-child {
+            margin-bottom: 0;
+        }
+
+        .method-section code {
+            background: rgba(0, 217, 255, 0.15);
+            padding: 2px 8px;
+            border-radius: 4px;
+            color: #00d9ff;
+            font-family: monospace;
+        }
+
+        .formula-box {
+            background: rgba(0, 217, 255, 0.1);
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+            text-align: center;
+            font-family: monospace;
+            color: #00d9ff;
+            font-size: 1rem;
+        }
+
+        .method-diagram {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .diagram-node {
+            padding: 12px 20px;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        .diagram-input {
+            background: linear-gradient(135deg, #ff6b6b, #c92a2a);
+        }
+
+        .diagram-process {
+            background: linear-gradient(135deg, #00d9ff, #0066ff);
+        }
+
+        .diagram-output {
+            background: linear-gradient(135deg, #51cf66, #2b8a3e);
+        }
+
+        .diagram-arrow {
+            color: #888;
+            font-size: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Welcome Overlay -->
+    <div class="welcome-overlay" id="welcome-overlay">
+        <div class="welcome-icon">🧠</div>
+        <h1 class="welcome-title">Decision Neuron</h1>
+        <p class="welcome-prompt">What do you need advice with?<br>I will calculate who will be the best person to ask.</p>
+
+        <div class="search-container">
+            <span class="search-icon">🔍</span>
+            <input type="text" class="search-bar" id="advice-search" placeholder="Type what you need advice about..." autocomplete="off">
+
+            <div class="recommendations" id="recommendations">
+                <div class="recommendation-item" data-scenario="0">
+                    <span class="rec-icon">💼</span>
+                    <div class="rec-content">
+                        <div class="rec-title">Career Change Decision</div>
+                        <div class="rec-description">Switching careers and need guidance on making the leap</div>
+                    </div>
+                    <span class="rec-arrow">→</span>
+                </div>
+                <div class="recommendation-item" data-scenario="1">
+                    <span class="rec-icon">💰</span>
+                    <div class="rec-content">
+                        <div class="rec-title">Investment Decision</div>
+                        <div class="rec-description">Financial advice on investing savings wisely</div>
+                    </div>
+                    <span class="rec-arrow">→</span>
+                </div>
+                <div class="recommendation-item" data-scenario="2">
+                    <span class="rec-icon">❤️</span>
+                    <div class="rec-content">
+                        <div class="rec-title">Relationship Advice</div>
+                        <div class="rec-description">Navigating a difficult relationship situation</div>
+                    </div>
+                    <span class="rec-arrow">→</span>
+                </div>
+                <div class="recommendation-item" data-scenario="3">
+                    <span class="rec-icon">🏥</span>
+                    <div class="rec-content">
+                        <div class="rec-title">Health Concern</div>
+                        <div class="rec-description">Medical questions and health-related decisions</div>
+                    </div>
+                    <span class="rec-arrow">→</span>
+                </div>
+                <div class="recommendation-item" data-scenario="4">
+                    <span class="rec-icon">🚀</span>
+                    <div class="rec-content">
+                        <div class="rec-title">Starting a Business</div>
+                        <div class="rec-description">Entrepreneurial advice before taking the plunge</div>
+                    </div>
+                    <span class="rec-arrow">→</span>
+                </div>
+                <div class="recommendation-item" data-scenario="5">
+                    <span class="rec-icon">🏙️</span>
+                    <div class="rec-content">
+                        <div class="rec-title">Moving to a New City</div>
+                        <div class="rec-description">Relocating for work or personal reasons</div>
+                    </div>
+                    <span class="rec-arrow">→</span>
+                </div>
+                <div class="recommendation-item" data-scenario="6">
+                    <span class="rec-icon">🏠</span>
+                    <div class="rec-content">
+                        <div class="rec-title">Buying a House</div>
+                        <div class="rec-description">First-time home buying guidance</div>
+                    </div>
+                    <span class="rec-arrow">→</span>
+                </div>
+                <div class="recommendation-item" data-scenario="7">
+                    <span class="rec-icon">📚</span>
+                    <div class="rec-content">
+                        <div class="rec-title">Learning New Skills</div>
+                        <div class="rec-description">Upskilling for career growth</div>
+                    </div>
+                    <span class="rec-arrow">→</span>
+                </div>
+                <div class="recommendation-item" data-scenario="8">
+                    <span class="rec-icon">⚔️</span>
+                    <div class="rec-content">
+                        <div class="rec-title">Dealing with Conflict</div>
+                        <div class="rec-description">Workplace or personal conflict resolution</div>
+                    </div>
+                    <span class="rec-arrow">→</span>
+                </div>
+                <div class="recommendation-item" data-scenario="9">
+                    <span class="rec-icon">💒</span>
+                    <div class="rec-content">
+                        <div class="rec-title">Planning a Wedding</div>
+                        <div class="rec-description">Wedding planning decisions and advice</div>
+                    </div>
+                    <span class="rec-arrow">→</span>
+                </div>
+            </div>
+        </div>
+
+        <p class="search-hint">Click a suggestion or type your own • Press <kbd>Enter</kbd> to continue</p>
+
+        <button class="how-it-works-btn" onclick="showMethodology()">🔬 How do I calculate who to ask?</button>
+    </div>
+
+    <!-- Methodology Modal -->
+    <div class="methodology-modal" id="methodology-modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="hideMethodology()">×</button>
+
+            <h2 class="modal-title">🧠 How the Decision Neuron Works</h2>
+
+            <div class="method-section">
+                <h3>📥 Step 1: Gathering Inputs</h3>
+                <p>The system collects three key factors for each potential advisor:</p>
+                <p>• <strong>Domain Expertise</strong> - How knowledgeable are they about your topic?</p>
+                <p>• <strong>Availability</strong> - How accessible and responsive are they?</p>
+                <p>• <strong>Trust Level</strong> - How much do you trust their judgment?</p>
+                <p>Each factor is rated from 0-10 for each of the four people you're considering.</p>
+            </div>
+
+            <div class="method-section">
+                <h3>⚖️ Step 2: Weighting Importance</h3>
+                <p>Not all factors matter equally for every decision. The system lets you assign <strong>importance weights</strong> to each factor.</p>
+                <p>For example, for a medical question, you might weight Expertise at 10 (very important) but Availability at only 3 (less critical).</p>
+                <div class="formula-box">
+                    Weighted Score = (Factor Value × Factor Weight)
+                </div>
+            </div>
+
+            <div class="method-section">
+                <h3>🔢 Step 3: Computing Raw Scores</h3>
+                <p>For each person, we calculate their total weighted score by summing up all weighted factors:</p>
+                <div class="formula-box">
+                    Person Score = Σ(Factor<sub>i</sub> × Weight<sub>i</sub>) / Total Weights
+                </div>
+                <p>This gives us a normalized score that accounts for how well each person matches your priorities.</p>
+            </div>
+
+            <div class="method-section">
+                <h3>🧮 Step 4: Softmax Activation</h3>
+                <p>Here's where the "neural" magic happens. We apply the <strong>softmax function</strong> to convert raw scores into probabilities:</p>
+                <div class="formula-box">
+                    Activation<sub>i</sub> = e<sup>score<sub>i</sub></sup> / Σ(e<sup>score<sub>j</sub></sup>)
+                </div>
+                <p>This creates a <strong>competitive dynamic</strong>—all activations sum to 100%, and small score differences get amplified. The person with the highest score "wins" more decisively.</p>
+            </div>
+
+            <div class="method-section">
+                <h3>🔄 The Neural Network Flow</h3>
+                <div class="method-diagram">
+                    <div class="diagram-node diagram-input">Input Factors<br>(Expertise, etc.)</div>
+                    <span class="diagram-arrow">→</span>
+                    <div class="diagram-node diagram-process">Decision Neuron<br>(Weighted Sum + Softmax)</div>
+                    <span class="diagram-arrow">→</span>
+                    <div class="diagram-node diagram-output">Output<br>(Best Advisor)</div>
+                </div>
+                <p>Just like a neuron in your brain, this decision neuron takes multiple inputs, processes them through weighted connections, and fires an output signal indicating the strongest choice.</p>
+            </div>
+
+            <div class="method-section">
+                <h3>🎯 Step 5: The Recommendation</h3>
+                <p>The person with the <strong>highest activation percentage</strong> is recommended as your best advice source.</p>
+                <p>The explanation script then analyzes:</p>
+                <p>• Which factor contributed most to the winner's score</p>
+                <p>• How close the competition was</p>
+                <p>• Confidence level based on the margin of victory</p>
+            </div>
+
+            <div class="method-section">
+                <h3>💡 Why This Works</h3>
+                <p>This approach mirrors how decisions actually work in your brain—multiple factors compete for attention, weighted by importance, until one option emerges as the clear winner.</p>
+                <p>By making these weights <strong>explicit and adjustable</strong>, you can see exactly why one person is recommended over another, and tweak the parameters if your priorities change.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content" id="main-content">
+    <h1>⚡ Decision Neuron</h1>
+    <p class="subtitle">Modulating advice source selection through weighted neural activation</p>
+
+    <!-- Scenario Section -->
+    <div class="scenario-section">
+        <div class="scenario-header">
+            <h2>🎲 Random Scenario Generator</h2>
+            <button class="scenario-btn" onclick="generateRandomScenario()">Generate New Scenario</button>
+        </div>
+        <div class="scenario-display">
+            <h3 id="scenario-title">Click "Generate New Scenario" to start</h3>
+            <p id="scenario-description">A random decision scenario will appear here with preset values for each advisor.</p>
+            <div class="person-roles" id="person-roles">
+                <div class="person-role">
+                    <strong>Person A</strong>
+                    <span id="role-a">—</span>
+                </div>
+                <div class="person-role">
+                    <strong>Person B</strong>
+                    <span id="role-b">—</span>
+                </div>
+                <div class="person-role">
+                    <strong>Person C</strong>
+                    <span id="role-c">—</span>
+                </div>
+                <div class="person-role">
+                    <strong>Person D</strong>
+                    <span id="role-d">—</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Input Factors -->
+        <div class="factors-panel">
+            <h2>📊 Input Factors</h2>
+
+            <div class="weight-importance">
+                <h3>Factor Importance Weights</h3>
+                <div class="factor-slider">
+                    <label>Expertise</label>
+                    <input type="range" id="weight-expertise" min="0" max="10" value="8" oninput="calculate()">
+                    <span class="value" id="weight-expertise-val">8</span>
+                </div>
+                <div class="factor-slider">
+                    <label>Availability</label>
+                    <input type="range" id="weight-availability" min="0" max="10" value="5" oninput="calculate()">
+                    <span class="value" id="weight-availability-val">5</span>
+                </div>
+                <div class="factor-slider">
+                    <label>Trust</label>
+                    <input type="range" id="weight-trust" min="0" max="10" value="7" oninput="calculate()">
+                    <span class="value" id="weight-trust-val">7</span>
+                </div>
+            </div>
+
+            <div class="factor-group" id="expertise-group">
+                <h3>🎯 Domain Expertise</h3>
+                <div class="factor-slider">
+                    <label>Person A</label>
+                    <input type="range" id="expertise-a" min="0" max="10" value="8" oninput="calculate()">
+                    <span class="value">8</span>
+                </div>
+                <div class="factor-slider">
+                    <label>Person B</label>
+                    <input type="range" id="expertise-b" min="0" max="10" value="6" oninput="calculate()">
+                    <span class="value">6</span>
+                </div>
+                <div class="factor-slider">
+                    <label>Person C</label>
+                    <input type="range" id="expertise-c" min="0" max="10" value="4" oninput="calculate()">
+                    <span class="value">4</span>
+                </div>
+                <div class="factor-slider">
+                    <label>Person D</label>
+                    <input type="range" id="expertise-d" min="0" max="10" value="7" oninput="calculate()">
+                    <span class="value">7</span>
+                </div>
+            </div>
+
+            <div class="factor-group" id="availability-group">
+                <h3>⏰ Availability</h3>
+                <div class="factor-slider">
+                    <label>Person A</label>
+                    <input type="range" id="availability-a" min="0" max="10" value="3" oninput="calculate()">
+                    <span class="value">3</span>
+                </div>
+                <div class="factor-slider">
+                    <label>Person B</label>
+                    <input type="range" id="availability-b" min="0" max="10" value="9" oninput="calculate()">
+                    <span class="value">9</span>
+                </div>
+                <div class="factor-slider">
+                    <label>Person C</label>
+                    <input type="range" id="availability-c" min="0" max="10" value="5" oninput="calculate()">
+                    <span class="value">5</span>
+                </div>
+                <div class="factor-slider">
+                    <label>Person D</label>
+                    <input type="range" id="availability-d" min="0" max="10" value="7" oninput="calculate()">
+                    <span class="value">7</span>
+                </div>
+            </div>
+
+            <div class="factor-group" id="trust-group">
+                <h3>🤝 Trust Level</h3>
+                <div class="factor-slider">
+                    <label>Person A</label>
+                    <input type="range" id="trust-a" min="0" max="10" value="9" oninput="calculate()">
+                    <span class="value">9</span>
+                </div>
+                <div class="factor-slider">
+                    <label>Person B</label>
+                    <input type="range" id="trust-b" min="0" max="10" value="5" oninput="calculate()">
+                    <span class="value">5</span>
+                </div>
+                <div class="factor-slider">
+                    <label>Person C</label>
+                    <input type="range" id="trust-c" min="0" max="10" value="8" oninput="calculate()">
+                    <span class="value">8</span>
+                </div>
+                <div class="factor-slider">
+                    <label>Person D</label>
+                    <input type="range" id="trust-d" min="0" max="10" value="6" oninput="calculate()">
+                    <span class="value">6</span>
+                </div>
+            </div>
+
+            <div class="add-custom">
+                <input type="text" id="custom-factor-name" placeholder="Add custom factor name...">
+                <button onclick="addCustomFactor()">+ Add Custom Factor</button>
+            </div>
+        </div>
+
+        <!-- Neuron Visualization -->
+        <div class="neuron-viz">
+            <svg class="connections" id="connections"></svg>
+            <div class="input-node">Expertise</div>
+            <div class="input-node">Availability</div>
+            <div class="input-node">Trust</div>
+            <div class="input-node" id="custom-node" style="display: none;">Custom</div>
+            <div class="neuron-core">DECISION<br>NEURON</div>
+            <div class="output-node" id="output-a">
+                <span>Person A</span>
+                <span class="score" id="viz-score-a">0.00</span>
+            </div>
+            <div class="output-node" id="output-b">
+                <span>Person B</span>
+                <span class="score" id="viz-score-b">0.00</span>
+            </div>
+            <div class="output-node" id="output-c">
+                <span>Person C</span>
+                <span class="score" id="viz-score-c">0.00</span>
+            </div>
+            <div class="output-node" id="output-d">
+                <span>Person D</span>
+                <span class="score" id="viz-score-d">0.00</span>
+            </div>
+        </div>
+
+        <!-- Output Panel -->
+        <div class="output-panel">
+            <h2>🎯 Neural Output</h2>
+
+            <div class="person-card" id="card-a">
+                <h3>
+                    <span>Person A</span>
+                    <span class="activation" id="score-a">0.00</span>
+                </h3>
+                <div class="score-bar">
+                    <div class="score-bar-fill" id="bar-a" style="width: 0%"></div>
+                </div>
+                <div class="breakdown" id="breakdown-a"></div>
+            </div>
+
+            <div class="person-card" id="card-b">
+                <h3>
+                    <span>Person B</span>
+                    <span class="activation" id="score-b">0.00</span>
+                </h3>
+                <div class="score-bar">
+                    <div class="score-bar-fill" id="bar-b" style="width: 0%"></div>
+                </div>
+                <div class="breakdown" id="breakdown-b"></div>
+            </div>
+
+            <div class="person-card" id="card-c">
+                <h3>
+                    <span>Person C</span>
+                    <span class="activation" id="score-c">0.00</span>
+                </h3>
+                <div class="score-bar">
+                    <div class="score-bar-fill" id="bar-c" style="width: 0%"></div>
+                </div>
+                <div class="breakdown" id="breakdown-c"></div>
+            </div>
+
+            <div class="person-card" id="card-d">
+                <h3>
+                    <span>Person D</span>
+                    <span class="activation" id="score-d">0.00</span>
+                </h3>
+                <div class="score-bar">
+                    <div class="score-bar-fill" id="bar-d" style="width: 0%"></div>
+                </div>
+                <div class="breakdown" id="breakdown-d"></div>
+            </div>
+
+            <div class="decision-banner">
+                <h3 id="winner-text">Person A</h3>
+                <p>Highest activation - recommended advice source</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Decision Explanation Section -->
+    <div class="explanation-section">
+        <h2>🧠 Decision Explanation Script</h2>
+        <div class="explanation-content" id="explanation-content">
+            <p>Adjust the sliders or generate a scenario to see the decision reasoning here.</p>
+        </div>
+    </div>
+    </div> <!-- End main-content -->
+
+    <script>
+        let customFactors = [];
+        let factorCount = 0;
+        let currentScenario = null;
+        let selectedRecommendation = -1;
+
+        // Methodology modal functions
+        function showMethodology() {
+            document.getElementById('methodology-modal').classList.add('visible');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function hideMethodology() {
+            document.getElementById('methodology-modal').classList.remove('visible');
+            document.body.style.overflow = '';
+        }
+
+        // Close modal on background click
+        document.addEventListener('click', (e) => {
+            if (e.target.id === 'methodology-modal') {
+                hideMethodology();
+            }
+        });
+
+        // Close modal on Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                hideMethodology();
+            }
+        });
+
+        // Welcome overlay functionality
+        function initWelcomeOverlay() {
+            const overlay = document.getElementById('welcome-overlay');
+            const searchInput = document.getElementById('advice-search');
+            const recommendations = document.getElementById('recommendations');
+            const recItems = document.querySelectorAll('.recommendation-item');
+
+            // Show recommendations on focus
+            searchInput.addEventListener('focus', () => {
+                recommendations.classList.remove('hidden');
+                filterRecommendations(searchInput.value);
+            });
+
+            // Filter recommendations as user types
+            searchInput.addEventListener('input', (e) => {
+                filterRecommendations(e.target.value);
+                selectedRecommendation = -1;
+                updateSelectedRecommendation();
+            });
+
+            // Keyboard navigation
+            searchInput.addEventListener('keydown', (e) => {
+                const visibleItems = document.querySelectorAll('.recommendation-item:not([style*="display: none"])');
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    selectedRecommendation = Math.min(selectedRecommendation + 1, visibleItems.length - 1);
+                    updateSelectedRecommendation();
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    selectedRecommendation = Math.max(selectedRecommendation - 1, -1);
+                    updateSelectedRecommendation();
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (selectedRecommendation >= 0 && visibleItems[selectedRecommendation]) {
+                        const scenarioIdx = parseInt(visibleItems[selectedRecommendation].dataset.scenario);
+                        selectScenario(scenarioIdx);
+                    } else if (searchInput.value.trim()) {
+                        // Custom scenario - just start with defaults
+                        startWithCustomQuery(searchInput.value.trim());
+                    }
+                } else if (e.key === 'Escape') {
+                    recommendations.classList.add('hidden');
+                }
+            });
+
+            // Click on recommendation
+            recItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    const scenarioIdx = parseInt(item.dataset.scenario);
+                    selectScenario(scenarioIdx);
+                });
+            });
+
+            // Close recommendations when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.search-container')) {
+                    recommendations.classList.add('hidden');
+                }
+            });
+        }
+
+        function filterRecommendations(query) {
+            const recItems = document.querySelectorAll('.recommendation-item');
+            const lowerQuery = query.toLowerCase();
+
+            recItems.forEach(item => {
+                const title = item.querySelector('.rec-title').textContent.toLowerCase();
+                const desc = item.querySelector('.rec-description').textContent.toLowerCase();
+
+                if (title.includes(lowerQuery) || desc.includes(lowerQuery) || query === '') {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        function updateSelectedRecommendation() {
+            const visibleItems = document.querySelectorAll('.recommendation-item:not([style*="display: none"])');
+
+            document.querySelectorAll('.recommendation-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+
+            if (selectedRecommendation >= 0 && visibleItems[selectedRecommendation]) {
+                visibleItems[selectedRecommendation].classList.add('selected');
+                visibleItems[selectedRecommendation].scrollIntoView({ block: 'nearest' });
+            }
+        }
+
+        function selectScenario(scenarioIdx) {
+            const overlay = document.getElementById('welcome-overlay');
+            const mainContent = document.getElementById('main-content');
+
+            // Load the scenario
+            currentScenario = scenarios[scenarioIdx];
+
+            // Update scenario display
+            document.getElementById('scenario-title').textContent = currentScenario.title;
+            document.getElementById('scenario-description').textContent = currentScenario.description;
+            document.getElementById('role-a').textContent = currentScenario.roles.a;
+            document.getElementById('role-b').textContent = currentScenario.roles.b;
+            document.getElementById('role-c').textContent = currentScenario.roles.c;
+            document.getElementById('role-d').textContent = currentScenario.roles.d;
+
+            // Set weight sliders
+            document.getElementById('weight-expertise').value = currentScenario.weights.expertise;
+            document.getElementById('weight-availability').value = currentScenario.weights.availability;
+            document.getElementById('weight-trust').value = currentScenario.weights.trust;
+
+            // Set person scores
+            ['a', 'b', 'c', 'd'].forEach(person => {
+                document.getElementById(`expertise-${person}`).value = currentScenario.scores[person].expertise;
+                document.getElementById(`availability-${person}`).value = currentScenario.scores[person].availability;
+                document.getElementById(`trust-${person}`).value = currentScenario.scores[person].trust;
+            });
+
+            // Hide overlay and show main content
+            overlay.classList.add('hidden');
+
+            // Calculate after a short delay
+            setTimeout(() => {
+                calculate();
+            }, 100);
+        }
+
+        function startWithCustomQuery(query) {
+            const overlay = document.getElementById('welcome-overlay');
+
+            // Create a custom scenario based on the query
+            currentScenario = {
+                title: query,
+                description: `You need advice about: "${query}". Adjust the sliders below to rate each person's qualities.`,
+                roles: {
+                    a: 'Advisor A',
+                    b: 'Advisor B',
+                    c: 'Advisor C',
+                    d: 'Advisor D'
+                }
+            };
+
+            // Update scenario display with custom query
+            document.getElementById('scenario-title').textContent = currentScenario.title;
+            document.getElementById('scenario-description').textContent = currentScenario.description;
+            document.getElementById('role-a').textContent = currentScenario.roles.a;
+            document.getElementById('role-b').textContent = currentScenario.roles.b;
+            document.getElementById('role-c').textContent = currentScenario.roles.c;
+            document.getElementById('role-d').textContent = currentScenario.roles.d;
+
+            // Hide overlay
+            overlay.classList.add('hidden');
+
+            setTimeout(() => {
+                calculate();
+            }, 100);
+        }
+
+        // Predefined scenarios
+        const scenarios = [
+            {
+                title: "Career Change Decision",
+                description: "You're considering switching careers and need advice on whether to make the leap. Who should you consult?",
+                roles: { a: "Your Mentor (20 years experience)", b: "HR Friend (knows job market)", c: "Close Friend (knows you well)", d: "Career Coach (professional)" },
+                weights: { expertise: 9, availability: 4, trust: 8 },
+                scores: {
+                    a: { expertise: 9, availability: 3, trust: 9 },
+                    b: { expertise: 7, availability: 8, trust: 5 },
+                    c: { expertise: 3, availability: 9, trust: 10 },
+                    d: { expertise: 8, availability: 6, trust: 6 }
+                }
+            },
+            {
+                title: "Investment Decision",
+                description: "You have savings to invest and need guidance on the best strategy. Who would you trust with financial advice?",
+                roles: { a: "Financial Advisor (certified)", b: "Wealthy Uncle (self-made)", c: "Colleague (similar situation)", d: "Online Guru (popular)" },
+                weights: { expertise: 10, availability: 3, trust: 9 },
+                scores: {
+                    a: { expertise: 10, availability: 4, trust: 7 },
+                    b: { expertise: 6, availability: 7, trust: 8 },
+                    c: { expertise: 4, availability: 9, trust: 6 },
+                    d: { expertise: 5, availability: 10, trust: 2 }
+                }
+            },
+            {
+                title: "Relationship Advice",
+                description: "You're facing a difficult relationship situation and need someone to talk to. Who understands matters of the heart?",
+                roles: { a: "Therapist (professional)", b: "Best Friend (knows history)", c: "Parent (life experience)", d: "Sibling (honest feedback)" },
+                weights: { expertise: 5, availability: 7, trust: 10 },
+                scores: {
+                    a: { expertise: 9, availability: 3, trust: 6 },
+                    b: { expertise: 5, availability: 9, trust: 10 },
+                    c: { expertise: 7, availability: 6, trust: 8 },
+                    d: { expertise: 4, availability: 8, trust: 9 }
+                }
+            },
+            {
+                title: "Health Concern",
+                description: "You're experiencing some health symptoms and need advice on next steps. Medical expertise matters here.",
+                roles: { a: "Doctor (general practice)", b: "Nurse Friend (ER experience)", c: "Health-conscious Friend", d: "Parent (raised you)" },
+                weights: { expertise: 10, availability: 6, trust: 7 },
+                scores: {
+                    a: { expertise: 10, availability: 2, trust: 8 },
+                    b: { expertise: 8, availability: 7, trust: 7 },
+                    c: { expertise: 4, availability: 9, trust: 5 },
+                    d: { expertise: 3, availability: 10, trust: 9 }
+                }
+            },
+            {
+                title: "Starting a Business",
+                description: "You have a business idea and want feedback before taking the plunge. Entrepreneurial insight is valuable.",
+                roles: { a: "Successful Entrepreneur", b: "Business Professor", c: "Supportive Spouse", d: "Potential Co-founder" },
+                weights: { expertise: 8, availability: 5, trust: 7 },
+                scores: {
+                    a: { expertise: 10, availability: 2, trust: 6 },
+                    b: { expertise: 8, availability: 5, trust: 5 },
+                    c: { expertise: 3, availability: 10, trust: 10 },
+                    d: { expertise: 7, availability: 8, trust: 7 }
+                }
+            },
+            {
+                title: "Moving to a New City",
+                description: "You're considering relocating for a job opportunity. This is a major life decision affecting many aspects.",
+                roles: { a: "Friend who moved there", b: "Current colleague (staying)", c: "Family member (wants you close)", d: "Recruiter (job focused)" },
+                weights: { expertise: 6, availability: 5, trust: 8 },
+                scores: {
+                    a: { expertise: 9, availability: 6, trust: 7 },
+                    b: { expertise: 5, availability: 8, trust: 8 },
+                    c: { expertise: 4, availability: 9, trust: 9 },
+                    d: { expertise: 7, availability: 7, trust: 3 }
+                }
+            },
+            {
+                title: "Buying a House",
+                description: "First-time home buying is complex. You need someone who understands the process and market.",
+                roles: { a: "Real Estate Agent", b: "Homeowner Friend", c: "Financial Planner", d: "Parent (bought multiple)" },
+                weights: { expertise: 9, availability: 6, trust: 7 },
+                scores: {
+                    a: { expertise: 9, availability: 8, trust: 4 },
+                    b: { expertise: 6, availability: 7, trust: 8 },
+                    c: { expertise: 8, availability: 4, trust: 7 },
+                    d: { expertise: 7, availability: 9, trust: 9 }
+                }
+            },
+            {
+                title: "Learning New Skills",
+                description: "You want to upskill for career growth. Who can guide your learning journey effectively?",
+                roles: { a: "Industry Expert (speaker)", b: "Online Course Creator", c: "Colleague (self-taught)", d: "Former Professor" },
+                weights: { expertise: 8, availability: 7, trust: 5 },
+                scores: {
+                    a: { expertise: 10, availability: 2, trust: 6 },
+                    b: { expertise: 7, availability: 10, trust: 4 },
+                    c: { expertise: 6, availability: 8, trust: 8 },
+                    d: { expertise: 9, availability: 4, trust: 7 }
+                }
+            },
+            {
+                title: "Dealing with Conflict",
+                description: "You're in a workplace conflict and need advice on how to handle it professionally.",
+                roles: { a: "HR Manager", b: "Trusted Manager", c: "Work Best Friend", d: "Lawyer Friend" },
+                weights: { expertise: 7, availability: 6, trust: 9 },
+                scores: {
+                    a: { expertise: 9, availability: 5, trust: 4 },
+                    b: { expertise: 7, availability: 6, trust: 7 },
+                    c: { expertise: 4, availability: 9, trust: 10 },
+                    d: { expertise: 8, availability: 3, trust: 6 }
+                }
+            },
+            {
+                title: "Planning a Wedding",
+                description: "Wedding planning is overwhelming. You need someone with taste, experience, and patience.",
+                roles: { a: "Wedding Planner (pro)", b: "Recently Married Friend", c: "Creative Sibling", d: "Mother (traditional)" },
+                weights: { expertise: 6, availability: 8, trust: 7 },
+                scores: {
+                    a: { expertise: 10, availability: 6, trust: 5 },
+                    b: { expertise: 7, availability: 7, trust: 8 },
+                    c: { expertise: 5, availability: 9, trust: 9 },
+                    d: { expertise: 6, availability: 10, trust: 7 }
+                }
+            }
+        ];
+
+        function generateRandomScenario() {
+            const scenario = scenarios[Math.floor(Math.random() * scenarios.length)];
+            currentScenario = scenario;
+
+            // Update scenario display
+            document.getElementById('scenario-title').textContent = scenario.title;
+            document.getElementById('scenario-description').textContent = scenario.description;
+            document.getElementById('role-a').textContent = scenario.roles.a;
+            document.getElementById('role-b').textContent = scenario.roles.b;
+            document.getElementById('role-c').textContent = scenario.roles.c;
+            document.getElementById('role-d').textContent = scenario.roles.d;
+
+            // Set weight sliders
+            document.getElementById('weight-expertise').value = scenario.weights.expertise;
+            document.getElementById('weight-availability').value = scenario.weights.availability;
+            document.getElementById('weight-trust').value = scenario.weights.trust;
+
+            // Set person scores
+            ['a', 'b', 'c', 'd'].forEach(person => {
+                document.getElementById(`expertise-${person}`).value = scenario.scores[person].expertise;
+                document.getElementById(`availability-${person}`).value = scenario.scores[person].availability;
+                document.getElementById(`trust-${person}`).value = scenario.scores[person].trust;
+            });
+
+            calculate();
+        }
+
+        function generateExplanation(scores, activations, weights, winner) {
+            const people = ['a', 'b', 'c', 'd'];
+            const personNames = currentScenario ?
+                { a: currentScenario.roles.a, b: currentScenario.roles.b, c: currentScenario.roles.c, d: currentScenario.roles.d } :
+                { a: 'Person A', b: 'Person B', c: 'Person C', d: 'Person D' };
+
+            const winnerName = personNames[winner];
+            const winnerActivation = (activations[people.indexOf(winner)] * 100).toFixed(1);
+
+            // Find the strongest factor for the winner
+            const winnerScores = {
+                expertise: getValue(`expertise-${winner}`) * weights.expertise,
+                availability: getValue(`availability-${winner}`) * weights.availability,
+                trust: getValue(`trust-${winner}`) * weights.trust
+            };
+
+            const strongestFactor = Object.entries(winnerScores).reduce((a, b) => a[1] > b[1] ? a : b)[0];
+            const factorLabels = { expertise: 'Domain Expertise', availability: 'Availability', trust: 'Trust Level' };
+
+            // Find runner-up
+            const sortedIndices = activations.map((a, i) => ({ activation: a, person: people[i] }))
+                .sort((a, b) => b.activation - a.activation);
+            const runnerUp = sortedIndices[1];
+            const runnerUpName = personNames[runnerUp.person];
+            const margin = ((activations[people.indexOf(winner)] - runnerUp.activation) * 100).toFixed(1);
+
+            // Generate explanation HTML
+            let html = `
+                <div class="reasoning-step">
+                    <span class="step-number">1</span>
+                    <span class="step-text">
+                        <strong>Analyzing the decision context:</strong> ${currentScenario ? `"${currentScenario.title}" - ${currentScenario.description}` : 'Custom scenario with your defined parameters.'}
+                    </span>
+                </div>
+
+                <div class="reasoning-step">
+                    <span class="step-number">2</span>
+                    <span class="step-text">
+                        <strong>Weighing factor importance:</strong>
+                        <span class="highlight-factor">Expertise</span> is weighted at ${(weights.expertise * 10).toFixed(0)}%,
+                        <span class="highlight-factor">Availability</span> at ${(weights.availability * 10).toFixed(0)}%, and
+                        <span class="highlight-factor">Trust</span> at ${(weights.trust * 10).toFixed(0)}%.
+                        ${weights.expertise > weights.availability && weights.expertise > weights.trust ?
+                            'This scenario prioritizes domain knowledge over accessibility.' :
+                            weights.trust > weights.expertise && weights.trust > weights.availability ?
+                            'This scenario values trust and reliability most highly.' :
+                            'Availability is a key factor in this time-sensitive decision.'}
+                    </span>
+                </div>
+
+                <div class="reasoning-step">
+                    <span class="step-number">3</span>
+                    <span class="step-text">
+                        <strong>Evaluating each candidate:</strong><br>
+                        ${people.map(p => {
+                            const exp = getValue(`expertise-${p}`);
+                            const avail = getValue(`availability-${p}`);
+                            const trust = getValue(`trust-${p}`);
+                            return `• <span class="highlight-person">${personNames[p]}</span>: Expertise ${exp}/10, Availability ${avail}/10, Trust ${trust}/10`;
+                        }).join('<br>')}
+                    </span>
+                </div>
+
+                <div class="reasoning-step">
+                    <span class="step-number">4</span>
+                    <span class="step-text">
+                        <strong>Computing neural activations:</strong> After applying weighted calculations and softmax normalization,
+                        <span class="highlight-winner">${winnerName}</span> achieved the highest activation at
+                        <span class="highlight-winner">${winnerActivation}%</span>.
+                        Their strongest contribution came from <span class="highlight-factor">${factorLabels[strongestFactor]}</span>
+                        (weighted score: ${winnerScores[strongestFactor].toFixed(1)}).
+                    </span>
+                </div>
+
+                <div class="reasoning-step">
+                    <span class="step-number">5</span>
+                    <span class="step-text">
+                        <strong>Competitive analysis:</strong> ${runnerUpName} was the closest competitor at ${(runnerUp.activation * 100).toFixed(1)}% activation,
+                        trailing by ${margin} percentage points.
+                        ${parseFloat(margin) < 5 ?
+                            'This is a close decision—you might consider consulting both.' :
+                            parseFloat(margin) > 20 ?
+                            'The clear margin suggests high confidence in this recommendation.' :
+                            'A moderate margin indicates a reasonably confident choice.'}
+                    </span>
+                </div>
+
+                <div class="final-verdict">
+                    <p>
+                        <strong>RECOMMENDATION:</strong> Seek advice from <span class="highlight-winner">${winnerName}</span>
+                        ${currentScenario ? ` for your ${currentScenario.title.toLowerCase()} decision` : ''}.
+                        ${parseFloat(winnerActivation) > 40 ?
+                            'They stand out as the optimal choice given your priorities.' :
+                            'While no single advisor dominates, they best match your weighted criteria.'}
+                    </p>
+                </div>
+            `;
+
+            document.getElementById('explanation-content').innerHTML = html;
+        }
+
+        function sigmoid(x) {
+            return 1 / (1 + Math.exp(-x));
+        }
+
+        function softmax(arr) {
+            const max = Math.max(...arr);
+            const exps = arr.map(x => Math.exp(x - max));
+            const sum = exps.reduce((a, b) => a + b, 0);
+            return exps.map(x => x / sum);
+        }
+
+        function getValue(id) {
+            const el = document.getElementById(id);
+            if (!el) return 0;
+            const val = parseInt(el.value);
+            // Update display value
+            const container = el.parentElement;
+            const valueSpan = container.querySelector('.value');
+            if (valueSpan) valueSpan.textContent = val;
+            return val;
+        }
+
+        function calculate() {
+            // Get importance weights
+            const weights = {
+                expertise: getValue('weight-expertise') / 10,
+                availability: getValue('weight-availability') / 10,
+                trust: getValue('weight-trust') / 10
+            };
+
+            // Calculate weighted scores for each person
+            const people = ['a', 'b', 'c', 'd'];
+            const scores = {};
+            const breakdowns = {};
+
+            people.forEach(person => {
+                const expertise = getValue(`expertise-${person}`) * weights.expertise;
+                const availability = getValue(`availability-${person}`) * weights.availability;
+                const trust = getValue(`trust-${person}`) * weights.trust;
+
+                let customScore = 0;
+                customFactors.forEach(factor => {
+                    const factorWeight = getValue(`weight-custom-${factor.id}`) / 10;
+                    const personValue = getValue(`custom-${factor.id}-${person}`);
+                    customScore += personValue * factorWeight;
+                });
+
+                const totalWeight = weights.expertise + weights.availability + weights.trust +
+                    customFactors.reduce((sum, f) => sum + getValue(`weight-custom-${f.id}`) / 10, 0);
+
+                const rawScore = (expertise + availability + trust + customScore) / (totalWeight || 1);
+                scores[person] = rawScore;
+
+                breakdowns[person] = `Exp: ${expertise.toFixed(1)} | Avail: ${availability.toFixed(1)} | Trust: ${trust.toFixed(1)}`;
+                if (customScore > 0) {
+                    breakdowns[person] += ` | Custom: ${customScore.toFixed(1)}`;
+                }
+            });
+
+            // Apply softmax for competitive selection
+            const scoreArray = people.map(p => scores[p]);
+            const activations = softmax(scoreArray);
+
+            // Find winner
+            let maxIdx = 0;
+            activations.forEach((a, i) => {
+                if (a > activations[maxIdx]) maxIdx = i;
+            });
+
+            // Update UI
+            people.forEach((person, idx) => {
+                const activation = activations[idx];
+                const percentage = (activation * 100).toFixed(1);
+
+                document.getElementById(`score-${person}`).textContent = activation.toFixed(3);
+                document.getElementById(`viz-score-${person}`).textContent = activation.toFixed(2);
+                document.getElementById(`bar-${person}`).style.width = `${percentage}%`;
+                document.getElementById(`breakdown-${person}`).textContent = breakdowns[person];
+
+                const card = document.getElementById(`card-${person}`);
+                const outputNode = document.getElementById(`output-${person}`);
+
+                if (idx === maxIdx) {
+                    card.classList.add('winner');
+                    outputNode.classList.add('winner');
+                } else {
+                    card.classList.remove('winner');
+                    outputNode.classList.remove('winner');
+                }
+            });
+
+            document.getElementById('winner-text').textContent = `Person ${people[maxIdx].toUpperCase()}`;
+
+            drawConnections();
+
+            // Generate explanation
+            generateExplanation(scores, activations, weights, people[maxIdx]);
+        }
+
+        function addCustomFactor() {
+            const nameInput = document.getElementById('custom-factor-name');
+            const name = nameInput.value.trim();
+            if (!name) return;
+
+            factorCount++;
+            const factorId = factorCount;
+            customFactors.push({ id: factorId, name });
+
+            // Add weight slider
+            const weightSection = document.querySelector('.weight-importance');
+            const weightDiv = document.createElement('div');
+            weightDiv.className = 'factor-slider';
+            weightDiv.innerHTML = `
+                <label>${name.substring(0, 10)}</label>
+                <input type="range" id="weight-custom-${factorId}" min="0" max="10" value="5" oninput="calculate()">
+                <span class="value" id="weight-custom-${factorId}-val">5</span>
+            `;
+            weightSection.appendChild(weightDiv);
+
+            // Add factor group
+            const factorsPanel = document.querySelector('.factors-panel');
+            const addCustomDiv = document.querySelector('.add-custom');
+
+            const groupDiv = document.createElement('div');
+            groupDiv.className = 'factor-group';
+            groupDiv.id = `custom-${factorId}-group`;
+            groupDiv.innerHTML = `
+                <h3>✨ ${name}</h3>
+                <div class="factor-slider">
+                    <label>Person A</label>
+                    <input type="range" id="custom-${factorId}-a" min="0" max="10" value="5" oninput="calculate()">
+                    <span class="value">5</span>
+                </div>
+                <div class="factor-slider">
+                    <label>Person B</label>
+                    <input type="range" id="custom-${factorId}-b" min="0" max="10" value="5" oninput="calculate()">
+                    <span class="value">5</span>
+                </div>
+                <div class="factor-slider">
+                    <label>Person C</label>
+                    <input type="range" id="custom-${factorId}-c" min="0" max="10" value="5" oninput="calculate()">
+                    <span class="value">5</span>
+                </div>
+                <div class="factor-slider">
+                    <label>Person D</label>
+                    <input type="range" id="custom-${factorId}-d" min="0" max="10" value="5" oninput="calculate()">
+                    <span class="value">5</span>
+                </div>
+            `;
+            factorsPanel.insertBefore(groupDiv, addCustomDiv);
+
+            nameInput.value = '';
+            calculate();
+        }
+
+        function drawConnections() {
+            const svg = document.getElementById('connections');
+            const rect = svg.getBoundingClientRect();
+
+            svg.innerHTML = '';
+            svg.setAttribute('viewBox', `0 0 ${rect.width} ${rect.height}`);
+
+            // Input nodes positions (left side)
+            const inputNodes = [
+                { x: 40, y: 80 },
+                { x: 40, y: 180 },
+                { x: 40, y: 280 },
+                { x: 40, y: 380 }
+            ];
+
+            // Center neuron
+            const center = { x: rect.width / 2, y: rect.height / 2 };
+
+            // Output nodes positions (right side)
+            const outputNodes = [
+                { x: rect.width - 45, y: 115 },
+                { x: rect.width - 45, y: 215 },
+                { x: rect.width - 45, y: 315 },
+                { x: rect.width - 45, y: 415 }
+            ];
+
+            // Draw input connections
+            inputNodes.forEach((node, i) => {
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', node.x + 30);
+                line.setAttribute('y1', node.y);
+                line.setAttribute('x2', center.x - 50);
+                line.setAttribute('y2', center.y);
+                line.setAttribute('stroke', '#ff6b6b');
+                svg.appendChild(line);
+            });
+
+            // Draw output connections
+            outputNodes.forEach((node, i) => {
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', center.x + 50);
+                line.setAttribute('y1', center.y);
+                line.setAttribute('x2', node.x - 35);
+                line.setAttribute('y2', node.y);
+                line.setAttribute('stroke', '#51cf66');
+                svg.appendChild(line);
+            });
+        }
+
+        // Initial calculation
+        window.addEventListener('load', () => {
+            initWelcomeOverlay();
+            // Don't calculate immediately - wait for user to select a scenario
+            window.addEventListener('resize', drawConnections);
+
+            // Focus the search input
+            setTimeout(() => {
+                document.getElementById('advice-search').focus();
+            }, 100);
+        });
+    </script>
+</body>
+</html>

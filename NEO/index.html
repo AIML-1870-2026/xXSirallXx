@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NeoWatch 3D</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #05050f;
+  --panel: rgba(8,12,30,0.9);
+  --border: rgba(0,180,255,0.18);
+  --accent: #00b4ff;
+  --danger: #ff3355;
+  --warn: #ff9922;
+  --safe: #22ff88;
+  --text: #cce4ff;
+  --dim: #4a6a8a;
+  --r: 6px;
+  --font-d: 'Orbitron', monospace;
+  --font-m: 'Share Tech Mono', monospace;
+  --font-b: 'Exo 2', sans-serif;
+}
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); color:var(--text); font-family:var(--font-b); }
+
+/* SPLASH */
+#splash {
+  position:fixed; inset:0; z-index:999;
+  background:var(--bg);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  cursor:pointer;
+  transition:opacity 0.9s ease;
+}
+#splash.fade { opacity:0; pointer-events:none; }
+#splash h1 { font-family:var(--font-d); font-size:clamp(2rem,6vw,4rem); font-weight:900; letter-spacing:.15em; color:var(--accent); text-shadow:0 0 40px rgba(0,180,255,.5); margin-bottom:.4em; }
+#splash p.sub { font-family:var(--font-m); font-size:.85rem; letter-spacing:.3em; color:var(--dim); margin-bottom:2.5em; }
+#splash p.cta { font-family:var(--font-m); font-size:.8rem; letter-spacing:.2em; color:var(--accent); animation:blink 1.8s ease-in-out infinite; }
+@keyframes blink { 0%,100%{opacity:.3} 50%{opacity:1} }
+
+/* TOPBAR */
+#topbar {
+  position:fixed; top:0; left:0; right:0; height:48px; z-index:100;
+  display:flex; align-items:center; gap:.5rem; padding:0 1rem;
+  background:var(--panel); border-bottom:1px solid var(--border); backdrop-filter:blur(12px);
+}
+#topbar .logo { font-family:var(--font-d); font-size:.95rem; font-weight:700; color:var(--accent); letter-spacing:.1em; white-space:nowrap; }
+.view-btns { display:flex; gap:2px; background:rgba(0,0,0,.4); border-radius:var(--r); overflow:hidden; }
+.view-btns button { font-family:var(--font-m); font-size:.68rem; padding:.35rem .65rem; border:none; background:transparent; color:var(--dim); cursor:pointer; letter-spacing:.05em; transition:all .15s; }
+.view-btns button:hover { color:var(--text); background:rgba(255,255,255,.06); }
+.view-btns button.on { color:#fff; background:rgba(0,180,255,.2); }
+.spacer { flex:1; }
+.btn { font-family:var(--font-m); font-size:.68rem; padding:.35rem .75rem; border:1px solid var(--border); border-radius:var(--r); background:transparent; color:var(--text); cursor:pointer; letter-spacing:.05em; transition:all .15s; white-space:nowrap; }
+.btn:hover { background:rgba(0,180,255,.1); }
+.btn.danger { border-color:var(--danger); color:var(--danger); }
+.btn.danger:hover { background:rgba(255,51,85,.15); }
+
+/* HUD SIDEBAR */
+#hud {
+  position:fixed; top:48px; left:0; bottom:0; width:240px; z-index:90;
+  background:var(--panel); border-right:1px solid var(--border); backdrop-filter:blur(10px);
+  display:flex; flex-direction:column; gap:.9rem; padding:1rem; overflow-y:auto;
+}
+.stat-lbl { font-family:var(--font-m); font-size:.58rem; letter-spacing:.2em; color:var(--dim); text-transform:uppercase; margin-bottom:.2rem; }
+.stat-val { font-family:var(--font-d); font-size:1.4rem; font-weight:700; color:var(--accent); }
+.stat-val.red { color:var(--danger); }
+.legend { display:flex; flex-direction:column; gap:.35rem; padding-top:.2rem; }
+.leg-row { display:flex; align-items:center; gap:.5rem; font-size:.72rem; color:var(--dim); }
+.leg-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.date-block { display:flex; flex-direction:column; gap:.4rem; padding-top:.2rem; }
+.date-block label { font-family:var(--font-m); font-size:.6rem; letter-spacing:.15em; color:var(--dim); text-transform:uppercase; }
+.date-block input[type=date] { width:100%; background:rgba(0,0,0,.4); border:1px solid var(--border); border-radius:var(--r); color:var(--text); font-family:var(--font-m); font-size:.75rem; padding:.3rem .5rem; }
+.btn-scan { width:100%; margin-top:.3rem; padding:.45rem; font-size:.7rem; }
+
+/* GLOBE AREA — canvas is injected here and takes natural renderer size */
+#globe-wrap {
+  position:fixed;
+  top:48px; left:240px; right:0; bottom:0;
+  background:#000008;
+  overflow:hidden;
+}
+
+/* ALT VIEWS */
+.view {
+  position:absolute; inset:0; display:none;
+  padding:1.5rem; overflow:auto; background:var(--bg);
+  z-index:10;
+}
+.view.show { display:block; }
+
+/* TABLE */
+table { width:100%; border-collapse:collapse; font-size:.78rem; }
+th { font-family:var(--font-m); font-size:.62rem; letter-spacing:.15em; text-transform:uppercase; color:var(--dim); text-align:left; padding:.55rem .7rem; border-bottom:1px solid var(--border); cursor:pointer; user-select:none; }
+th:hover { color:var(--text); }
+td { padding:.45rem .7rem; border-bottom:1px solid rgba(0,180,255,.05); }
+tr:hover td { background:rgba(0,180,255,.04); }
+td.red { color:var(--danger); }
+td.warn { color:var(--warn); }
+td.safe { color:var(--safe); }
+
+/* CARDS */
+.card-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:1rem; }
+.card { background:var(--panel); border:1px solid var(--border); border-radius:var(--r); padding:1rem; }
+.card.haz { border-color:rgba(255,51,85,.4); }
+.card-name { font-family:var(--font-d); font-size:.78rem; color:var(--accent); margin-bottom:.6rem; }
+.card-row { display:flex; justify-content:space-between; font-size:.72rem; color:var(--dim); padding:.15rem 0; }
+.card-row span:last-child { color:var(--text); font-family:var(--font-m); }
+
+/* TIMELINE */
+.tl-item { display:flex; gap:1rem; padding:.6rem 0; border-bottom:1px solid var(--border); align-items:center; }
+.tl-date { font-family:var(--font-m); font-size:.7rem; color:var(--dim); min-width:90px; }
+.tl-name { font-size:.8rem; flex:1; }
+.tl-badge { font-family:var(--font-m); font-size:.65rem; padding:.2rem .5rem; border-radius:3px; }
+.tl-badge.haz { background:rgba(255,51,85,.2); color:var(--danger); }
+.tl-badge.safe { background:rgba(34,255,136,.1); color:var(--safe); }
+
+/* 2D MAP */
+#map-canvas { display:block; width:100%; height:100%; }
+
+/* TOOLTIP */
+#tip {
+  position:fixed; z-index:300; pointer-events:none;
+  background:var(--panel); border:1px solid var(--border); border-radius:var(--r);
+  padding:.8rem; min-width:200px; font-size:.75rem;
+  opacity:0; transition:opacity .12s; backdrop-filter:blur(10px);
+}
+#tip.show { opacity:1; }
+#tip .tip-name { font-family:var(--font-d); font-size:.76rem; color:var(--accent); margin-bottom:.5rem; }
+#tip .tip-row { display:flex; justify-content:space-between; gap:.8rem; color:var(--dim); padding:.1rem 0; }
+#tip .tip-row span:last-child { color:var(--text); font-family:var(--font-m); }
+
+/* LOADING */
+#loading {
+  position:fixed; bottom:1.2rem; left:50%; transform:translateX(-50%);
+  z-index:200; display:none; align-items:center; gap:.5rem;
+  font-family:var(--font-m); font-size:.72rem; color:var(--accent); letter-spacing:.15em;
+}
+#loading.show { display:flex; }
+.spin { width:13px; height:13px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite; }
+@keyframes spin { to{transform:rotate(360deg)} }
+
+/* TOAST */
+#toast {
+  position:fixed; bottom:2rem; right:1rem; z-index:200;
+  background:var(--panel); border:1px solid var(--border); border-radius:var(--r);
+  padding:.75rem 1rem; max-width:320px; font-size:.78rem;
+  display:none; gap:.6rem; align-items:flex-start; backdrop-filter:blur(10px);
+}
+#toast.show { display:flex; }
+#toast button { background:none; border:none; color:var(--dim); cursor:pointer; font-size:1rem; line-height:1; flex-shrink:0; }
+
+/* SCI-FI PROMPT */
+#scifi-prompt {
+  position:fixed; inset:0; z-index:600; display:none;
+  align-items:center; justify-content:center;
+  background:rgba(0,0,0,.75); backdrop-filter:blur(6px);
+}
+#scifi-prompt.show { display:flex; }
+#scifi-prompt-box {
+  background:var(--panel); border:1px solid var(--danger);
+  border-radius:var(--r); padding:2rem; max-width:420px; width:90%;
+  box-shadow:0 0 40px rgba(255,51,85,.25);
+  font-family:var(--font-b);
+}
+#scifi-prompt-box h3 {
+  font-family:var(--font-d); font-size:1rem; color:var(--danger);
+  letter-spacing:.15em; margin-bottom:.75rem;
+  text-shadow:0 0 12px rgba(255,51,85,.5);
+}
+#scifi-prompt-box p {
+  font-size:.78rem; color:var(--dim); line-height:1.6; margin-bottom:1.25rem;
+}
+#scifi-prompt-box p strong { color:var(--text); }
+.scifi-prompt-btns { display:flex; gap:.6rem; justify-content:flex-end; }
+
+/* IMPACT CINEMATIC CARD */
+#impact-card {
+  position:fixed; inset:0; z-index:510; display:none;
+  align-items:center; justify-content:center;
+  pointer-events:none;
+}
+#impact-card.show { display:flex; }
+#impact-card-inner {
+  background:rgba(4,2,8,0.92); border:1px solid var(--danger);
+  border-radius:var(--r); padding:2.2rem 3rem; text-align:center;
+  box-shadow:0 0 80px rgba(255,51,85,.75), 0 0 160px rgba(255,51,85,.3), inset 0 0 50px rgba(255,30,30,.08);
+  animation:impact-in .45s cubic-bezier(.175,.885,.32,1.275);
+  max-width:460px;
+}
+@keyframes impact-in {
+  from { transform:scale(0.3); opacity:0; }
+  60%  { transform:scale(1.06); opacity:1; }
+  to   { transform:scale(1);   opacity:1; }
+}
+#impact-card-name { font-family:var(--font-d); font-size:1rem; color:#fff; letter-spacing:.12em; margin-bottom:.8rem; }
+#impact-card-ke   { font-family:var(--font-d); font-size:2.4rem; font-weight:900; color:var(--danger); text-shadow:0 0 30px var(--danger); }
+#impact-card-unit { font-family:var(--font-m); font-size:.7rem; color:var(--dim); letter-spacing:.2em; margin-bottom:.9rem; }
+.impact-stats { display:flex; gap:1.8rem; justify-content:center; margin-top:.6rem; }
+.impact-stat  { display:flex; flex-direction:column; align-items:center; gap:.15rem; }
+.impact-stat span:first-child { font-family:var(--font-m); font-size:.58rem; letter-spacing:.2em; color:var(--dim); text-transform:uppercase; }
+.impact-stat span:last-child  { font-family:var(--font-d); font-size:.95rem; color:var(--text); }
+
+/* SHOCKWAVE FLASH */
+#shockwave {
+  position:fixed; inset:0; z-index:505; pointer-events:none;
+  background:radial-gradient(circle at 50% 50%, rgba(255,220,100,.75) 0%, rgba(255,80,20,.45) 30%, rgba(180,0,0,.2) 60%, transparent 80%);
+  opacity:0;
+}
+#shockwave.flash { animation:shockwave 1.2s ease-out forwards; }
+@keyframes shockwave {
+  0%   { opacity:0;    transform:scale(0.05); }
+  10%  { opacity:1;    transform:scale(0.8);  }
+  100% { opacity:0;    transform:scale(3.0);  }
+}
+
+/* CINEMATIC LETTERBOX */
+#letterbox-top, #letterbox-bot {
+  position:fixed; left:0; right:0; z-index:511;
+  background:#000; height:0;
+  transition:height 0.65s cubic-bezier(.4,0,.2,1);
+  pointer-events:none;
+}
+#letterbox-top { top:0; }
+#letterbox-bot { bottom:0; }
+#letterbox-top.open, #letterbox-bot.open { height:10vh; }
+
+/* RED VIGNETTE */
+#vignette {
+  position:fixed; inset:0; z-index:503; pointer-events:none;
+  background:radial-gradient(ellipse at 50% 50%, transparent 20%, rgba(160,0,0,0.85) 100%);
+  opacity:0; transition:opacity .45s;
+}
+#vignette.show { opacity:1; }
+
+/* IMPACT SEQUENCE COUNTER */
+#impact-counter {
+  position:fixed; top:12vh; left:50%; transform:translateX(-50%);
+  z-index:512; font-family:var(--font-m); font-size:.7rem; letter-spacing:.35em;
+  color:rgba(255,51,85,.85); display:none;
+  text-shadow:0 0 14px rgba(255,51,85,.7);
+}
+#impact-counter.show { display:block; }
+
+/* SCI-FI OVERLAY */
+#scifi {
+  position:fixed; inset:0; z-index:500; display:none;
+  background:rgba(0,0,0,.92); flex-direction:column; align-items:center; justify-content:center;
+  font-family:var(--font-m);
+}
+#scifi.show { display:flex; }
+#scifi h2 { font-family:var(--font-d); font-size:1.4rem; color:var(--danger); letter-spacing:.2em; margin-bottom:.5rem; text-shadow:0 0 20px var(--danger); }
+#scifi .big { font-size:3rem; font-weight:900; color:var(--danger); margin:.3rem 0; text-shadow:0 0 40px var(--danger); }
+#scifi .status { font-size:.85rem; color:var(--dim); margin-bottom:1.5rem; }
+#scifi .log { max-height:180px; overflow-y:auto; width:100%; max-width:480px; font-size:.68rem; color:var(--dim); margin-bottom:1.5rem; }
+.log-line { padding:.15rem 0; border-bottom:1px solid rgba(255,255,255,.04); }
+
+/* GLOBE ERROR */
+#globe-error {
+  position:absolute; inset:0; display:none;
+  align-items:center; justify-content:center;
+  flex-direction:column; gap:1rem;
+  color:#ff6644; font-family:monospace; font-size:.85rem; text-align:center; padding:2rem;
+}
+#globe-error.show { display:flex; }
+
+/* RESPONSIVE */
+@media(max-width:700px) {
+  #hud { top:auto; bottom:0; left:0; right:0; width:100%; height:auto; max-height:38vh; flex-direction:row; flex-wrap:wrap; border-right:none; border-top:1px solid var(--border); }
+  #globe-wrap { left:0; bottom:38vh; }
+  .view { bottom:38vh; }
+}
+</style>
+</head>
+<body>
+
+<!-- SPLASH -->
+<div id="splash">
+  <h1>NeoWatch 3D</h1>
+  <p class="sub">NASA Near-Earth Object Tracker</p>
+  <p class="cta">— TAP TO BEGIN —</p>
+</div>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <span class="logo">NEOWATCH 3D</span>
+  <div class="view-btns">
+    <button class="on" data-view="globe">3D GLOBE</button>
+    <button data-view="map">2D MAP</button>
+    <button data-view="table">TABLE</button>
+    <button data-view="timeline">TIMELINE</button>
+    <button data-view="cards">CARDS</button>
+  </div>
+  <div class="spacer"></div>
+  <button class="btn danger" id="scifi-btn">☢ SCI-FI</button>
+</div>
+
+<!-- HUD -->
+<div id="hud">
+  <div>
+    <div class="stat-lbl">Total Objects</div>
+    <div class="stat-val" id="stat-total">—</div>
+  </div>
+  <div>
+    <div class="stat-lbl">Hazardous</div>
+    <div class="stat-val red" id="stat-haz">—</div>
+  </div>
+  <div>
+    <div class="stat-lbl">Closest Approach</div>
+    <div class="stat-val" id="stat-close">—</div>
+  </div>
+  <div class="legend">
+    <div class="stat-lbl">Legend</div>
+    <div class="leg-row"><div class="leg-dot" style="background:#ff3355"></div>Hazardous ▲</div>
+    <div class="leg-row"><div class="leg-dot" style="background:#ff9922"></div>&lt;1 Lunar Dist ◆</div>
+    <div class="leg-row"><div class="leg-dot" style="background:#22ff88"></div>Safe ●</div>
+  </div>
+  <div class="date-block">
+    <div class="stat-lbl">Date Range</div>
+    <label>From</label><input type="date" id="df">
+    <label>To</label><input type="date" id="dt">
+    <button class="btn btn-scan" id="btn-scan">SCAN</button>
+  </div>
+</div>
+
+<!-- GLOBE CONTAINER -->
+<div id="globe-wrap">
+  <div id="globe-error">
+    <div>⚠ 3D globe failed to load</div>
+    <div id="globe-error-msg" style="color:#888;font-size:.75rem"></div>
+  </div>
+  <!-- Alt views -->
+  <div id="view-map" class="view"><canvas id="map-canvas"></canvas></div>
+  <div id="view-table" class="view">
+    <table id="tbl">
+      <thead><tr>
+        <th data-s="name">Name</th>
+        <th data-s="date">Date</th>
+        <th data-s="dist">Miss Dist (LD)</th>
+        <th data-s="vel">Velocity (km/s)</th>
+        <th data-s="diam">Diameter (m)</th>
+        <th data-s="haz">Hazardous</th>
+      </tr></thead>
+      <tbody id="tbl-body"></tbody>
+    </table>
+  </div>
+  <div id="view-timeline" class="view"><div id="tl-body"></div></div>
+  <div id="view-cards" class="view"><div class="card-grid" id="card-body"></div></div>
+</div>
+
+<!-- TOOLTIP -->
+<div id="tip">
+  <div class="tip-name" id="tip-name"></div>
+  <div class="tip-row"><span>Date</span><span id="tip-date"></span></div>
+  <div class="tip-row"><span>Miss dist</span><span id="tip-dist"></span></div>
+  <div class="tip-row"><span>Velocity</span><span id="tip-vel"></span></div>
+  <div class="tip-row"><span>Diameter</span><span id="tip-diam"></span></div>
+  <div class="tip-row"><span>Hazardous</span><span id="tip-haz"></span></div>
+</div>
+
+<!-- LOADING -->
+<div id="loading"><div class="spin"></div>Scanning near-Earth space…</div>
+
+<!-- TOAST -->
+<div id="toast"><span id="toast-msg"></span><button id="toast-x">✕</button></div>
+
+<!-- SCI-FI PROMPT (auto-shown after 5 s) -->
+<div id="scifi-prompt">
+  <div id="scifi-prompt-box">
+    <h3>☢ SCI-FI MODE AVAILABLE</h3>
+    <p>
+      <strong>Sci-Fi Mode</strong> runs a fictional impact simulation on every
+      near-Earth object currently loaded. For each asteroid it calculates
+      estimated <strong>kinetic energy (megatons)</strong>, theoretical
+      <strong>crater diameter</strong>, and a dramatic
+      <strong>estimated casualty count</strong> — then renders a live threat
+      readout and an overall Earth status verdict.<br><br>
+      This is purely for entertainment. The physics are simplified and the
+      results are not real predictions.
+    </p>
+    <div class="scifi-prompt-btns">
+      <button class="btn" id="scifi-prompt-no">Maybe Later</button>
+      <button class="btn danger" id="scifi-prompt-yes">☄ Launch Simulation</button>
+    </div>
+  </div>
+</div>
+
+<!-- CINEMATIC LETTERBOX -->
+<div id="letterbox-top"></div>
+<div id="letterbox-bot"></div>
+
+<!-- RED VIGNETTE -->
+<div id="vignette"></div>
+
+<!-- IMPACT COUNTER -->
+<div id="impact-counter"></div>
+
+<!-- SHOCKWAVE FLASH -->
+<div id="shockwave"></div>
+
+<!-- IMPACT CINEMATIC CARD -->
+<div id="impact-card">
+  <div id="impact-card-inner">
+    <div id="impact-card-name"></div>
+    <div id="impact-card-ke"></div>
+    <div id="impact-card-unit">MEGATONS TNT</div>
+    <div class="impact-stats">
+      <div class="impact-stat"><span>Crater</span><span id="impact-crater"></span></div>
+      <div class="impact-stat"><span>Casualties</span><span id="impact-cas"></span></div>
+      <div class="impact-stat"><span>Diameter</span><span id="impact-diam"></span></div>
+    </div>
+  </div>
+</div>
+
+<!-- SCI-FI OVERLAY -->
+<div id="scifi">
+  <h2>☄ IMPACT SIMULATION</h2>
+  <div class="big" id="sf-cas">0</div>
+  <div class="status" id="sf-status">Earth Status: CALCULATING…</div>
+  <div class="log" id="sf-log"></div>
+  <button class="btn" id="sf-close">DISMISS</button>
+</div>
+
+<script>
+'use strict';
+
+// ── CONFIG ──────────────────────────────────────────────────────────────────
+const API_KEY = 'D36Q3kKCmVGaDcTt1sCY1WHCC94EJ51jHacDH7P9';
+
+// ── HELPERS ─────────────────────────────────────────────────────────────────
+const $  = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const fmt = n => Number(n).toLocaleString(undefined, { maximumFractionDigits: 1 });
+const today  = () => new Date().toISOString().slice(0,10);
+const addDay = (s,n) => { const d=new Date(s); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); };
+
+// ── STATE ────────────────────────────────────────────────────────────────────
+const S = { neos:[], view:'globe', sortCol:'dist', sortDir:'asc' };
+
+// ── FALLBACK DATA ────────────────────────────────────────────────────────────
+const DEMO = [
+  {id:'54016382',name:'(2020 XL5)',  date:'2026-04-10',haz:false,dMin:210,dMax:470, distKm:4870000,distLD:12.67,velKmh:42300,velKms:11.75},
+  {id:'54204856',name:'(2021 RB1)',  date:'2026-04-10',haz:true, dMin:140,dMax:320, distKm:980000, distLD:2.55, velKmh:68500,velKms:19.03},
+  {id:'53780123',name:'(2019 GC6)',  date:'2026-04-11',haz:false,dMin:60, dMax:140, distKm:1540000,distLD:4.01, velKmh:31200,velKms:8.67},
+  {id:'54391044',name:'(2022 AP7)',  date:'2026-04-11',haz:true, dMin:730,dMax:1630,distKm:7290000,distLD:18.97,velKmh:55800,velKms:15.5},
+  {id:'53101200',name:'(2018 KP1)',  date:'2026-04-12',haz:false,dMin:30, dMax:68,  distKm:350000, distLD:0.91, velKmh:21800,velKms:6.06},
+  {id:'54501337',name:'(2023 DZ2)',  date:'2026-04-12',haz:false,dMin:40, dMax:90,  distKm:175000, distLD:0.46, velKmh:19400,velKms:5.39},
+  {id:'53002811',name:'(2017 BQ6)',  date:'2026-04-13',haz:true, dMin:290,dMax:650, distKm:6100000,distLD:15.88,velKmh:78200,velKms:21.72},
+  {id:'54700298',name:'(2024 RW1)',  date:'2026-04-13',haz:false,dMin:12, dMax:28,  distKm:2200000,distLD:5.73, velKmh:27600,velKms:7.67},
+  {id:'53455611',name:'(2019 SB6)',  date:'2026-04-14',haz:false,dMin:80, dMax:180, distKm:3400000,distLD:8.85, velKmh:36900,velKms:10.25},
+  {id:'54088976',name:'(2021 GM4)',  date:'2026-04-15',haz:true, dMin:180,dMax:410, distKm:1200000,distLD:3.12, velKmh:61000,velKms:16.94},
+];
+
+// ── THREE.JS GLOBALS ─────────────────────────────────────────────────────────
+let scene, camera, renderer, earth, neoGroup, neoMeshes=[], raycaster, mouse;
+let THREE = null;
+
+// ── LOAD THREE.JS WITH FALLBACK ──────────────────────────────────────────────
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload  = resolve;
+    s.onerror = () => reject(new Error('Failed: ' + src));
+    document.head.appendChild(s);
+  });
+}
+
+function showGlobeError(msg) {
+  $('#globe-error-msg').textContent = msg;
+  $('#globe-error').classList.add('show');
+}
+
+// ── INIT 3D ──────────────────────────────────────────────────────────────────
+function init3D() {
+  THREE = window.THREE;
+  if (!THREE) { showGlobeError('THREE is not defined'); return; }
+
+  const wrap = $('#globe-wrap');
+  const W = wrap.clientWidth  || (window.innerWidth  - 240);
+  const H = wrap.clientHeight || (window.innerHeight - 48);
+
+  if (W <= 0 || H <= 0) { showGlobeError('Globe container has zero size (W='+W+' H='+H+')'); return; }
+
+  try {
+    scene  = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(45, W / H, 0.02, 500);
+    camera.position.z = 4;
+
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(W, H);
+    renderer.setClearColor(0x000008);
+
+    // Position canvas absolutely to fill container
+    const cv = renderer.domElement;
+    cv.style.position = 'absolute';
+    cv.style.top = '0';
+    cv.style.left = '0';
+    cv.style.width = W + 'px';
+    cv.style.height = H + 'px';
+    wrap.prepend(cv);
+
+    // ── Stars ──
+    const pos = [];
+    for (let i = 0; i < 3000; i++) {
+      const th = Math.random() * Math.PI * 2;
+      const ph = Math.acos(2 * Math.random() - 1);
+      const r  = 60 + Math.random() * 40;
+      pos.push(r*Math.sin(ph)*Math.cos(th), r*Math.sin(ph)*Math.sin(th), r*Math.cos(ph));
+    }
+    const sg = new THREE.BufferGeometry();
+    sg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    scene.add(new THREE.Points(sg, new THREE.PointsMaterial({ color:0xffffff, size:0.15 })));
+
+    // ── Lights ──
+    scene.add(new THREE.AmbientLight(0x334466, 1.5));
+    const sun = new THREE.DirectionalLight(0xffffff, 3.0);
+    sun.position.set(5, 3, 5);
+    scene.add(sun);
+
+    // ── Earth (textured) ──
+    const loader = new THREE.TextureLoader();
+    loader.crossOrigin = 'anonymous';
+    const BASE = 'https://threejs.org/examples/textures/planets/';
+    const eg = new THREE.SphereGeometry(1, 64, 64);
+    const em = new THREE.MeshPhongMaterial({
+      map:         loader.load(BASE + 'earth_atmos_2048.jpg'),
+      specularMap: loader.load(BASE + 'earth_specular_2048.jpg'),
+      normalMap:   loader.load(BASE + 'earth_normal_2048.jpg'),
+      specular:    new THREE.Color(0x4499bb),
+      shininess:   20,
+    });
+    earth = new THREE.Mesh(eg, em);
+    scene.add(earth);
+
+    // ── NEO group (rotates with Earth so dragging keeps NEOs in sync) ──
+    neoGroup = new THREE.Group();
+    scene.add(neoGroup);
+
+    // ── Cloud layer (slowly rotates independently) ──
+    const clouds = new THREE.Mesh(
+      new THREE.SphereGeometry(1.012, 64, 64),
+      new THREE.MeshPhongMaterial({
+        map:         loader.load(BASE + 'earth_clouds_1024.png'),
+        transparent: true,
+        opacity:     0.55,
+        depthWrite:  false,
+      })
+    );
+    earth.add(clouds); // child of earth so it orbits with it
+    // Override cloud rotation slightly faster in the animate loop
+    clouds.userData.clouds = true;
+
+    // ── Lat/lon grid ──
+    const gg = new THREE.SphereGeometry(1.003, 18, 18);
+    const gm = new THREE.MeshBasicMaterial({ color:0x66ccff, wireframe:true, transparent:true, opacity:0.08 });
+    scene.add(new THREE.Mesh(gg, gm));
+
+    // ── Atmosphere halo ──
+    const ag = new THREE.SphereGeometry(1.15, 32, 32);
+    const am = new THREE.MeshBasicMaterial({ color:0x2299ff, transparent:true, opacity:0.09, side:THREE.BackSide });
+    scene.add(new THREE.Mesh(ag, am));
+
+    // ── Distance rings (1 LD, 5 LD, 10 LD) ──
+    [1, 5, 10].forEach((ld, i) => {
+      const r  = 1 + ld * 0.28;
+      const rg = new THREE.RingGeometry(r - 0.006, r + 0.006, 64);
+      const rm = new THREE.MeshBasicMaterial({ color:0x00b4ff, transparent:true, opacity:0.15 - i*0.03, side:THREE.DoubleSide });
+      const ring = new THREE.Mesh(rg, rm);
+      ring.rotation.x = Math.PI / 2;
+      scene.add(ring);
+    });
+
+    raycaster = new THREE.Raycaster();
+    mouse     = new THREE.Vector2(-9, -9);
+
+    // ── Drag rotation ──
+    let drag=false, px=0, py=0, rx=0, ry=0;
+    cv.addEventListener('pointerdown', e => { drag=true; px=e.clientX; py=e.clientY; cv.setPointerCapture(e.pointerId); });
+    cv.addEventListener('pointerup',   () => { drag=false; });
+    cv.addEventListener('pointermove', e => {
+      const r2 = cv.getBoundingClientRect();
+      mouse.x =  ((e.clientX - r2.left) / r2.width ) * 2 - 1;
+      mouse.y = -((e.clientY - r2.top ) / r2.height) * 2 + 1;
+      if (!drag) return;
+      ry += (e.clientX - px) * 0.005;
+      rx += (e.clientY - py) * 0.005;
+      rx = Math.max(-1.3, Math.min(1.3, rx));
+      px = e.clientX; py = e.clientY;
+    });
+    cv.addEventListener('wheel', e => {
+      camera.position.z = Math.max(2, Math.min(10, camera.position.z + e.deltaY * 0.004));
+      e.preventDefault();
+    }, { passive:false });
+    cv.addEventListener('click', () => checkHover(true));
+
+    // ── Resize ──
+    window.addEventListener('resize', () => {
+      const W2 = wrap.clientWidth  || (window.innerWidth  - 240);
+      const H2 = wrap.clientHeight || (window.innerHeight - 48);
+      camera.aspect = W2 / H2;
+      camera.updateProjectionMatrix();
+      renderer.setSize(W2, H2);
+      cv.style.width  = W2 + 'px';
+      cv.style.height = H2 + 'px';
+    });
+
+    // ── Animate ──
+    (function loop() {
+      requestAnimationFrame(loop);
+      if (!drag) ry += 0.0008;
+      earth.rotation.set(rx, ry, 0);
+      if (neoGroup) neoGroup.rotation.set(rx, ry, 0);
+      // Clouds drift slightly faster than Earth surface
+      if (clouds) clouds.rotation.y += 0.00004;
+      // Each asteroid tumbles on its own local axes within the group
+      neoMeshes.forEach(m => {
+        const d = m.userData;
+        m.rotation.x += d._wx;
+        m.rotation.y += d._wy;
+        m.rotation.z += d._wz;
+      });
+      checkHover(false);
+      renderer.render(scene, camera);
+    })();
+
+  } catch(err) {
+    showGlobeError('Three.js error: ' + err.message);
+    console.error(err);
+  }
+}
+
+// ── SEEDED PSEUDO-RNG (no Math.random — deterministic per NEO) ────────────────
+function lcg(seed) {
+  let s = seed >>> 0;
+  return () => { s = (Math.imul(1664525, s) + 1013904223) >>> 0; return s / 0xffffffff; };
+}
+
+// ── BUILD JAGGED ASTEROID GEOMETRY ───────────────────────────────────────────
+function makeAsteroidGeo(size, seed) {
+  const rng  = lcg(seed);
+  const base = new THREE.IcosahedronGeometry(size, 2); // 80 faces — enough detail
+  const pos  = base.attributes.position;
+  // Perturb each vertex outward/inward to create a lumpy rock shape
+  for (let i = 0; i < pos.count; i++) {
+    const jitter = 0.72 + rng() * 0.56; // scale 0.72–1.28
+    pos.setXYZ(i, pos.getX(i) * jitter, pos.getY(i) * jitter, pos.getZ(i) * jitter);
+  }
+  pos.needsUpdate = true;
+  base.computeVertexNormals();
+  return base;
+}
+
+// ── NEO MESHES ───────────────────────────────────────────────────────────────
+function update3D() {
+  if (!scene) return;
+  neoMeshes.forEach(m => (neoGroup || scene).remove(m));
+  neoMeshes = [];
+  S.neos.forEach(n => {
+    const seed  = parseInt(n.id) || 0;
+    const rng   = lcg(seed + 7);
+    const theta = ((seed * 2654435761) % 6283) / 1000;
+    const phi   = ((seed * 340573321)  % 3141) / 1000 - Math.PI / 2;
+    const r     = 1 + Math.min(n.distLD, 10) * 0.28;
+    const x = r*Math.cos(phi)*Math.cos(theta), y = r*Math.sin(phi), z = r*Math.cos(phi)*Math.sin(theta);
+    const size  = Math.max(0.022, Math.min(0.075, n.dMax / 2600));
+
+    // Emissive color shows hazard level; surface is always dark rocky gray
+    const emissive = n.haz ? 0xcc1122 : n.distLD < 1 ? 0xcc6600 : 0x116633;
+    const glowColor = n.haz ? 0xff3355 : n.distLD < 1 ? 0xff9922 : 0x22ff88;
+
+    const geo  = makeAsteroidGeo(size, seed);
+    const mat  = new THREE.MeshStandardMaterial({
+      color:          0x5a5550,   // dark charcoal-brown rock
+      roughness:      0.92,
+      metalness:      0.08,
+      emissive:       new THREE.Color(emissive),
+      emissiveIntensity: n.haz ? 0.55 : 0.30,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(x, y, z);
+    // Random initial orientation per asteroid
+    mesh.rotation.set(rng() * Math.PI * 2, rng() * Math.PI * 2, rng() * Math.PI * 2);
+    // Store tumble speed (unique per NEO)
+    mesh.userData = { ...n, _wx: (rng()-0.5)*0.012, _wy: (rng()-0.5)*0.012, _wz: (rng()-0.5)*0.008 };
+    (neoGroup || scene).add(mesh);
+    neoMeshes.push(mesh);
+
+    // Soft corona glow sprite
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({
+      color: glowColor, transparent: true, opacity: n.haz ? 0.45 : 0.28,
+    }));
+    glow.scale.set(size * 7, size * 7, 1);
+    mesh.add(glow);
+  });
+}
+
+// ── HOVER / TOOLTIP ──────────────────────────────────────────────────────────
+let hovered = null;
+function checkHover(isTap) {
+  if (!raycaster || S.view !== 'globe') return;
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObjects(neoMeshes);
+  const tip  = $('#tip');
+  if (hits.length) {
+    const n = hits[0].object.userData;
+    if (hovered !== n || isTap) { hovered = n; showTip(n); }
+  } else if (!isTap) {
+    hovered = null;
+    tip.classList.remove('show');
+  }
+}
+function showTip(n) {
+  $('#tip-name').textContent = n.name;
+  $('#tip-date').textContent = n.date;
+  $('#tip-dist').textContent = fmt(n.distLD) + ' LD';
+  $('#tip-vel' ).textContent = n.velKms.toFixed(2) + ' km/s';
+  $('#tip-diam').textContent = Math.round(n.dMin) + '–' + Math.round(n.dMax) + ' m';
+  $('#tip-haz' ).textContent = n.haz ? '⚠ YES' : 'No';
+  const tip = $('#tip');
+  tip.classList.add('show');
+  const cv  = renderer.domElement;
+  const r2  = cv.getBoundingClientRect();
+  const nx  = (mouse.x  + 1) / 2 * r2.width  + r2.left;
+  const ny  = (-mouse.y + 1) / 2 * r2.height + r2.top;
+  tip.style.left = Math.min(nx + 14, window.innerWidth  - tip.offsetWidth  - 10) + 'px';
+  tip.style.top  = Math.min(ny - 10, window.innerHeight - tip.offsetHeight - 10) + 'px';
+}
+
+// ── NASA API ─────────────────────────────────────────────────────────────────
+async function fetchNEOs(from, to) {
+  $('#loading').classList.add('show');
+  try {
+    const url  = `https://api.nasa.gov/neo/rest/v1/feed?start_date=${from}&end_date=${to}&api_key=${API_KEY}`;
+    const res  = await fetch(url);
+    const data = await res.json();
+    if (!res.ok || !data.near_earth_objects) throw new Error(data.error?.message || `HTTP ${res.status}`);
+    const list = [];
+    Object.keys(data.near_earth_objects).sort().forEach(dt => {
+      data.near_earth_objects[dt].forEach(o => {
+        const ca = o.close_approach_data[0];
+        list.push({
+          id:     o.id,
+          name:   o.name,
+          date:   dt,
+          haz:    o.is_potentially_hazardous_asteroid,
+          dMin:   o.estimated_diameter.meters.estimated_diameter_min,
+          dMax:   o.estimated_diameter.meters.estimated_diameter_max,
+          distKm: parseFloat(ca.miss_distance.kilometers),
+          distLD: parseFloat(ca.miss_distance.lunar),
+          velKmh: parseFloat(ca.relative_velocity.kilometers_per_hour),
+          velKms: parseFloat(ca.relative_velocity.kilometers_per_second),
+        });
+      });
+    });
+    S.neos = list;
+  } catch(e) {
+    console.warn('NASA API:', e.message, '— using demo data');
+    S.neos = DEMO;
+    showToast('⚠ API unavailable — showing demo data');
+  }
+  $('#loading').classList.remove('show');
+  updateHUD(); updateViews(); update3D();
+}
+
+// ── HUD ──────────────────────────────────────────────────────────────────────
+function updateHUD() {
+  $('#stat-total').textContent = S.neos.length || '—';
+  $('#stat-haz'  ).textContent = S.neos.filter(n => n.haz).length || '0';
+  const closest = S.neos.reduce((m, n) => Math.min(m, n.distLD), Infinity);
+  $('#stat-close').textContent = isFinite(closest) ? fmt(closest) + ' LD' : '—';
+}
+
+// ── VIEW SWITCHING ────────────────────────────────────────────────────────────
+$$('.view-btns button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    $$('.view-btns button').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    S.view = btn.dataset.view;
+    const cv = renderer ? renderer.domElement : null;
+    if (cv) cv.style.display = S.view === 'globe' ? 'block' : 'none';
+    $$('.view').forEach(v => v.classList.remove('show'));
+    if (S.view !== 'globe') {
+      const el = $(`#view-${S.view}`);
+      if (el) el.classList.add('show');
+      if (S.view === 'map') drawMap();
+    }
+  });
+});
+
+// ── TABLE ─────────────────────────────────────────────────────────────────────
+function renderTable() {
+  const list = [...S.neos].sort((a, b) => {
+    let va, vb;
+    switch (S.sortCol) {
+      case 'name': va=a.name;    vb=b.name;    break;
+      case 'date': va=a.date;    vb=b.date;    break;
+      case 'vel':  va=a.velKms;  vb=b.velKms;  break;
+      case 'diam': va=a.dMax;    vb=b.dMax;    break;
+      case 'haz':  va=a.haz?0:1; vb=b.haz?0:1; break;
+      default:     va=a.distLD;  vb=b.distLD;
+    }
+    return (va < vb ? -1 : va > vb ? 1 : 0) * (S.sortDir === 'asc' ? 1 : -1);
+  });
+  $('#tbl-body').innerHTML = list.map(n => `<tr>
+    <td>${n.name}</td><td>${n.date}</td>
+    <td class="${n.distLD < 1 ? 'warn' : ''}">${fmt(n.distLD)}</td>
+    <td>${n.velKms.toFixed(2)}</td>
+    <td>${Math.round(n.dMin)}–${Math.round(n.dMax)}</td>
+    <td class="${n.haz ? 'red' : 'safe'}">${n.haz ? '⚠ YES' : '—'}</td>
+  </tr>`).join('');
+}
+$$('#tbl th').forEach(th => {
+  th.addEventListener('click', () => {
+    const s = th.dataset.s;
+    S.sortDir = S.sortCol === s && S.sortDir === 'asc' ? 'desc' : 'asc';
+    S.sortCol = s;
+    renderTable();
+  });
+});
+
+// ── TIMELINE ─────────────────────────────────────────────────────────────────
+function renderTimeline() {
+  const sorted = [...S.neos].sort((a, b) => a.date.localeCompare(b.date));
+  $('#tl-body').innerHTML = sorted.map(n => `
+    <div class="tl-item">
+      <span class="tl-date">${n.date}</span>
+      <span class="tl-name">${n.name}</span>
+      <span class="tl-badge ${n.haz ? 'haz' : 'safe'}">${n.haz ? 'HAZARDOUS' : 'SAFE'}</span>
+      <span style="font-family:var(--font-m);font-size:.68rem;color:var(--dim)">${fmt(n.distLD)} LD</span>
+    </div>`).join('');
+}
+
+// ── CARDS ─────────────────────────────────────────────────────────────────────
+function renderCards() {
+  $('#card-body').innerHTML = S.neos.map(n => `
+    <div class="card${n.haz ? ' haz' : ''}">
+      <div class="card-name">${n.name}</div>
+      <div class="card-row"><span>Date</span><span>${n.date}</span></div>
+      <div class="card-row"><span>Miss dist</span><span>${fmt(n.distLD)} LD</span></div>
+      <div class="card-row"><span>Velocity</span><span>${n.velKms.toFixed(2)} km/s</span></div>
+      <div class="card-row"><span>Diameter</span><span>${Math.round(n.dMin)}–${Math.round(n.dMax)} m</span></div>
+      <div class="card-row"><span>Hazardous</span><span style="color:${n.haz ? 'var(--danger)' : 'var(--safe)'}">${n.haz ? '⚠ YES' : '—'}</span></div>
+    </div>`).join('');
+}
+
+// ── 2D MAP ────────────────────────────────────────────────────────────────────
+function drawMap() {
+  const canvas = $('#map-canvas');
+  const p = canvas.parentElement;
+  canvas.width  = p.clientWidth  || 800;
+  canvas.height = p.clientHeight || 500;
+  const ctx = canvas.getContext('2d'), w = canvas.width, h = canvas.height;
+  ctx.fillStyle = '#000008'; ctx.fillRect(0, 0, w, h);
+  ctx.strokeStyle = 'rgba(0,180,255,.1)'; ctx.lineWidth = 1;
+  for (let i=0; i<=12; i++) { ctx.beginPath(); ctx.moveTo(i*w/12,0); ctx.lineTo(i*w/12,h); ctx.stroke(); }
+  for (let i=0; i<=6;  i++) { ctx.beginPath(); ctx.moveTo(0,i*h/6); ctx.lineTo(w,i*h/6); ctx.stroke(); }
+  ctx.strokeStyle = 'rgba(0,180,255,.25)'; ctx.beginPath(); ctx.moveTo(0,h/2); ctx.lineTo(w,h/2); ctx.stroke();
+  S.neos.forEach(n => {
+    const s = parseInt(n.id) || 0;
+    const x = ((s*2654435761) % w + w) % w;
+    const y = ((s*340573321)  % h + h) % h;
+    const r = Math.max(3, Math.min(10, n.dMax / 50));
+    ctx.fillStyle = n.haz ? '#ff3355' : n.distLD < 1 ? '#ff9922' : '#22ff88';
+    ctx.globalAlpha = .85; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha = .2;  ctx.beginPath(); ctx.arc(x,y,r+5,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha = 1;
+  });
+  ctx.fillStyle = 'rgba(0,180,255,.4)'; ctx.font = '11px "Share Tech Mono"';
+  ctx.fillText('2D EQUIRECTANGULAR PROJECTION', 10, h - 10);
+}
+
+function updateViews() {
+  renderTable(); renderTimeline(); renderCards();
+  if (S.view === 'map') drawMap();
+}
+
+// ── DATE SCAN ────────────────────────────────────────────────────────────────
+$('#btn-scan').addEventListener('click', () => {
+  const f = $('#df').value, t = $('#dt').value;
+  if (f && t) fetchNEOs(f, t);
+});
+
+// ── SCI-FI IMPACT VISUALS ─────────────────────────────────────────────────────
+
+// Radial glow canvas texture
+function makeGlowTex(r, g, b) {
+  const sz = 128, cv = document.createElement('canvas');
+  cv.width = cv.height = sz;
+  const ctx = cv.getContext('2d');
+  const grd = ctx.createRadialGradient(sz/2,sz/2,0, sz/2,sz/2,sz/2);
+  grd.addColorStop(0,    `rgba(${r},${g},${b},1)`);
+  grd.addColorStop(0.2,  `rgba(${r},${g},${b},0.85)`);
+  grd.addColorStop(0.55, `rgba(${r},${g},${b},0.3)`);
+  grd.addColorStop(1,    `rgba(0,0,0,0)`);
+  ctx.fillStyle = grd;
+  ctx.fillRect(0, 0, sz, sz);
+  return new THREE.CanvasTexture(cv);
+}
+
+// Ring shockwave canvas texture
+function makeRingTex() {
+  const sz = 256, cv = document.createElement('canvas');
+  cv.width = cv.height = sz;
+  const ctx = cv.getContext('2d');
+  ctx.shadowBlur = 16; ctx.shadowColor = 'rgba(255,120,20,0.9)';
+  ctx.strokeStyle = 'rgba(255,150,30,1)'; ctx.lineWidth = 14;
+  ctx.beginPath(); ctx.arc(sz/2, sz/2, sz/2 - 10, 0, Math.PI*2); ctx.stroke();
+  ctx.shadowBlur = 6;
+  ctx.strokeStyle = 'rgba(255,220,80,0.6)'; ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.arc(sz/2, sz/2, sz/2 - 18, 0, Math.PI*2); ctx.stroke();
+  return new THREE.CanvasTexture(cv);
+}
+
+// Returns a point on Earth's surface guaranteed to be on the camera-facing side,
+// expressed in Earth's LOCAL space (so it stays correct even as Earth rotates).
+function getNearSideImpactPos(seed) {
+  // Pick a point in the front hemisphere (within 75 deg of +z in world space)
+  const theta = ((seed % 137) / 137) * Math.PI * 0.45;
+  const phi   = ((seed * 2654435761) % 6283) / 1000;
+  const worldPos = new THREE.Vector3(
+    Math.sin(theta) * Math.cos(phi),
+    Math.sin(theta) * Math.sin(phi),
+    Math.cos(theta)
+  ).normalize();
+  // Transform to Earth's local space so the sprite follows Earth rotation
+  if (earth) {
+    const invQ = earth.quaternion.clone().invert();
+    worldPos.applyQuaternion(invQ);
+  }
+  return worldPos;
+}
+
+// Renders fireball + ring + white core on Earth's surface at localPos
+function showImpactEffect(localPos, ke, totalMs = 3200) {
+  if (!earth || !THREE) return;
+  const maxS = Math.max(0.1, Math.min(0.30, Math.log10(ke + 1.5) * 0.13));
+
+  // White hot core (instant flash)
+  const coreTex = makeGlowTex(255, 245, 210);
+  const core = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: coreTex, transparent: true, opacity: 0, depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  }));
+  core.position.copy(localPos).multiplyScalar(1.016);
+  core.scale.set(maxS * 0.3, maxS * 0.3, 1);
+  earth.add(core);
+
+  // Orange fireball
+  const fireTex = makeGlowTex(255, 140, 30);
+  const fireball = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: fireTex, transparent: true, opacity: 0, depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  }));
+  fireball.position.copy(localPos).multiplyScalar(1.016);
+  fireball.scale.set(maxS * 0.4, maxS * 0.4, 1);
+  earth.add(fireball);
+
+  // Expanding shockwave ring
+  const ringTex = makeRingTex();
+  const ring = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: ringTex, transparent: true, opacity: 0, depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  }));
+  ring.position.copy(localPos).multiplyScalar(1.016);
+  ring.scale.set(0.01, 0.01, 1);
+  earth.add(ring);
+
+  const start = performance.now();
+  (function step(now) {
+    const t = Math.min((now - start) / totalMs, 1);
+
+    // Core: instant flash, fades in first 25%
+    if (t < 0.05)       { core.material.opacity = t / 0.05; }
+    else                { core.material.opacity = Math.max(0, 1 - (t - 0.05) / 0.20); }
+
+    // Fireball: flash in (0–10%), expand & fade (10–100%)
+    if (t < 0.10) {
+      fireball.material.opacity = t / 0.10;
+      const s = maxS * (0.3 + (t / 0.10) * 0.7);
+      fireball.scale.set(s, s, 1);
+    } else {
+      const ft = (t - 0.10) / 0.90;
+      fireball.material.opacity = Math.max(0, 1 - ft * 1.1);
+      const s = maxS * (1 + ft * 2.8);
+      fireball.scale.set(s, s, 1);
+    }
+
+    // Ring: appear at 5%, expand fast, fade to nothing
+    if (t > 0.05) {
+      const rt = Math.min((t - 0.05) / 0.95, 1);
+      ring.material.opacity = rt < 0.12 ? rt / 0.12 : Math.max(0, 1 - (rt - 0.12) / 0.88);
+      const rs = maxS * (0.15 + rt * 5.5);
+      ring.scale.set(rs, rs, 1);
+    }
+
+    if (t < 1) {
+      requestAnimationFrame(step);
+    } else {
+      earth.remove(core); earth.remove(fireball); earth.remove(ring);
+      coreTex.dispose(); fireTex.dispose(); ringTex.dispose();
+    }
+  })(start);
+}
+
+// Physically deforms Earth's sphere geometry at the impact point and restores it
+function deformEarth(impactLocalPos, ke, durationMs) {
+  if (!earth || !THREE) return;
+  const geo = earth.geometry;
+  const pos = geo.attributes.position;
+  const count = pos.count;
+  const orig = pos.array.slice(); // snapshot original positions
+
+  const impact = impactLocalPos.clone().normalize();
+  const coneAngle = 0.44; // ~25° cone radius on the sphere
+  const maxDepth  = Math.max(0.13, Math.min(0.28, Math.log10(ke + 1.5) * 0.11));
+
+  // Precompute which vertices fall inside the impact cone and their falloff weight
+  const affected = [];
+  for (let i = 0; i < count; i++) {
+    const ox = orig[i*3], oy = orig[i*3+1], oz = orig[i*3+2];
+    const len = Math.sqrt(ox*ox + oy*oy + oz*oz);
+    const nx = ox/len, ny = oy/len, nz = oz/len;
+    const dot = nx*impact.x + ny*impact.y + nz*impact.z;
+    const angle = Math.acos(Math.max(-1, Math.min(1, dot)));
+    if (angle < coneAngle) {
+      const w = 1 - angle / coneAngle;
+      affected.push({ i, ox, oy, oz, nx, ny, nz, len, w: w * w });
+    }
+  }
+
+  const start = performance.now();
+  (function step(now) {
+    const t = Math.min((now - start) / durationMs, 1);
+    // Fast strike (0–12%), hold crater (12–55%), spring back (55–100%)
+    let d;
+    if      (t < 0.12) d = -(t / 0.12) * maxDepth;
+    else if (t < 0.55) d = -maxDepth;
+    else               d = -maxDepth * (1 - (t - 0.55) / 0.45);
+
+    for (const { i, nx, ny, nz, len, w } of affected) {
+      const r = len + d * w;
+      pos.setXYZ(i, nx * r, ny * r, nz * r);
+    }
+    pos.needsUpdate = true;
+    geo.computeVertexNormals();
+
+    if (t < 1) {
+      requestAnimationFrame(step);
+    } else {
+      for (const { i, ox, oy, oz } of affected) pos.setXYZ(i, ox, oy, oz);
+      pos.needsUpdate = true;
+      geo.computeVertexNormals();
+    }
+  })(start);
+}
+
+// ── SCI-FI MODE ───────────────────────────────────────────────────────────────
+function impactData(n) {
+  const r = n.dMax / 2, v = n.velKms * 1000;
+  const vol = (4/3) * Math.PI * r*r*r, mass = vol * 3000;
+  const ke = 0.5 * mass * v*v / 1e15;
+  return {
+    ke,
+    crater: Math.round(0.07 * Math.pow(ke, 0.29) * 1000),
+    cas:    Math.round(ke * 4200),
+  };
+}
+
+// Smooth camera zoom using rAF
+function zoomCamera(targetZ, durationMs) {
+  return new Promise(resolve => {
+    if (!camera) { resolve(); return; }
+    const startZ = camera.position.z;
+    const start  = performance.now();
+    function step(now) {
+      const t = Math.min((now - start) / durationMs, 1);
+      const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t; // ease-in-out
+      camera.position.z = startZ + (targetZ - startZ) * ease;
+      if (t < 1) requestAnimationFrame(step);
+      else resolve();
+    }
+    requestAnimationFrame(step);
+  });
+}
+
+// Camera screen shake
+function screenShake(durationMs, intensity) {
+  if (!camera) return;
+  const start = performance.now();
+  function shake(now) {
+    const elapsed = now - start;
+    if (elapsed >= durationMs) { camera.position.x = 0; camera.position.y = 0; return; }
+    const decay = 1 - elapsed / durationMs;
+    camera.position.x = (Math.random() - 0.5) * intensity * decay;
+    camera.position.y = (Math.random() - 0.5) * intensity * decay;
+    requestAnimationFrame(shake);
+  }
+  requestAnimationFrame(shake);
+}
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function resetCinematicUI() {
+  $('#letterbox-top').classList.remove('open');
+  $('#letterbox-bot').classList.remove('open');
+  $('#vignette').classList.remove('show');
+  $('#impact-counter').classList.remove('show');
+  $('#impact-card').classList.remove('show');
+  if (earth) { earth.material.emissive.setHex(0x000000); earth.material.emissiveIntensity = 0; }
+}
+
+async function runSciFi() {
+  if (S.neos.length === 0) return;
+
+  const impacts = S.neos.map(n => ({ n, ...impactData(n) }));
+  const totalCas = impacts.reduce((s, i) => s + i.cas, 0);
+  const origZ = camera ? camera.position.z : 4;
+  const n = impacts.length;
+
+  impacts.sort((a, b) => a.ke - b.ke);
+
+  // Divide 10 s evenly: 600 ms overhead (letterbox open+close), rest split per impact
+  const perMs   = Math.floor(9400 / n);
+  const tZoom   = Math.max(60,  Math.floor(perMs * 0.24));
+  const tOut    = Math.max(60,  Math.floor(perMs * 0.24));
+  const tGap    = Math.max(20,  Math.floor(perMs * 0.05));
+  const tHold   = Math.max(80,  perMs - tZoom - tOut - tGap);
+
+  $('#letterbox-top').classList.add('open');
+  $('#letterbox-bot').classList.add('open');
+  await delay(300);
+
+  for (let idx = 0; idx < n; idx++) {
+    const { n: neo, ke, crater, cas } = impacts[idx];
+
+    $('#impact-counter').textContent = `IMPACT ${idx + 1} / ${n}`;
+    $('#impact-counter').classList.add('show');
+
+    await zoomCamera(1.15, tZoom);
+
+    const seed = parseInt(neo.id) || idx + 1;
+    const impactLocal = getNearSideImpactPos(seed);
+
+    $('#vignette').classList.add('show');
+    showImpactEffect(impactLocal, ke, tHold + tOut);
+    deformEarth(impactLocal, ke, tHold);
+
+    // Scale shockwave animation to match hold time
+    const sw = $('#shockwave');
+    sw.style.animation = 'none';
+    void sw.offsetWidth;
+    sw.style.animation = `shockwave ${Math.min(900, tHold + tOut)}ms ease-out forwards`;
+
+    screenShake(Math.min(400, tHold), 0.13);
+    if (earth) { earth.material.emissive.setHex(0xaa1100); earth.material.emissiveIntensity = 0.4; }
+
+    $('#impact-card-name').textContent = neo.name;
+    $('#impact-card-ke'  ).textContent = ke >= 1 ? ke.toFixed(1) : ke.toFixed(3);
+    $('#impact-crater'   ).textContent = crater >= 1000 ? (crater/1000).toFixed(1)+' km' : crater+' m';
+    $('#impact-cas'      ).textContent = cas >= 1e9 ? (cas/1e9).toFixed(1)+'B' : cas >= 1e6 ? (cas/1e6).toFixed(1)+'M' : cas.toLocaleString();
+    $('#impact-diam'     ).textContent = Math.round(neo.dMin)+'–'+Math.round(neo.dMax)+' m';
+    $('#impact-card').classList.add('show');
+
+    await delay(tHold);
+
+    $('#impact-card').classList.remove('show');
+    $('#vignette').classList.remove('show');
+    if (earth) { earth.material.emissive.setHex(0x000000); earth.material.emissiveIntensity = 0; }
+
+    await zoomCamera(origZ, tOut);
+    await delay(tGap);
+  }
+
+  $('#letterbox-top').classList.remove('open');
+  $('#letterbox-bot').classList.remove('open');
+  $('#impact-counter').classList.remove('show');
+  await delay(300);
+
+  const lines = impacts.map(({ n: neo, ke, crater, cas }) =>
+    `<div class="log-line">${neo.name} — ${ke.toFixed(1)} MT — crater ${crater} km — ${cas.toLocaleString()} est. casualties</div>`
+  );
+  $('#sf-cas'   ).textContent = totalCas.toLocaleString();
+  $('#sf-status').textContent = 'Earth Status: ' + (totalCas > 1e9 ? '☠ UNINHABITABLE' : totalCas > 1e6 ? '⚠ CATASTROPHIC' : 'SURVIVABLE');
+  $('#sf-log'   ).innerHTML   = lines.join('');
+  $('#scifi').classList.add('show');
+}
+
+$('#scifi-btn').addEventListener('click', runSciFi);
+$('#sf-close').addEventListener('click', () => {
+  $('#scifi').classList.remove('show');
+  resetCinematicUI();
+  if (camera) zoomCamera(4, 600);
+});
+
+// ── SCI-FI PROMPT (shown 5 s after page load) ─────────────────────────────────
+setTimeout(() => $('#scifi-prompt').classList.add('show'), 5000);
+$('#scifi-prompt-yes').addEventListener('click', () => {
+  $('#scifi-prompt').classList.remove('show');
+  runSciFi();
+});
+$('#scifi-prompt-no').addEventListener('click', () => $('#scifi-prompt').classList.remove('show'));
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+function showToast(msg) { $('#toast-msg').textContent = msg; $('#toast').classList.add('show'); }
+$('#toast-x').addEventListener('click', () => $('#toast').classList.remove('show'));
+
+// ── KEYBOARD ──────────────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { $('#scifi').classList.remove('show'); $('#toast').classList.remove('show'); }
+});
+
+// ── MAP OBSERVER ─────────────────────────────────────────────────────────────
+new MutationObserver(() => {
+  if ($('#view-map').classList.contains('show')) drawMap();
+}).observe($('#view-map'), { attributes:true, attributeFilter:['class'] });
+
+// ── SPLASH ────────────────────────────────────────────────────────────────────
+function dismiss() {
+  $('#splash').classList.add('fade');
+  setTimeout(() => { $('#splash').style.display = 'none'; }, 950);
+}
+$('#splash').addEventListener('click', dismiss);
+$('#splash').addEventListener('touchend', e => { e.preventDefault(); dismiss(); });
+setTimeout(dismiss, 2500);
+
+// ── BOOTSTRAP: load Three.js then start ──────────────────────────────────────
+const CDN1 = 'https://unpkg.com/three@0.128.0/build/three.min.js';
+const CDN2 = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+
+loadScript(CDN1)
+  .catch(() => loadScript(CDN2))
+  .then(() => {
+    // Give browser one frame to finish layout before measuring
+    requestAnimationFrame(() => {
+      init3D();
+      const t0 = today(), t7 = addDay(t0, 7);
+      $('#df').value = t0;
+      $('#dt').value = t7;
+      fetchNEOs(t0, t7);
+    });
+  })
+  .catch(err => {
+    showGlobeError('Could not load Three.js from any CDN. Check your internet connection. (' + err.message + ')');
+  });
+</script>
+</body>
+</html>

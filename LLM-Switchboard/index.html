@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LLM Switchboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0c0c0e;
+  --surface: #16161a;
+  --surface2: #1e1e24;
+  --border: #2a2a32;
+  --border-hover: #3a3a44;
+  --text: #e8e6e3;
+  --text-dim: #8a8a96;
+  --accent: #f0c040;
+  --accent-dim: #f0c04020;
+  --green: #4ade80;
+  --red: #f87171;
+  --blue: #60a5fa;
+  --radius: 10px;
+  --mono: 'DM Mono', monospace;
+  --serif: 'Instrument Serif', serif;
+  --sans: 'DM Sans', sans-serif;
+}
+
+html { font-size: 15px; }
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.5;
+}
+
+/* LAYOUT */
+.app {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  min-height: 100vh;
+}
+
+/* SIDEBAR */
+.sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  overflow-y: auto;
+}
+
+.logo {
+  font-family: var(--serif);
+  font-size: 1.75rem;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.logo .bolt { color: var(--accent); font-size: 1.5rem; }
+
+.section-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+
+label { display: block; }
+select, input[type="text"], input[type="password"], textarea {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  font-family: var(--sans);
+  font-size: 0.87rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%238a8a96'%3E%3Cpath d='M6 8.5L1 3.5h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+select:hover, input:hover, textarea:hover { border-color: var(--border-hover); }
+select:focus, input:focus, textarea:focus { border-color: var(--accent); }
+textarea { resize: vertical; font-family: var(--mono); font-size: 0.8rem; min-height: 80px; }
+
+.key-row { display: flex; gap: 6px; }
+.key-row input { flex: 1; }
+.key-status {
+  font-size: 0.75rem;
+  margin-top: 4px;
+  color: var(--text-dim);
+}
+.key-status.loaded { color: var(--green); }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface2);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn:hover { border-color: var(--accent); color: var(--accent); }
+.btn-primary {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+.btn-primary:hover { background: #e0b030; border-color: #e0b030; }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-sm { padding: 6px 10px; font-size: 0.75rem; }
+
+.toggle-group {
+  display: flex;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.toggle-group button {
+  flex: 1;
+  padding: 9px 6px;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.toggle-group button.active {
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+.example-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip {
+  padding: 5px 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.chip:hover { border-color: var(--accent); color: var(--accent); }
+
+.file-upload-area {
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.file-upload-area:hover { border-color: var(--accent); color: var(--text); }
+
+/* MAIN */
+.main {
+  display: flex;
+  flex-direction: column;
+  padding: 28px 36px;
+  gap: 20px;
+  overflow-y: auto;
+}
+
+.prompt-area {
+  position: relative;
+}
+.prompt-area textarea {
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  min-height: 120px;
+  padding: 16px;
+  padding-bottom: 52px;
+}
+.prompt-actions {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.mode-badge {
+  font-size: 0.7rem;
+  font-family: var(--mono);
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: var(--surface);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+}
+.mode-badge.structured { color: var(--blue); border-color: var(--blue); background: #60a5fa12; }
+
+.schema-editor {
+  display: none;
+  position: relative;
+}
+.schema-editor.visible { display: block; }
+.schema-editor textarea { min-height: 160px; }
+.schema-chips {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+/* RESPONSE */
+.response-panel {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 300px;
+}
+.response-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+.response-meta {
+  display: flex;
+  gap: 16px;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+}
+.response-meta span { display: flex; align-items: center; gap: 4px; }
+
+.response-body {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  font-size: 0.9rem;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.response-body.json {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: var(--green);
+}
+.response-body .placeholder {
+  color: var(--text-dim);
+  font-style: italic;
+  text-align: center;
+  margin-top: 80px;
+  font-family: var(--serif);
+  font-size: 1.1rem;
+}
+
+.cors-warning {
+  display: none;
+  background: #f8717112;
+  border: 1px solid #f8717140;
+  border-radius: var(--radius);
+  padding: 16px;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--red);
+}
+.cors-warning.visible { display: block; }
+.cors-warning strong { color: var(--text); }
+
+.loading-spinner {
+  display: none;
+  justify-content: center;
+  padding: 40px;
+}
+.loading-spinner.visible { display: flex; }
+.spinner {
+  width: 28px; height: 28px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.error-msg {
+  background: #f8717112;
+  border: 1px solid #f8717140;
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  font-size: 0.82rem;
+  color: var(--red);
+  display: none;
+}
+.error-msg.visible { display: block; }
+
+/* RESPONSIVE */
+@media (max-width: 860px) {
+  .app { grid-template-columns: 1fr; }
+  .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
+  .main { padding: 20px 16px; }
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="logo"><span class="bolt">&#9889;</span> LLM Switchboard</div>
+
+    <!-- API Keys -->
+    <div>
+      <div class="section-label">API Keys</div>
+      <div style="margin-bottom:10px">
+        <label style="font-size:0.78rem;color:var(--text-dim);margin-bottom:4px;display:block">OpenAI Key</label>
+        <div class="key-row">
+          <input type="password" id="openai-key" placeholder="sk-...">
+          <button class="btn btn-sm" onclick="toggleKeyVis('openai-key',this)">&#128065;</button>
+        </div>
+        <div class="key-status" id="openai-key-status">Not loaded</div>
+      </div>
+      <div style="margin-bottom:10px">
+        <label style="font-size:0.78rem;color:var(--text-dim);margin-bottom:4px;display:block">Anthropic Key</label>
+        <div class="key-row">
+          <input type="password" id="anthropic-key" placeholder="sk-ant-...">
+          <button class="btn btn-sm" onclick="toggleKeyVis('anthropic-key',this)">&#128065;</button>
+        </div>
+        <div class="key-status" id="anthropic-key-status">Not loaded</div>
+      </div>
+      <div class="file-upload-area" onclick="document.getElementById('file-input').click()">
+        <input type="file" id="file-input" onchange="handleFileUpload(event)" style="display:none">
+        &#128196; Upload .env or CSV with keys
+      </div>
+    </div>
+
+    <!-- Provider & Model -->
+    <div>
+      <div class="section-label">Provider</div>
+      <div class="toggle-group" id="provider-toggle">
+        <button class="active" onclick="setProvider('openai')">OpenAI</button>
+        <button onclick="setProvider('anthropic')">Anthropic</button>
+      </div>
+    </div>
+    <div>
+      <div class="section-label">Model</div>
+      <select id="model-select"></select>
+    </div>
+
+    <!-- Output Mode -->
+    <div>
+      <div class="section-label">Output Mode</div>
+      <div class="toggle-group" id="mode-toggle">
+        <button class="active" onclick="setMode('unstructured')">Unstructured</button>
+        <button onclick="setMode('structured')">Structured</button>
+      </div>
+    </div>
+
+    <!-- Example Prompts -->
+    <div>
+      <div class="section-label">Example Prompts</div>
+      <div class="example-chips" id="prompt-chips"></div>
+    </div>
+
+    <div style="margin-top:auto;font-size:0.7rem;color:var(--text-dim);line-height:1.6">
+      Keys are stored <strong style="color:var(--text)">in memory only</strong> and never persisted. Refresh to clear.
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="cors-warning" id="cors-warning">
+      <strong>&#9888; Anthropic CORS Restriction</strong><br><br>
+      Anthropic's API does not allow direct browser requests by default. This app sends the required
+      <code>anthropic-dangerous-direct-browser-access: true</code> header to opt in, but your
+      Anthropic account must have direct browser access enabled. If the request fails, that is why.
+      OpenAI's API always permits browser requests.
+    </div>
+
+    <div class="prompt-area">
+      <textarea id="prompt-input" placeholder="Type your prompt here... (Ctrl+Enter to send)"></textarea>
+      <div class="prompt-actions">
+        <span class="mode-badge" id="mode-badge">unstructured</span>
+        <button class="btn btn-primary" id="send-btn" onclick="sendPrompt()">Send &#8594;</button>
+      </div>
+    </div>
+
+    <div class="schema-editor" id="schema-editor">
+      <div class="section-label">JSON Schema</div>
+      <div class="schema-chips" id="schema-chips"></div>
+      <textarea id="schema-input" placeholder='{"type":"object","properties":{...}}'></textarea>
+    </div>
+
+    <div class="error-msg" id="error-msg"></div>
+
+    <div class="response-panel">
+      <div class="response-header">
+        <span id="response-label">Response</span>
+        <div class="response-meta">
+          <span id="meta-time" style="display:none">&#9200; <span></span></span>
+          <span id="meta-tokens" style="display:none">&#9830; <span></span> tokens</span>
+        </div>
+      </div>
+      <div class="loading-spinner" id="loading"><div class="spinner"></div></div>
+      <div class="response-body" id="response-body">
+        <div class="placeholder">Response will appear here</div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+var state = {
+  provider: 'openai',
+  mode: 'unstructured',
+  keys: { openai: '', anthropic: '' }
+};
+
+var MODELS = {
+  openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'],
+  anthropic: ['claude-sonnet-4-20250514', 'claude-haiku-4-5-20241022']
+};
+
+var EXAMPLE_PROMPTS = [
+  { label: 'Explain Recursion', text: 'Explain recursion to a 10 year old using a fun analogy.' },
+  { label: 'Haiku Generator', text: 'Write three haikus about the feeling of debugging code at 2 AM.' },
+  { label: 'Meal Planner', text: 'Suggest a healthy 3-day meal plan for someone who is vegetarian and on a budget.' },
+  { label: 'Cover Letter', text: 'Write a cover letter for a junior web developer applying to a startup that makes educational games.' },
+  { label: 'Trivia Quiz', text: 'Create 5 multiple-choice trivia questions about space exploration.' },
+  { label: 'Code Review', text: 'Review this code and suggest improvements:\nfunction add(a,b){return a+b}' }
+];
+
+var SCHEMA_TEMPLATES = [
+  { label: 'Element', schema: {"type":"object","properties":{"name":{"type":"string"},"symbol":{"type":"string"},"atomic_number":{"type":"integer"},"fun_fact":{"type":"string"}},"required":["name","symbol","atomic_number","fun_fact"],"additionalProperties":false} },
+  { label: 'Trivia Q', schema: {"type":"object","properties":{"questions":{"type":"array","items":{"type":"object","properties":{"question":{"type":"string"},"options":{"type":"array","items":{"type":"string"}},"correct_answer":{"type":"string"},"explanation":{"type":"string"}},"required":["question","options","correct_answer","explanation"],"additionalProperties":false}}},"required":["questions"],"additionalProperties":false} },
+  { label: 'Meal Plan', schema: {"type":"object","properties":{"days":{"type":"array","items":{"type":"object","properties":{"day":{"type":"string"},"breakfast":{"type":"string"},"lunch":{"type":"string"},"dinner":{"type":"string"}},"required":["day","breakfast","lunch","dinner"],"additionalProperties":false}}},"required":["days"],"additionalProperties":false} },
+  { label: 'Sentiment', schema: {"type":"object","properties":{"sentiment":{"type":"string","enum":["positive","negative","neutral"]},"confidence":{"type":"number"},"key_phrases":{"type":"array","items":{"type":"string"}},"summary":{"type":"string"}},"required":["sentiment","confidence","key_phrases","summary"],"additionalProperties":false} }
+];
+
+function init() {
+  populateModels();
+  renderPromptChips();
+  renderSchemaChips();
+
+  document.getElementById('openai-key').addEventListener('input', function(e) {
+    state.keys.openai = e.target.value.trim();
+    updateKeyStatus('openai');
+  });
+  document.getElementById('anthropic-key').addEventListener('input', function(e) {
+    state.keys.anthropic = e.target.value.trim();
+    updateKeyStatus('anthropic');
+  });
+
+  document.getElementById('prompt-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) sendPrompt();
+  });
+}
+
+function populateModels() {
+  var sel = document.getElementById('model-select');
+  var models = MODELS[state.provider];
+  sel.innerHTML = '';
+  for (var i = 0; i < models.length; i++) {
+    var opt = document.createElement('option');
+    opt.value = models[i];
+    opt.textContent = models[i];
+    sel.appendChild(opt);
+  }
+}
+
+function renderPromptChips() {
+  var container = document.getElementById('prompt-chips');
+  container.innerHTML = '';
+  for (var i = 0; i < EXAMPLE_PROMPTS.length; i++) {
+    (function(idx) {
+      var chip = document.createElement('span');
+      chip.className = 'chip';
+      chip.textContent = EXAMPLE_PROMPTS[idx].label;
+      chip.onclick = function() { document.getElementById('prompt-input').value = EXAMPLE_PROMPTS[idx].text; };
+      container.appendChild(chip);
+    })(i);
+  }
+}
+
+function renderSchemaChips() {
+  var container = document.getElementById('schema-chips');
+  container.innerHTML = '';
+  for (var i = 0; i < SCHEMA_TEMPLATES.length; i++) {
+    (function(idx) {
+      var chip = document.createElement('span');
+      chip.className = 'chip';
+      chip.textContent = SCHEMA_TEMPLATES[idx].label;
+      chip.onclick = function() {
+        document.getElementById('schema-input').value = JSON.stringify(SCHEMA_TEMPLATES[idx].schema, null, 2);
+      };
+      container.appendChild(chip);
+    })(i);
+  }
+}
+
+function setProvider(p) {
+  state.provider = p;
+  var btns = document.querySelectorAll('#provider-toggle button');
+  btns[0].classList.toggle('active', p === 'openai');
+  btns[1].classList.toggle('active', p === 'anthropic');
+  populateModels();
+  document.getElementById('cors-warning').classList.toggle('visible', p === 'anthropic');
+}
+
+function setMode(m) {
+  state.mode = m;
+  var btns = document.querySelectorAll('#mode-toggle button');
+  btns[0].classList.toggle('active', m === 'unstructured');
+  btns[1].classList.toggle('active', m === 'structured');
+  document.getElementById('schema-editor').classList.toggle('visible', m === 'structured');
+  var badge = document.getElementById('mode-badge');
+  badge.textContent = m;
+  badge.classList.toggle('structured', m === 'structured');
+}
+
+function toggleKeyVis(id, btn) {
+  var inp = document.getElementById(id);
+  var show = inp.type === 'password';
+  inp.type = show ? 'text' : 'password';
+  btn.innerHTML = show ? '&#128584;' : '&#128065;';
+}
+
+function updateKeyStatus(provider) {
+  var el = document.getElementById(provider + '-key-status');
+  if (state.keys[provider]) {
+    el.textContent = 'Key loaded';
+    el.classList.add('loaded');
+  } else {
+    el.textContent = 'Not loaded';
+    el.classList.remove('loaded');
+  }
+}
+
+function handleFileUpload(e) {
+  var file = e.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    var text = ev.target.result;
+    var lines = text.split('\n');
+    for (var i = 0; i < lines.length; i++) {
+      var trimmed = lines[i].trim();
+      if (!trimmed || trimmed.charAt(0) === '#' || trimmed.indexOf('=') === -1) continue;
+      var eqIdx = trimmed.indexOf('=');
+      var k = trimmed.substring(0, eqIdx).trim();
+      var v = trimmed.substring(eqIdx + 1).trim().replace(/^["']|["']$/g, '');
+      if (/openai/i.test(k) && v.indexOf('sk-') === 0) {
+        state.keys.openai = v;
+        document.getElementById('openai-key').value = v;
+        updateKeyStatus('openai');
+      }
+      if (/anthropic/i.test(k) && v.indexOf('sk-ant') === 0) {
+        state.keys.anthropic = v;
+        document.getElementById('anthropic-key').value = v;
+        updateKeyStatus('anthropic');
+      }
+    }
+    // CSV fallback: key,value
+    if (!state.keys.openai && !state.keys.anthropic) {
+      for (var j = 0; j < lines.length; j++) {
+        var parts = lines[j].split(',');
+        if (parts.length >= 2) {
+          var val = parts[1].trim();
+          if (val.indexOf('sk-ant') === 0) {
+            state.keys.anthropic = val;
+            document.getElementById('anthropic-key').value = val;
+            updateKeyStatus('anthropic');
+          } else if (val.indexOf('sk-') === 0) {
+            state.keys.openai = val;
+            document.getElementById('openai-key').value = val;
+            updateKeyStatus('openai');
+          }
+        }
+      }
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+function sendPrompt() {
+  var prompt = document.getElementById('prompt-input').value.trim();
+  if (!prompt) return;
+
+  var key = state.keys[state.provider];
+  if (!key) {
+    showError('Please enter your ' + (state.provider === 'openai' ? 'OpenAI' : 'Anthropic') + ' API key.');
+    return;
+  }
+
+  hideError();
+  showLoading(true);
+  clearResponse();
+
+  var model = document.getElementById('model-select').value;
+  var t0 = Date.now();
+
+  var promise = state.provider === 'openai'
+    ? callOpenAI(key, model, prompt)
+    : callAnthropic(key, model, prompt);
+
+  promise.then(function(data) {
+    var elapsed = ((Date.now() - t0) / 1000).toFixed(2);
+    renderResponse(data, elapsed);
+  }).catch(function(err) {
+    showError(err.message || 'Request failed.');
+  }).then(function() {
+    showLoading(false);
+  });
+}
+
+function callOpenAI(key, model, prompt) {
+  var body = {
+    model: model,
+    messages: [{ role: 'user', content: prompt }]
+  };
+
+  if (state.mode === 'structured') {
+    var schemaText = document.getElementById('schema-input').value.trim();
+    if (!schemaText) return Promise.reject(new Error('Please provide a JSON schema for structured output.'));
+    var schema;
+    try { schema = JSON.parse(schemaText); } catch(e) { return Promise.reject(new Error('Invalid JSON schema.')); }
+    body.response_format = {
+      type: 'json_schema',
+      json_schema: { name: 'response', strict: true, schema: schema }
+    };
+  }
+
+  return fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + key
+    },
+    body: JSON.stringify(body)
+  }).then(function(res) {
+    return res.json().then(function(data) {
+      if (!res.ok) {
+        var msg = (data && data.error && data.error.message) ? data.error.message : ('OpenAI error ' + res.status);
+        throw new Error(msg);
+      }
+      return {
+        content: data.choices[0].message.content,
+        tokens: data.usage ? data.usage.total_tokens : null,
+        model: model
+      };
+    });
+  });
+}
+
+function callAnthropic(key, model, prompt) {
+  var body = {
+    model: model,
+    max_tokens: 1024,
+    messages: [{ role: 'user', content: prompt }]
+  };
+
+  return fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify(body)
+  }).then(function(res) {
+    return res.json().then(function(data) {
+      if (!res.ok) {
+        var msg = (data && data.error && data.error.message) ? data.error.message : ('Anthropic error ' + res.status);
+        throw new Error(msg);
+      }
+      var content = '';
+      if (data.content && data.content.length) {
+        for (var i = 0; i < data.content.length; i++) {
+          if (data.content[i].text) content += data.content[i].text;
+        }
+      }
+      var tokens = data.usage ? (data.usage.input_tokens + data.usage.output_tokens) : null;
+      return { content: content, tokens: tokens, model: model };
+    });
+  });
+}
+
+function renderResponse(data, elapsed) {
+  var body = document.getElementById('response-body');
+  body.innerHTML = '';
+  document.getElementById('response-label').textContent = data.model;
+
+  var metaTime = document.getElementById('meta-time');
+  metaTime.style.display = 'flex';
+  metaTime.querySelector('span').textContent = elapsed + 's';
+
+  if (data.tokens) {
+    var metaTokens = document.getElementById('meta-tokens');
+    metaTokens.style.display = 'flex';
+    metaTokens.querySelector('span').textContent = data.tokens;
+  }
+
+  if (state.mode === 'structured') {
+    try {
+      var parsed = JSON.parse(data.content);
+      body.textContent = JSON.stringify(parsed, null, 2);
+    } catch(e) {
+      body.textContent = data.content;
+    }
+    body.classList.add('json');
+  } else {
+    body.textContent = data.content;
+    body.classList.remove('json');
+  }
+}
+
+function clearResponse() {
+  var body = document.getElementById('response-body');
+  body.innerHTML = '<div class="placeholder">Response will appear here</div>';
+  body.classList.remove('json');
+  document.getElementById('meta-time').style.display = 'none';
+  document.getElementById('meta-tokens').style.display = 'none';
+  document.getElementById('response-label').textContent = 'Response';
+}
+
+function showLoading(v) {
+  document.getElementById('loading').classList.toggle('visible', v);
+  var btn = document.getElementById('send-btn');
+  btn.disabled = v;
+  btn.textContent = v ? '...' : 'Send \u2192';
+}
+
+function showError(msg) {
+  var el = document.getElementById('error-msg');
+  el.textContent = msg;
+  el.classList.add('visible');
+}
+
+function hideError() {
+  document.getElementById('error-msg').classList.remove('visible');
+}
+
+init();
+</script>
+</body>
+</html>
