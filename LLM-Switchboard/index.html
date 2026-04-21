@@ -224,8 +224,13 @@ textarea { resize: vertical; font-family: var(--mono); font-size: 0.8rem; min-he
   background: var(--surface);
   color: var(--text-dim);
   border: 1px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s;
 }
+.mode-badge:hover { border-color: var(--blue); color: var(--blue); }
 .mode-badge.structured { color: var(--blue); border-color: var(--blue); background: #60a5fa12; }
+.mode-badge.structured:hover { background: #60a5fa22; }
 
 .schema-editor {
   display: none;
@@ -485,7 +490,7 @@ textarea { resize: vertical; font-family: var(--mono); font-size: 0.8rem; min-he
     <div class="prompt-area">
       <textarea id="prompt-input" placeholder="Type your prompt here... (Ctrl+Enter to send)"></textarea>
       <div class="prompt-actions">
-        <span class="mode-badge" id="mode-badge">unstructured</span>
+        <span class="mode-badge" id="mode-badge" onclick="setMode(state.mode === 'structured' ? 'unstructured' : 'structured')" title="Click to toggle output mode">unstructured</span>
         <button class="btn btn-primary" id="send-btn" onclick="sendPrompt()">Send &#8594;</button>
       </div>
     </div>
