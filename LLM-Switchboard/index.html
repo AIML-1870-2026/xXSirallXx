@@ -331,6 +331,70 @@ textarea { resize: vertical; font-family: var(--mono); font-size: 0.8rem; min-he
 }
 .error-msg.visible { display: block; }
 
+/* VALIDATOR */
+.validator-panel {
+  display: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.validator-panel.visible { display: block; }
+.validator-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+.validator-score {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-weight: 600;
+}
+.validator-score.perfect { background: #4ade8022; color: var(--green); border: 1px solid #4ade8044; }
+.validator-score.partial { background: #f0c04022; color: var(--accent); border: 1px solid #f0c04044; }
+.validator-score.fail    { background: #f8717122; color: var(--red);   border: 1px solid #f8717144; }
+.validator-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+.field-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 7px;
+  font-size: 0.8rem;
+  font-family: var(--mono);
+  background: var(--surface2);
+}
+.field-row.matched  { border-left: 3px solid var(--green); }
+.field-row.missing  { border-left: 3px solid var(--red);   }
+.field-row.mismatch { border-left: 3px solid var(--accent);}
+.field-row.extra    { border-left: 3px solid #a78bfa;      }
+.field-icon { font-size: 0.9rem; flex-shrink: 0; margin-top: 1px; }
+.field-icon.matched  { color: var(--green); }
+.field-icon.missing  { color: var(--red);   }
+.field-icon.mismatch { color: var(--accent);}
+.field-icon.extra    { color: #a78bfa;      }
+.field-info { flex: 1; min-width: 0; }
+.field-name { font-weight: 600; color: var(--text); }
+.field-detail { color: var(--text-dim); font-size: 0.72rem; margin-top: 2px; }
+.field-badge {
+  font-size: 0.68rem;
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-weight: 600;
+  flex-shrink: 0;
+  align-self: center;
+}
+.field-badge.matched  { background: #4ade8022; color: var(--green); }
+.field-badge.missing  { background: #f8717122; color: var(--red);   }
+.field-badge.mismatch { background: #f0c04022; color: var(--accent);}
+.field-badge.extra    { background: #a78bfa22; color: #a78bfa;      }
+
 /* RESPONSIVE */
 @media (max-width: 860px) {
   .app { grid-template-columns: 1fr; }
@@ -433,6 +497,14 @@ textarea { resize: vertical; font-family: var(--mono); font-size: 0.8rem; min-he
     </div>
 
     <div class="error-msg" id="error-msg"></div>
+
+    <div class="validator-panel" id="validator-panel">
+      <div class="validator-header">
+        <span>Schema Compliance Report</span>
+        <span class="validator-score" id="validator-score"></span>
+      </div>
+      <div class="validator-body" id="validator-body"></div>
+    </div>
 
     <div class="response-panel">
       <div class="response-header">
@@ -744,17 +816,161 @@ function renderResponse(data, elapsed) {
   }
 
   if (state.mode === 'structured') {
+    var parsed = null;
     try {
-      var parsed = JSON.parse(data.content);
+      parsed = JSON.parse(data.content);
       body.textContent = JSON.stringify(parsed, null, 2);
     } catch(e) {
       body.textContent = data.content;
     }
     body.classList.add('json');
+    if (parsed !== null) {
+      var schemaText = document.getElementById('schema-input').value.trim();
+      try {
+        var schema = JSON.parse(schemaText);
+        runValidator(parsed, schema);
+      } catch(e) { hideValidator(); }
+    } else {
+      hideValidator();
+    }
   } else {
     body.textContent = data.content;
     body.classList.remove('json');
+    hideValidator();
   }
+}
+
+function jsTypeOf(val) {
+  if (val === null) return 'null';
+  if (Array.isArray(val)) return 'array';
+  return typeof val;
+}
+
+function schemaTypeMatches(val, schemaType) {
+  if (!schemaType) return true;
+  var actual = jsTypeOf(val);
+  if (schemaType === 'integer') return typeof val === 'number' && Number.isInteger(val);
+  if (schemaType === 'number')  return typeof val === 'number';
+  return actual === schemaType;
+}
+
+function collectFields(schema, obj, prefix) {
+  prefix = prefix || '';
+  var rows = [];
+  var props = schema.properties || {};
+  var required = schema.required || [];
+  var keys = Object.keys(props);
+
+  for (var i = 0; i < keys.length; i++) {
+    var key = keys[i];
+    var fullKey = prefix ? prefix + '.' + key : key;
+    var propSchema = props[key];
+    var expectedType = propSchema.type || null;
+    var isRequired = required.indexOf(key) !== -1;
+
+    if (!(key in obj)) {
+      if (isRequired) {
+        rows.push({ key: fullKey, status: 'missing', expected: expectedType, actual: null, detail: 'Required field not present' });
+      }
+      // optional + absent: skip (not a violation)
+    } else {
+      var val = obj[key];
+      if (expectedType && !schemaTypeMatches(val, expectedType)) {
+        rows.push({ key: fullKey, status: 'mismatch', expected: expectedType, actual: jsTypeOf(val), detail: 'Type mismatch' });
+      } else {
+        rows.push({ key: fullKey, status: 'matched', expected: expectedType, actual: jsTypeOf(val), detail: null });
+        // Recurse into nested objects
+        if (expectedType === 'object' && propSchema.properties && typeof val === 'object' && val !== null && !Array.isArray(val)) {
+          var nested = collectFields(propSchema, val, fullKey);
+          for (var n = 0; n < nested.length; n++) rows.push(nested[n]);
+        }
+      }
+    }
+  }
+
+  // Extra fields not in schema
+  if (schema.additionalProperties === false) {
+    var objKeys = Object.keys(obj);
+    for (var j = 0; j < objKeys.length; j++) {
+      if (!(objKeys[j] in props)) {
+        var extraKey = prefix ? prefix + '.' + objKeys[j] : objKeys[j];
+        rows.push({ key: extraKey, status: 'extra', expected: null, actual: jsTypeOf(obj[objKeys[j]]), detail: 'Not in schema (additionalProperties: false)' });
+      }
+    }
+  }
+
+  return rows;
+}
+
+function runValidator(parsed, schema) {
+  var rows = collectFields(schema, parsed, '');
+  var panel = document.getElementById('validator-panel');
+  var scoreEl = document.getElementById('validator-score');
+  var bodyEl = document.getElementById('validator-body');
+
+  bodyEl.innerHTML = '';
+  var matched = rows.filter(function(r){ return r.status === 'matched'; }).length;
+  var total = rows.length;
+
+  var scoreClass = matched === total ? 'perfect' : (matched === 0 ? 'fail' : 'partial');
+  scoreEl.className = 'validator-score ' + scoreClass;
+  scoreEl.textContent = matched + ' / ' + total + ' fields passed';
+
+  var icons = { matched: '✓', missing: '✗', mismatch: '⚠', extra: '＋' };
+  var badges = { matched: 'matched', missing: 'missing', mismatch: 'type mismatch', extra: 'unexpected' };
+
+  for (var i = 0; i < rows.length; i++) {
+    var r = rows[i];
+    var row = document.createElement('div');
+    row.className = 'field-row ' + r.status;
+
+    var icon = document.createElement('span');
+    icon.className = 'field-icon ' + r.status;
+    icon.textContent = icons[r.status];
+
+    var info = document.createElement('div');
+    info.className = 'field-info';
+
+    var name = document.createElement('div');
+    name.className = 'field-name';
+    name.textContent = r.key;
+    info.appendChild(name);
+
+    var detail = document.createElement('div');
+    detail.className = 'field-detail';
+    if (r.status === 'matched') {
+      detail.textContent = 'type: ' + (r.expected || r.actual);
+    } else if (r.status === 'missing') {
+      detail.textContent = 'expected type: ' + (r.expected || 'any');
+    } else if (r.status === 'mismatch') {
+      detail.textContent = 'expected: ' + r.expected + '  ·  got: ' + r.actual;
+    } else {
+      detail.textContent = r.detail + '  ·  got: ' + r.actual;
+    }
+    info.appendChild(detail);
+
+    var badge = document.createElement('span');
+    badge.className = 'field-badge ' + r.status;
+    badge.textContent = badges[r.status];
+
+    row.appendChild(icon);
+    row.appendChild(info);
+    row.appendChild(badge);
+    bodyEl.appendChild(row);
+  }
+
+  if (rows.length === 0) {
+    var empty = document.createElement('div');
+    empty.style.cssText = 'color:var(--text-dim);font-size:0.8rem;padding:4px 0';
+    empty.textContent = 'No properties defined in schema to validate against.';
+    bodyEl.appendChild(empty);
+  }
+
+  panel.classList.add('visible');
+}
+
+function hideValidator() {
+  document.getElementById('validator-panel').classList.remove('visible');
 }
 
 function clearResponse() {
@@ -764,6 +980,7 @@ function clearResponse() {
   document.getElementById('meta-time').style.display = 'none';
   document.getElementById('meta-tokens').style.display = 'none';
   document.getElementById('response-label').textContent = 'Response';
+  hideValidator();
 }
 
 function showLoading(v) {
